@@ -15,6 +15,22 @@ export function el(tag, props = {}, ...children) {
   return node;
 }
 
+// Macht aus einem <select> einen Apple-artigen Segment-Schalter.
+// Das <select> bleibt die Quelle der Wahrheit (value + input-Event), so ändert sich die Formularlogik nicht.
+export function segmented(select) {
+  const wrap = el('div', { class: 'seg' }, select);
+  const buttons = [...select.options].map((opt) => {
+    const b = el('button', { type: 'button', onClick: () => { select.value = opt.value; select.dispatchEvent(new Event('input', { bubbles: true })); sync(); } }, opt.dataset.short ?? opt.textContent);
+    return [opt.value, b];
+  });
+  function sync() {
+    for (const [v, b] of buttons) b.classList.toggle('on', select.value === v);
+  }
+  wrap.append(...buttons.map(([, b]) => b));
+  sync();
+  return wrap;
+}
+
 export function openSheet(...content) {
   const root = document.getElementById('dialog-root');
   root.replaceChildren(el('div', { class: 'overlay' }, el('div', { class: 'sheet' }, ...content)));

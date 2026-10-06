@@ -1,5 +1,5 @@
 import { registerRenderer, showView, refreshCurrent } from './nav.js';
-import { renderToday, setScanHandler } from './views/today.js';
+import { renderToday } from './views/today.js';
 import { startScan } from './views/scan.js';
 import { renderProducts } from './views/products.js';
 import { renderWeight } from './views/weight.js';
@@ -9,7 +9,8 @@ registerRenderer('today', renderToday);
 registerRenderer('products', renderProducts);
 registerRenderer('weight', renderWeight);
 registerRenderer('settings', renderSettings);
-setScanHandler(startScan);
+
+document.getElementById('fab').addEventListener('click', () => startScan());
 
 document.getElementById('nav').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-view]');

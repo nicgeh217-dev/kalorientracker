@@ -23,27 +23,24 @@ export async function renderProducts() {
     const shown = all
       .filter((p) => p.name.toLowerCase().includes(q))
       .sort((a, b) => a.name.localeCompare(b.name, 'de'));
-    list.replaceChildren(...(shown.length
-      ? shown.map(productCard)
-      : [el('div', { class: 'muted' }, all.length ? 'Nichts gefunden.' : 'Noch keine Produkte. Sie erscheinen hier, sobald du eine Mahlzeit speicherst.')]));
+    list.replaceChildren(shown.length
+      ? el('div', { class: 'group' }, ...shown.map(productCard))
+      : el('div', { class: 'card muted' }, all.length ? 'Nichts gefunden.' : 'Noch keine Produkte. Sie erscheinen hier, sobald du eine Mahlzeit speicherst.'));
   }
 
   root.replaceChildren(
     el('h1', {}, 'Produkte'),
-    search,
-    el('div', { class: 'muted', style: 'margin:8px 0' }, 'Antippen, um eine Mahlzeit mit diesem Produkt einzutragen. Änderungen am Produkt wirken sich nicht auf bereits gespeicherte Mahlzeiten aus.'),
+    el('div', { class: 'search' }, search),
+    el('div', { class: 'muted', style: 'margin:0 4px 12px' }, 'Antippen, um eine Mahlzeit mit diesem Produkt einzutragen. Änderungen am Produkt wirken sich nicht auf bereits gespeicherte Mahlzeiten aus.'),
     list);
   await drawList();
 }
 
 function productCard(p) {
   const basis = p.basis === 'per100g' ? 'pro 100 g' : 'pro Portion';
-  return el('button', {
-    class: 'card row',
-    style: 'width:100%;text-align:left;color:inherit;font-weight:400',
-    onClick: () => openMealForm({ ...p, productId: p.id }),
-  },
+  return el('button', { onClick: () => openMealForm({ ...p, productId: p.id }) },
     el('div', {},
       el('strong', {}, p.name),
-      el('div', { class: 'muted' }, `${p.kcal} kcal ${basis} · P ${p.protein ?? '–'} · KH ${p.carbs ?? '–'} · F ${p.fat ?? '–'}`)));
+      el('div', { class: 'muted' }, `${basis} · P ${p.protein ?? '–'} · KH ${p.carbs ?? '–'} · F ${p.fat ?? '–'}`)),
+    el('div', { class: 'num kc' }, String(p.kcal)));
 }

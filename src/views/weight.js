@@ -10,12 +10,13 @@ const svg = (tag, attrs = {}, text) => {
   if (text != null) n.textContent = text;
   return n;
 };
+const de = (n) => n.toFixed(1).replace('.', ',');
 
 function chart(weights) {
   if (weights.length < 2) {
     return el('div', { class: 'muted' }, 'Das Diagramm erscheint ab zwei Einträgen.');
   }
-  const W = 360, H = 180, padL = 36, padR = 10, padT = 10, padB = 24;
+  const W = 360, H = 190, padL = 34, padR = 12, padT = 14, padB = 26;
   const times = weights.map((w) => new Date(w.date).getTime());
   const kgs = weights.map((w) => w.kg);
   const t0 = Math.min(...times), t1 = Math.max(...times);
@@ -24,24 +25,33 @@ function chart(weights) {
   const y = (k) => padT + (1 - (k - lo) / (hi - lo || 1)) * (H - padT - padB);
 
   const s = svg('svg', { class: 'chart', viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Gewichtsverlauf' });
+  const defs = svg('defs');
+  const grad = svg('linearGradient', { id: 'wGrad', x1: '0', y1: '0', x2: '0', y2: '1' });
+  grad.append(svg('stop', { offset: '0', 'stop-color': '#fc4c02', 'stop-opacity': '.32' }), svg('stop', { offset: '1', 'stop-color': '#fc4c02', 'stop-opacity': '0' }));
+  defs.append(grad);
+  s.append(defs);
   for (const k of [lo, (lo + hi) / 2, hi]) {
-    s.append(svg('line', { x1: padL, x2: W - padR, y1: y(k), y2: y(k), stroke: '#d6e0d9' }));
-    s.append(svg('text', { x: 4, y: y(k) + 4, 'font-size': 11, fill: '#5b6b62' }, k.toFixed(1)));
+    s.append(svg('line', { x1: padL, x2: W - padR, y1: y(k), y2: y(k), stroke: 'currentColor', 'stroke-opacity': '.1' }));
+    s.append(svg('text', { x: 0, y: y(k) + 4, 'font-size': 11, 'font-weight': 600, fill: 'currentColor', 'fill-opacity': '.5' }, k.toFixed(1)));
   }
-  s.append(svg('polyline', {
-    points: weights.map((w, i) => `${x(times[i])},${y(w.kg)}`).join(' '),
-    fill: 'none', stroke: '#166534', 'stroke-width': 2.5, 'stroke-linejoin': 'round',
-  }));
-  weights.forEach((w, i) => s.append(svg('circle', { cx: x(times[i]), cy: y(w.kg), r: 3.5, fill: '#166534' })));
+  const pts = weights.map((w, i) => [x(times[i]), y(w.kg)]);
+  const line = pts.map(([px, py]) => `${px},${py}`).join(' ');
+  s.append(svg('polygon', { points: `${pts[0][0]},${H - padB} ${line} ${pts.at(-1)[0]},${H - padB}`, fill: 'url(#wGrad)' }));
+  s.append(svg('polyline', { points: line, fill: 'none', stroke: '#fc4c02', 'stroke-width': 3, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
+  const [lx, ly] = pts.at(-1);
+  s.append(svg('circle', { cx: lx, cy: ly, r: 8, fill: '#fc4c02', 'fill-opacity': '.2' }));
+  s.append(svg('circle', { cx: lx, cy: ly, r: 4.5, fill: '#fc4c02', stroke: 'var(--card)', 'stroke-width': 2 }));
   const fmt = (d) => d.slice(8, 10) + '.' + d.slice(5, 7) + '.';
-  s.append(svg('text', { x: padL, y: H - 6, 'font-size': 11, fill: '#5b6b62' }, fmt(weights[0].date)));
-  s.append(svg('text', { x: W - padR, y: H - 6, 'font-size': 11, fill: '#5b6b62', 'text-anchor': 'end' }, fmt(weights.at(-1).date)));
+  s.append(svg('text', { x: padL, y: H - 6, 'font-size': 11, 'font-weight': 600, fill: 'currentColor', 'fill-opacity': '.5' }, fmt(weights[0].date)));
+  s.append(svg('text', { x: W - padR, y: H - 6, 'font-size': 11, 'font-weight': 600, fill: 'currentColor', 'fill-opacity': '.5', 'text-anchor': 'end' }, fmt(weights.at(-1).date)));
   return s;
 }
 
 export async function renderWeight() {
   const root = document.getElementById('view-weight');
   const weights = await listWeights();
+  const latest = weights.at(-1);
+  const prev = weights.at(-2);
   const date = el('input', { type: 'date', value: localDateKey(new Date()), max: localDateKey(new Date()) });
   const kg = el('input', { inputMode: 'decimal', placeholder: 'z. B. 72,5' });
   const msg = el('div');
@@ -57,24 +67,34 @@ export async function renderWeight() {
     },
   }, 'Speichern');
 
+  const diff = latest && prev ? latest.kg - prev.kg : null;
+
   root.replaceChildren(
+    el('div', { class: 'eyebrow' }, 'Körpergewicht'),
     el('h1', {}, 'Gewicht'),
+    el('div', { class: 'card weight-hero' },
+      latest
+        ? el('div', { class: 'row' },
+            el('div', {}, el('div', { class: 'num' }, de(latest.kg).replace(',', ','), el('small', {}, 'kg')),
+              el('div', { class: 'muted' }, latest.date.split('-').reverse().join('.'))),
+            diff == null ? null : el('span', { class: `chip${diff < 0 ? ' down' : ''}` }, `${diff > 0 ? '+' : ''}${de(diff)} kg`))
+        : el('div', { class: 'muted' }, 'Noch kein Gewicht eingetragen.'),
+      el('div', { style: 'margin-top:12px' }, chart(weights))),
     el('div', { class: 'card' },
       el('div', { class: 'grid2' },
-        el('div', {}, el('label', {}, 'Datum'), date),
-        el('div', {}, el('label', {}, 'Gewicht (kg)'), kg)),
+        el('div', {}, el('label', { style: 'margin-top:0' }, 'Datum'), date),
+        el('div', {}, el('label', { style: 'margin-top:0' }, 'Gewicht (kg)'), kg)),
       msg,
-      el('div', { class: 'actions' }, save)),
-    el('div', { class: 'card' }, chart(weights)),
+      el('div', { class: 'actions' }, el('div', { class: 'wide', style: 'display:grid' }, save))),
     el('h2', {}, 'Verlauf'),
     ...(weights.length
-      ? [...weights].reverse().slice(0, 30).map((w, i, arr) => {
-          const older = arr[i + 1];
-          const diff = older ? w.kg - older.kg : null;
-          const d = w.date.split('-').reverse().join('.');
-          return el('div', { class: 'card row' },
-            el('strong', {}, `${w.kg.toFixed(1).replace('.', ',')} kg`),
-            el('span', { class: 'muted' }, `${d}${diff == null ? '' : ` · ${diff > 0 ? '+' : ''}${diff.toFixed(1).replace('.', ',')}`}`));
-        })
-      : [el('div', { class: 'muted' }, 'Noch kein Gewicht eingetragen.')]));
+      ? [el('div', { class: 'card', style: 'padding-top:6px;padding-bottom:6px' },
+          ...[...weights].reverse().slice(0, 30).map((w, i, arr) => {
+            const older = arr[i + 1];
+            const d = older ? w.kg - older.kg : null;
+            return el('div', { class: 'wrow row' },
+              el('div', { class: 'num' }, de(w.kg), el('small', { class: 'muted', style: 'font-family:var(--font);font-style:normal;font-size:13px' }, ' kg')),
+              el('span', { class: 'muted' }, `${w.date.split('-').reverse().join('.')}${d == null ? '' : ` · ${d > 0 ? '+' : ''}${de(d)}`}`));
+          }))]
+      : []));
 }
