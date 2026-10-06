@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#166534">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png">
+  <title>Kalorientracker</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main>
+    <section id="view-today"></section>
+    <section id="view-scan" hidden></section>
+    <section id="view-products" hidden></section>
+    <section id="view-weight" hidden></section>
+    <section id="view-settings" hidden></section>
+  </main>
+  <div id="dialog-root"></div>
+  <nav id="nav">
+    <button data-view="today">Heute</button>
+    <button data-view="products">Produkte</button>
+    <button data-view="weight">Gewicht</button>
+    <button data-view="settings">Einstellungen</button>
+  </nav>
+  <script type="module" src="src/app.js"></script>
+</body>
+</html>
