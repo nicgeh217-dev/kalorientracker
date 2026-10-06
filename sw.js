@@ -1,4 +1,4 @@
-const CACHE = 'kalorientracker-v5';
+const CACHE = 'kalorientracker-v6';
 const ASSETS = [
   './', './index.html', './styles.css', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png',
@@ -26,7 +26,7 @@ self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET' || url.origin !== self.location.origin) return;
   // Netzwerk zuerst (immer die neueste Version), Cache als Offline-Fallback.
   e.respondWith(
-    fetch(e.request)
+    fetch(e.request, { cache: 'no-cache' }) // immer beim Server nachfragen, nie 10 Minuten alten HTTP-Cache nutzen
       .then((res) => {
         if (res.ok) {
           const copy = res.clone();
