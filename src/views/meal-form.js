@@ -6,7 +6,7 @@ import { refreshCurrent } from '../nav.js';
 const FIELDS = [['kcal', 'Kalorien (kcal)'], ['protein', 'Protein (g)'], ['carbs', 'Kohlenhydrate (g)'], ['fat', 'Fett (g)']];
 
 // prefill: {name, basis, servingGrams, kcal, protein, carbs, fat, productId?} oder null
-export function openMealForm(prefill) {
+export function openMealForm(prefill, info = null) {
   const p = prefill ?? {};
   const val = (v) => (v == null ? '' : String(v));
   const inputs = {};
@@ -107,6 +107,7 @@ export function openMealForm(prefill) {
 
   openSheet(
     el('h1', {}, prefill ? 'Mahlzeit prüfen' : 'Mahlzeit eintragen'),
+    info ? el('div', { class: 'muted', style: 'margin:-8px 4px 8px' }, info) : null,
     prefill && p.productId == null && p.basis == null
       ? el('div', { class: 'note warn' }, 'Die Bezugsgröße (pro Portion oder pro 100 g) wurde nicht erkannt. Bitte am Etikett prüfen.')
       : null,

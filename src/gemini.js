@@ -1,8 +1,12 @@
 import { parseLabelResponse } from './gemini-parse.js';
 
-// Modell bei Bedarf hier ändern (Stand 2026-10: gemini-3.8-flash laut Gemini-Doku).
-export const MODEL = 'gemini-3.8-flash';
-const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
+// Auswählbare Modelle (Stand 2026-10 laut Gemini-Doku). Der Nutzer wählt in den Einstellungen.
+export const MODELS = [
+  { id: 'gemini-3.5-flash-lite', label: 'Schnell – gemini-3.5-flash-lite' },
+  { id: 'gemini-3.8-flash', label: 'Genau – gemini-3.8-flash' },
+];
+export const DEFAULT_MODEL = 'gemini-3.8-flash';
+const endpoint = (model) => `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
 
 const PROMPT = `Du liest das Foto einer Nährwerttabelle (oft koreanisch: 영양정보, 열량=kcal, 탄수화물=Kohlenhydrate, 단백질=Protein, 지방=Fett).
 Gib ausschließlich JSON zurück mit den Feldern:
@@ -49,19 +53,20 @@ function toBase64(blob) {
   });
 }
 
-function httpError(status) {
+function httpError(status, model) {
   if (status === 400 || status === 403) return 'Der Gemini-Key ist ungültig oder nicht freigeschaltet. Bitte in den Einstellungen prüfen.';
-  if (status === 404) return `Das Modell "${MODEL}" gibt es nicht mehr. Bitte MODEL in src/gemini.js anpassen.`;
+  if (status === 404) return `Das Modell "${model}" gibt es nicht (mehr). Bitte in den Einstellungen ein anderes Modell wählen.`;
   if (status === 429) return 'Das Gemini-Limit ist erreicht. Bitte später erneut versuchen oder manuell eintragen.';
   return `Gemini-Fehler (HTTP ${status}).`;
 }
 
 // Wirft nie: liefert immer {ok, label} oder {ok:false, error}.
-export async function scanLabel(file, apiKey) {
+export async function scanLabel(file, apiKey, model = DEFAULT_MODEL) {
   if (!apiKey) return { ok: false, error: 'Kein Gemini-Key hinterlegt.' };
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
     return { ok: false, error: 'Du bist offline. Der Foto-Scan braucht Internet.' };
   }
+  const started = performance.now();
   try {
     const blob = await resizeImage(file);
     const body = {
@@ -73,13 +78,14 @@ export async function scanLabel(file, apiKey) {
       }],
       generationConfig: { responseMimeType: 'application/json', responseSchema: SCHEMA, temperature: 0 },
     };
-    const res = await fetch(ENDPOINT, {
+    const res = await fetch(endpoint(model || DEFAULT_MODEL), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
       body: JSON.stringify(body),
     });
-    if (!res.ok) return { ok: false, error: httpError(res.status) };
-    return parseLabelResponse(await res.json());
+    if (!res.ok) return { ok: false, error: httpError(res.status, model) };
+    const parsed = parseLabelResponse(await res.json());
+    return parsed.ok ? { ...parsed, model, seconds: (performance.now() - started) / 1000 } : parsed;
   } catch (e) {
     return { ok: false, error: 'Der Scan ist fehlgeschlagen (Netzwerk oder Bild). Bitte erneut versuchen.' };
   }
