@@ -1,6 +1,6 @@
 import { el, openSheet, closeSheet, parseNum } from '../dom.js';
 import { scaleNutrition, checkPlausibility, localDateKey } from '../logic.js';
-import { addProduct, addMeal } from '../db.js';
+import { addProduct, updateProduct, addMeal } from '../db.js';
 import { refreshCurrent } from '../nav.js';
 
 const FIELDS = [['kcal', 'Kalorien (kcal)'], ['protein', 'Protein (g)'], ['carbs', 'Kohlenhydrate (g)'], ['fat', 'Fett (g)']];
@@ -84,7 +84,9 @@ export function openMealForm(prefill) {
     }
     saveBtn.disabled = true;
     const now = new Date();
-    const productId = p.productId ?? await addProduct(v.product);
+    let productId = p.productId;
+    if (productId != null) await updateProduct({ id: productId, ...v.product });
+    else productId = await addProduct(v.product);
     await addMeal({
       timestamp: now.toISOString(),
       dateKey: localDateKey(now),
