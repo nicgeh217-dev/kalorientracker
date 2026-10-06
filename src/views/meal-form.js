@@ -10,7 +10,8 @@ const FIELDS = [['kcal', 'Kalorien (kcal)'], ['protein', 'Protein (g)'], ['carbs
 // opts: {info?: string, meal?: bestehende Mahlzeit (Bearbeiten), dateKey?: Tag für neue Mahlzeiten}
 export function openMealForm(prefill, opts = {}) {
   const p = prefill ?? {};
-  const { info = null, meal = null } = opts;
+  const { info = null, meal = null, estimate = null } = opts;
+  const isEstimate = Boolean(estimate || p.estimated || meal?.estimated);
   const dateKey = opts.dateKey ?? meal?.dateKey ?? viewedDateKey();
   const today = localDateKey(new Date());
   const val = (v) => (v == null ? '' : String(v));
@@ -61,10 +62,12 @@ export function openMealForm(prefill, opts = {}) {
         errors.push('Für diese Umrechnung brauche ich die Gramm pro Portion. Bitte eintragen oder die Menge in passender Einheit wählen.');
       }
     }
-    for (const [k, label] of FIELDS.slice(1)) {
-      if (product[k] == null) issues.push(`${label.split(' (')[0]} fehlt und zählt als 0.`);
+    if (!isEstimate) { // Schätzungen sind per Definition ungenau: keine zusätzliche Bestätigung nötig
+      for (const [k, label] of FIELDS.slice(1)) {
+        if (product[k] == null) issues.push(`${label.split(' (')[0]} fehlt und zählt als 0.`);
+      }
+      issues.push(...checkPlausibility(product));
     }
-    issues.push(...checkPlausibility(product));
     return { product, amount, errors, issues, scaled: scaledResult && !scaledResult.error ? scaledResult : null };
   }
 
@@ -94,9 +97,10 @@ export function openMealForm(prefill, opts = {}) {
     saveBtn.disabled = true;
     try {
       let productId = p.productId;
-      if (productId != null) await updateProduct({ id: productId, ...v.product });
-      else productId = await addProduct(v.product);
-      const data = { productId, name: v.product.name, amount: v.amount, ...v.scaled };
+      const stored = isEstimate ? { ...v.product, estimated: true } : v.product;
+      if (productId != null) await updateProduct({ id: productId, ...stored });
+      else productId = await addProduct(stored);
+      const data = { productId, name: v.product.name, amount: v.amount, ...v.scaled, ...(isEstimate ? { estimated: true } : {}) };
       if (meal) {
         await updateMeal({ ...meal, ...data }); // id, Zeitstempel und Tag bleiben erhalten
       } else {
@@ -117,6 +121,7 @@ export function openMealForm(prefill, opts = {}) {
     el('h1', {}, meal ? 'Mahlzeit bearbeiten' : prefill ? 'Mahlzeit prüfen' : 'Mahlzeit eintragen'),
     dateKey !== today ? el('div', { class: 'note warn', style: 'margin-top:-4px' }, `${meal ? 'Mahlzeit von' : 'Wird eingetragen für'} ${dayLabel(dateKey)}, ${longDate(dateKey)}`) : null,
     info ? el('div', { class: 'muted', style: 'margin:-8px 4px 8px' }, info) : null,
+    estimate ? estimateBanner(estimate) : (isEstimate ? el('div', { class: 'muted', style: 'margin:-8px 4px 8px' }, '~ Dieser Eintrag ist eine Schätzung.') : null),
     prefill && p.productId == null && p.basis == null
       ? el('div', { class: 'note warn' }, 'Die Bezugsgröße (pro Portion oder pro 100 g) wurde nicht erkannt. Bitte am Etikett prüfen.')
       : null,
@@ -131,4 +136,13 @@ export function openMealForm(prefill, opts = {}) {
     el('div', { class: 'actions' },
       el('button', { class: 'btn', onClick: closeSheet }, 'Abbrechen'), saveBtn));
   refresh();
+}
+
+const CONFIDENCE = { high: 'hohe Sicherheit', medium: 'mittlere Sicherheit', low: 'geringe Sicherheit, bitte genau prüfen' };
+
+function estimateBanner({ confidence, note, kcalMin, kcalMax }) {
+  return el('div', { class: `note ${confidence === 'low' ? 'bad' : 'warn'}` },
+    el('b', {}, `Geschätzt${confidence ? ` (${CONFIDENCE[confidence]})` : ''}`),
+    note ? el('div', {}, note) : null,
+    kcalMin != null && kcalMax != null ? el('div', {}, `Spanne: ${kcalMin}–${kcalMax} kcal. Passe unten die Menge an, wenn du nur einen Teil gegessen hast.`) : null);
 }

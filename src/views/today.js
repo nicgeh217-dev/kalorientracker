@@ -112,6 +112,7 @@ function recentChip(m, dateKey) {
       const id = await addMeal({
         timestamp: timestampFor(dateKey), dateKey, productId: m.productId, name: m.name, amount: m.amount,
         kcal: m.kcal, protein: m.protein, carbs: m.carbs, fat: m.fat,
+        ...(m.estimated ? { estimated: true } : {}),
       });
       toast(`${m.name} eingetragen`, 'Rückgängig', async () => { await deleteMeal(id); renderToday(); });
       renderToday();
@@ -168,7 +169,8 @@ function mealCard(m, i) {
           },
         }, '×'))),
     el('div', { class: 'meal-stats' },
-      el('div', { class: 'num kcal' }, String(m.kcal), el('small', {}, 'kcal')),
+      el('div', { class: 'num kcal' }, `${m.estimated ? '~' : ''}${m.kcal}`, el('small', {}, 'kcal')),
+      m.estimated ? el('span', { class: 'tag' }, 'Schätzung') : null,
       mini('Protein', m.protein), mini('KH', m.carbs), mini('Fett', m.fat)));
 }
 

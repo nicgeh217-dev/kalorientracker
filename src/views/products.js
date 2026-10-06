@@ -41,6 +41,6 @@ function productCard(p) {
   return el('button', { onClick: () => openMealForm({ ...p, productId: p.id }) },
     el('div', {},
       el('strong', {}, p.name),
-      el('div', { class: 'muted' }, `${basis} · P ${p.protein ?? '–'} · KH ${p.carbs ?? '–'} · F ${p.fat ?? '–'}`)),
+      el('div', { class: 'muted' }, `${p.estimated ? '~ geschätzt · ' : ''}${basis} · P ${p.protein ?? '–'} · KH ${p.carbs ?? '–'} · F ${p.fat ?? '–'}`)),
     el('div', { class: 'num kc' }, String(p.kcal)));
 }
