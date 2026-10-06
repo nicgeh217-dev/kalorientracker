@@ -12,7 +12,10 @@ Persönliche Handy-App (PWA): Nährwerttabelle fotografieren, Gemini liest die W
 3. Gemini-API-Key eintragen (https://aistudio.google.com/apikey). Der Key wird nur lokal auf dem Handy gespeichert, nicht im Code und nicht im Repo.
 
 ## Benutzung
-- **Foto scannen:** Etikett fotografieren → Werte prüfen und korrigieren → Menge angeben → speichern. Rot markierte Felder wurden nicht erkannt.
+- **Kamera-Button:** Fotos aufnehmen oder aus der Galerie wählen (bis zu 4 Fotos desselben Produkts, z. B. Vorderseite und Nährwerttabelle), optional mit Beschreibung. Dann **Auswerten**.
+  - Ist eine Nährwerttabelle lesbar, werden die Werte exakt abgelesen. Rot markierte Felder wurden nicht erkannt.
+  - Gibt es keine Tabelle (Restaurant, Bäcker) oder nur eine Beschreibung, **schätzt** die KI das ganze Gericht. Das ist markiert (**~**, "Schätzung") und kann 20–40 % danebenliegen.
+  - Werte prüfen und korrigieren, Menge angeben, speichern.
 - **Manuell:** Werte selbst eintragen, wenn das Foto nichts taugt.
 - **Produkte:** bereits gescannte Produkte erneut eintragen, ohne neues Foto.
 - **Gewicht:** ein Eintrag pro Tag, Diagramm über die Zeit.
