@@ -1,10 +1,10 @@
-const CACHE = 'kalorientracker-v6';
+const CACHE = 'kalorientracker-v7';
 const ASSETS = [
   './', './index.html', './styles.css', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png',
   './src/app.js', './src/nav.js', './src/dom.js', './src/logic.js', './src/db.js',
   './src/views/today.js', './src/views/meal-form.js', './src/views/scan.js',
-  './src/gemini.js', './src/gemini-parse.js', './src/backup.js', './src/weight-input.js',
+  './src/gemini.js', './src/gemini-parse.js', './src/gemini-retry.js', './src/backup.js', './src/weight-input.js',
   './fonts/barlow-condensed-700i.woff2', './fonts/barlow-condensed-800i.woff2', './fonts/figtree.woff2',
   './src/views/products.js', './src/views/weight.js', './src/views/settings.js'
 ];

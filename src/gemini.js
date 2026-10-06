@@ -1,4 +1,5 @@
 import { parseLabelResponse } from './gemini-parse.js';
+import { runWithFallback } from './gemini-retry.js';
 
 // Auswählbare Modelle (Stand 2026-10 laut Gemini-Doku). Der Nutzer wählt in den Einstellungen.
 export const MODELS = [
@@ -57,19 +58,26 @@ function httpError(status, model) {
   if (status === 400 || status === 403) return 'Der Gemini-Key ist ungültig oder nicht freigeschaltet. Bitte in den Einstellungen prüfen.';
   if (status === 404) return `Das Modell "${model}" gibt es nicht (mehr). Bitte in den Einstellungen ein anderes Modell wählen.`;
   if (status === 429) return 'Das Gemini-Limit ist erreicht. Bitte später erneut versuchen oder manuell eintragen.';
+  if (status >= 500) return 'Gemini ist gerade überlastet (HTTP ' + status + '). Ich habe es mehrfach und mit einem zweiten Modell versucht. Bitte in ein paar Minuten nochmal scannen oder manuell eintragen.';
   return `Gemini-Fehler (HTTP ${status}).`;
 }
 
-// Wirft nie: liefert immer {ok, label} oder {ok:false, error}.
+// Zweites Modell als Ausweichlösung, falls das gewählte überlastet oder abgeschaltet ist.
+function fallbackFor(model) {
+  return MODELS.find((m) => m.id !== model)?.id;
+}
+
+// Wirft nie: liefert immer {ok, label, model, seconds} oder {ok:false, error}.
 export async function scanLabel(file, apiKey, model = DEFAULT_MODEL) {
   if (!apiKey) return { ok: false, error: 'Kein Gemini-Key hinterlegt.' };
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
     return { ok: false, error: 'Du bist offline. Der Foto-Scan braucht Internet.' };
   }
   const started = performance.now();
+  const primary = model || DEFAULT_MODEL;
   try {
     const blob = await resizeImage(file);
-    const body = {
+    const body = JSON.stringify({
       contents: [{
         parts: [
           { text: PROMPT },
@@ -77,15 +85,19 @@ export async function scanLabel(file, apiKey, model = DEFAULT_MODEL) {
         ],
       }],
       generationConfig: { responseMimeType: 'application/json', responseSchema: SCHEMA, temperature: 0 },
-    };
-    const res = await fetch(endpoint(model || DEFAULT_MODEL), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-      body: JSON.stringify(body),
     });
-    if (!res.ok) return { ok: false, error: httpError(res.status, model) };
-    const parsed = parseLabelResponse(await res.json());
-    return parsed.ok ? { ...parsed, model, seconds: (performance.now() - started) / 1000 } : parsed;
+    const call = async (m) => {
+      const res = await fetch(endpoint(m), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+        body,
+      });
+      return { status: res.status, json: res.ok ? await res.json() : undefined };
+    };
+    const r = await runWithFallback([primary, fallbackFor(primary)], call);
+    if (!r.ok) return { ok: false, error: httpError(r.status, r.model) };
+    const parsed = parseLabelResponse(r.json);
+    return parsed.ok ? { ...parsed, model: r.model, seconds: (performance.now() - started) / 1000 } : parsed;
   } catch (e) {
     return { ok: false, error: 'Der Scan ist fehlgeschlagen (Netzwerk oder Bild). Bitte erneut versuchen.' };
   }
