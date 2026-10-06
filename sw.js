@@ -1,9 +1,10 @@
-const CACHE = 'kalorientracker-v2';
+const CACHE = 'kalorientracker-v3';
 const ASSETS = [
   './', './index.html', './styles.css', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png',
   './src/app.js', './src/nav.js', './src/dom.js', './src/logic.js', './src/db.js',
-  './src/views/today.js', './src/views/meal-form.js'
+  './src/views/today.js', './src/views/meal-form.js', './src/views/scan.js',
+  './src/gemini.js', './src/gemini-parse.js'
 ];
 
 self.addEventListener('install', (e) => {
@@ -21,5 +22,16 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET' || url.origin !== self.location.origin) return;
-  e.respondWith(caches.match(e.request).then((hit) => hit || fetch(e.request)));
+  // Netzwerk zuerst (immer die neueste Version), Cache als Offline-Fallback.
+  e.respondWith(
+    fetch(e.request)
+      .then((res) => {
+        if (res.ok) {
+          const copy = res.clone();
+          caches.open(CACHE).then((c) => c.put(e.request, copy));
+        }
+        return res;
+      })
+      .catch(() => caches.match(e.request).then((hit) => hit || caches.match('./index.html')))
+  );
 });

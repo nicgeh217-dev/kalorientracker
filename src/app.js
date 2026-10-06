@@ -1,7 +1,9 @@
 import { registerRenderer, showView } from './nav.js';
-import { renderToday } from './views/today.js';
+import { renderToday, setScanHandler } from './views/today.js';
+import { startScan } from './views/scan.js';
 
 registerRenderer('today', renderToday);
+setScanHandler(startScan);
 
 document.getElementById('nav').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-view]');

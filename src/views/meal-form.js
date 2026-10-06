@@ -102,6 +102,9 @@ export function openMealForm(prefill) {
 
   openSheet(
     el('h1', {}, prefill ? 'Mahlzeit prüfen' : 'Mahlzeit eintragen'),
+    prefill && p.productId == null && p.basis == null
+      ? el('div', { class: 'note warn' }, 'Die Bezugsgröße (pro Portion oder pro 100 g) wurde nicht erkannt. Bitte am Etikett prüfen.')
+      : null,
     el('label', {}, 'Name'), name,
     el('label', {}, 'Bezugsgröße der Nährwerte'), basis,
     el('label', {}, 'Gramm pro Portion (optional)'), serving,
