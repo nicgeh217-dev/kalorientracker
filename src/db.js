@@ -39,6 +39,9 @@ export async function addProduct(p) {
   return wrap((await store('products', 'readwrite')).add(rest));
 }
 export const listProducts = () => getAll('products');
+export async function getProduct(id) {
+  return wrap((await store('products')).get(id));
+}
 export async function updateProduct(p) {
   await wrap((await store('products', 'readwrite')).put(p));
 }
@@ -51,6 +54,10 @@ export async function mealsForDate(dateKey) {
   const s = await store('meals');
   const list = await wrap(s.index('dateKey').getAll(dateKey));
   return list.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+}
+export const listMeals = () => getAll('meals');
+export async function updateMeal(m) {
+  await wrap((await store('meals', 'readwrite')).put(m));
 }
 export async function deleteMeal(id) {
   await wrap((await store('meals', 'readwrite')).delete(id));
