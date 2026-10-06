@@ -8,7 +8,7 @@ const good = { name: '삼각김밥', basis: 'perServing', servingGrams: 110, kca
 test('gültiges JSON -> ok', () => {
   const r = parseLabelResponse(wrap(JSON.stringify(good)));
   assert.equal(r.ok, true);
-  assert.deepEqual(r.label, good);
+  assert.deepEqual(r.label, { ...good, source: 'label', confidence: null, note: null, kcalMin: null, kcalMax: null });
 });
 
 test('JSON im ```json-Zaun -> ok', () => {
@@ -55,4 +55,43 @@ test('blockReason -> Fehler mit Text', () => {
 test('negative Werte -> null', () => {
   const r = parseLabelResponse(wrap(JSON.stringify({ ...good, kcal: -5 })));
   assert.equal(r.label.kcal, null);
+});
+
+const est = { name: 'Bibimbap', source: 'estimate', basis: 'perServing', servingGrams: 450, kcal: 620, protein: 24, carbs: 90, fat: 18,
+  confidence: 'medium', note: 'Ca. 450 g mit Reis, Gemüse, Ei.', kcalMin: 500, kcalMax: 750 };
+
+test('Schätzung: alle Zusatzfelder werden übernommen', () => {
+  const r = parseLabelResponse(wrap(JSON.stringify(est)));
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.label, est);
+});
+
+test('Schätzung: basis wird immer perServing', () => {
+  const r = parseLabelResponse(wrap(JSON.stringify({ ...est, basis: 'per100g' })));
+  assert.equal(r.label.basis, 'perServing');
+  const r2 = parseLabelResponse(wrap(JSON.stringify({ ...est, basis: null })));
+  assert.equal(r2.label.basis, 'perServing');
+});
+
+test('Schätzung ohne kcal -> Fehler', () => {
+  const r = parseLabelResponse(wrap(JSON.stringify({ ...est, kcal: null })));
+  assert.equal(r.ok, false);
+  assert.match(r.error, /Schätzung/);
+});
+
+test('unbekannte source -> label; unbekannte confidence -> null', () => {
+  const r = parseLabelResponse(wrap(JSON.stringify({ ...good, source: 'raten', confidence: 'sehr hoch' })));
+  assert.equal(r.label.source, 'label');
+  assert.equal(r.label.confidence, null);
+});
+
+test('Spanne: nur plausible Zahlen, min <= kcal <= max sonst null', () => {
+  const r = parseLabelResponse(wrap(JSON.stringify({ ...est, kcalMin: 900, kcalMax: 100 })));
+  assert.equal(r.label.kcalMin, null);
+  assert.equal(r.label.kcalMax, null);
+});
+
+test('note wird getrimmt, leer -> null', () => {
+  assert.equal(parseLabelResponse(wrap(JSON.stringify({ ...est, note: '   ' }))).label.note, null);
+  assert.equal(parseLabelResponse(wrap(JSON.stringify({ ...est, note: '  Hallo  ' }))).label.note, 'Hallo');
 });
