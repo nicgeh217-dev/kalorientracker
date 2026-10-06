@@ -1,4 +1,5 @@
 const BASES = ['per100g', 'perServing'];
+const CONFIDENCES = ['low', 'medium', 'high'];
 
 function num(v) {
   if (v == null) return null;
@@ -27,16 +28,31 @@ export function parseLabelResponse(apiJson) {
   if (obj === null || typeof obj !== 'object' || Array.isArray(obj)) {
     return { ok: false, error: 'Die Antwort von Gemini konnte nicht gelesen werden.' };
   }
+  const estimate = obj.source === 'estimate';
+  const kcal = num(obj.kcal);
+  if (estimate && kcal == null) return { ok: false, error: 'Die Schätzung enthielt keine Kalorien. Bitte erneut versuchen oder manuell eintragen.' };
+  let kcalMin = num(obj.kcalMin);
+  let kcalMax = num(obj.kcalMax);
+  if (kcal == null || kcalMin == null || kcalMax == null || kcalMin > kcal || kcalMax < kcal) {
+    kcalMin = null;
+    kcalMax = null;
+  }
+  const note = typeof obj.note === 'string' && obj.note.trim() ? obj.note.trim() : null;
   return {
     ok: true,
     label: {
       name: typeof obj.name === 'string' && obj.name.trim() ? obj.name.trim() : null,
-      basis: BASES.includes(obj.basis) ? obj.basis : null,
+      source: estimate ? 'estimate' : 'label',
+      basis: estimate ? 'perServing' : (BASES.includes(obj.basis) ? obj.basis : null),
       servingGrams: num(obj.servingGrams),
-      kcal: num(obj.kcal),
+      kcal,
       protein: num(obj.protein),
       carbs: num(obj.carbs),
       fat: num(obj.fat),
+      confidence: CONFIDENCES.includes(obj.confidence) ? obj.confidence : null,
+      note,
+      kcalMin,
+      kcalMax,
     },
   };
 }
