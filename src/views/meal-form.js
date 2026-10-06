@@ -1,4 +1,4 @@
-import { el, openSheet, closeSheet, parseNum } from '../dom.js';
+import { el, openSheet, closeSheet, parseNum, segmented } from '../dom.js';
 import { scaleNutrition, checkPlausibility, localDateKey } from '../logic.js';
 import { addProduct, updateProduct, addMeal } from '../db.js';
 import { refreshCurrent } from '../nav.js';
@@ -14,14 +14,14 @@ export function openMealForm(prefill) {
 
   const name = el('input', { value: val(p.name), placeholder: 'z. B. Triangle Kimbap Thunfisch' });
   const basis = el('select', {},
-    el('option', { value: 'perServing', selected: p.basis !== 'per100g' }, 'Werte gelten pro Portion / Packung'),
-    el('option', { value: 'per100g', selected: p.basis === 'per100g' }, 'Werte gelten pro 100 g'));
+    el('option', { value: 'perServing', selected: p.basis !== 'per100g', 'data-short': 'Pro Portion' }, 'Werte gelten pro Portion / Packung'),
+    el('option', { value: 'per100g', selected: p.basis === 'per100g', 'data-short': 'Pro 100 g' }, 'Werte gelten pro 100 g'));
   const serving = el('input', { inputMode: 'decimal', value: val(p.servingGrams), placeholder: 'Gramm pro Portion (falls bekannt)' });
   for (const [k] of FIELDS) inputs[k] = el('input', { inputMode: 'decimal', value: val(p[k]) });
   const amountValue = el('input', { inputMode: 'decimal', value: '1' });
   const amountUnit = el('select', {},
-    el('option', { value: 'servings' }, 'Portion(en) / Packung(en)'),
-    el('option', { value: 'g' }, 'Gramm'));
+    el('option', { value: 'servings', 'data-short': 'Portion' }, 'Portion(en) / Packung(en)'),
+    el('option', { value: 'g', 'data-short': 'Gramm' }, 'Gramm'));
 
   const notes = el('div');
   const preview = el('div', { class: 'card muted' });
@@ -111,14 +111,14 @@ export function openMealForm(prefill) {
       ? el('div', { class: 'note warn' }, 'Die Bezugsgröße (pro Portion oder pro 100 g) wurde nicht erkannt. Bitte am Etikett prüfen.')
       : null,
     el('label', {}, 'Name'), name,
-    el('label', {}, 'Bezugsgröße der Nährwerte'), basis,
+    el('label', {}, 'Nährwerte gelten'), segmented(basis),
     el('label', {}, 'Gramm pro Portion (optional)'), serving,
     el('div', { class: 'grid2' },
       ...FIELDS.map(([k, label]) => el('div', {}, el('label', {}, label), inputs[k]))),
     el('label', {}, 'Gegessene Menge'),
-    el('div', { class: 'grid2' }, amountValue, amountUnit),
+    amountValue, el('div', { style: 'height:8px' }), segmented(amountUnit),
     preview, notes,
     el('div', { class: 'actions' },
-      el('button', { onClick: closeSheet }, 'Abbrechen'), saveBtn));
+      el('button', { class: 'btn', onClick: closeSheet }, 'Abbrechen'), saveBtn));
   refresh();
 }

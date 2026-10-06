@@ -12,7 +12,7 @@ export async function renderSettings() {
   const goal = el('input', { inputMode: 'numeric', placeholder: 'z. B. 2200', value: s.calorieGoal ?? '' });
   const key = el('input', { type: 'password', placeholder: 'AIza …', value: s.geminiKey ?? '', autocomplete: 'off' });
   const toggle = el('button', {
-    class: 'small',
+    class: 'small ghost',
     onClick: () => {
       key.type = key.type === 'password' ? 'text' : 'password';
       toggle.textContent = key.type === 'password' ? 'Anzeigen' : 'Verbergen';
@@ -33,6 +33,7 @@ export async function renderSettings() {
   }, 'Speichern');
 
   const exportBtn = el('button', {
+    class: 'btn',
     onClick: async () => {
       const backup = buildBackup(await exportAll(), new Date());
       const url = URL.createObjectURL(new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' }));
@@ -63,18 +64,19 @@ export async function renderSettings() {
   });
 
   root.replaceChildren(
+    el('div', { class: 'eyebrow' }, 'Persönlich'),
     el('h1', {}, 'Einstellungen'),
     el('div', { class: 'card' },
       el('label', {}, 'Tägliches Kalorienziel (kcal)'), goal,
       el('label', {}, 'Gemini-API-Key (nur auf diesem Handy gespeichert)'),
       el('div', { class: 'row' }, key, toggle),
       msg,
-      el('div', { class: 'actions' }, save)),
+      el('div', { class: 'actions' }, el('div', { class: 'wide', style: 'display:grid' }, save))),
     el('div', { class: 'card' },
-      el('h2', { style: 'margin-top:0' }, 'Sicherung'),
+      el('h2', { style: 'margin:0 0 6px' }, 'Sicherung'),
       el('div', { class: 'muted' }, 'Exportiert Mahlzeiten, Produkte, Gewicht und Ziel (ohne Gemini-Key). Beim Import werden alle aktuellen Daten ersetzt.'),
       el('div', { class: 'actions' },
         exportBtn,
-        el('button', { onClick: () => importInput.click() }, 'Sicherung importieren'),
+        el('button', { class: 'btn', onClick: () => importInput.click() }, 'Sicherung importieren'),
         importInput)));
 }
