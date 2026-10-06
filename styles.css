@@ -163,3 +163,34 @@ svg.chart { width: 100%; height: auto; display: block; }
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes slideup { from { transform: translateY(100%); } to { transform: none; } }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+/* ---------- Tageswechsel, Chips, Woche, Toast ---------- */
+.dayhead { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.dayhead h1 { margin-bottom: 0; }
+.daynav { display: flex; gap: 8px; }
+.daynav button { width: 44px; height: 44px; min-height: 0; padding: 0; border: 0; border-radius: 50%; background: var(--card); color: var(--text); box-shadow: var(--shadow); font-size: 22px; line-height: 1; }
+.daynav button:disabled { opacity: .3; }
+.chips { display: flex; gap: 8px; overflow-x: auto; margin: 0 -16px; padding: 0 16px 6px; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chips button { flex: none; display: grid; gap: 1px; padding: 10px 14px; border: 0; border-radius: 16px; background: var(--card); color: var(--text); box-shadow: var(--shadow); text-align: left; }
+.chips button b { font-weight: 700; font-size: 14px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chips button span { font-family: var(--num); font-style: italic; font-weight: 800; font-size: 20px; color: var(--orange); line-height: 1; }
+.week-stats { display: flex; gap: 22px; margin-bottom: 14px; }
+.week-stats .num { font-size: 40px; }
+.week-stats .lbl { font-size: 12px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+.bars { position: relative; display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; align-items: end; height: 110px; }
+.bars button { position: relative; display: grid; align-content: end; justify-items: center; gap: 6px; height: 100%; padding: 0; border: 0; background: transparent; color: var(--muted); font-size: 11px; font-weight: 700; }
+.bars button i { display: block; width: 100%; border-radius: 7px; background: var(--track); min-height: 4px; }
+.bars button.has i { background: linear-gradient(180deg, var(--orange-2), var(--orange)); }
+.bars button.over i { background: var(--red); }
+.bars button.sel { color: var(--text); }
+.bars button.sel i { box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--orange); }
+.goalline { position: absolute; left: 0; right: 0; border-top: 1.5px dashed var(--muted); opacity: .55; pointer-events: none; }
+.legend { display: flex; gap: 14px; font-size: 12px; font-weight: 600; color: var(--muted); margin-top: 8px; }
+.toast { position: fixed; left: 16px; right: 16px; bottom: calc(env(safe-area-inset-bottom) + 96px); z-index: 30; max-width: 528px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px 16px; border-radius: 16px; background: var(--text); color: var(--bg); font-weight: 600; font-size: 14px; animation: rise .3s cubic-bezier(.22,1,.36,1) both; }
+.toast button { min-height: 32px; padding: 0 10px; border: 0; background: transparent; color: var(--orange-2); font-weight: 700; }
+.bars { height: 102px; }
+.bars button { line-height: 16px; }
+.x { font-size: 16px; }
+.xrow { display: flex; gap: 6px; }

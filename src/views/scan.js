@@ -34,7 +34,7 @@ export async function startScan() {
     openSheet(el('h1', {}, 'Lese Etikett …'), el('div', { class: 'muted' }, 'Das dauert ein paar Sekunden.'));
     const result = await scanLabel(file, geminiKey, geminiModel || undefined);
     closeSheet();
-    if (result.ok) openMealForm(result.label, `Erkannt mit ${result.model} in ${result.seconds.toFixed(1).replace('.', ',')} s`);
+    if (result.ok) openMealForm(result.label, { info: `Erkannt mit ${result.model} in ${result.seconds.toFixed(1).replace('.', ',')} s` });
     else showError(result.error, startScan);
   });
   document.body.append(input);

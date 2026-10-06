@@ -2,6 +2,7 @@ import { el } from '../dom.js';
 import { parseWeight } from '../weight-input.js';
 import { setWeight, listWeights } from '../db.js';
 import { localDateKey } from '../logic.js';
+import { rollingAverage } from '../overview.js';
 
 const NS = 'http://www.w3.org/2000/svg';
 const svg = (tag, attrs = {}, text) => {
@@ -12,7 +13,7 @@ const svg = (tag, attrs = {}, text) => {
 };
 const de = (n) => n.toFixed(1).replace('.', ',');
 
-function chart(weights) {
+function chart(weights, avgs) {
   if (weights.length < 2) {
     return el('div', { class: 'muted' }, 'Das Diagramm erscheint ab zwei Einträgen.');
   }
@@ -24,6 +25,7 @@ function chart(weights) {
   const x = (t) => padL + ((t - t0) / (t1 - t0 || 1)) * (W - padL - padR);
   const y = (k) => padT + (1 - (k - lo) / (hi - lo || 1)) * (H - padT - padB);
 
+  const avgLine = avgs.map((w, i) => `${x(times[i])},${y(w.kg)}`).join(' ');
   const s = svg('svg', { class: 'chart', viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Gewichtsverlauf' });
   const defs = svg('defs');
   const grad = svg('linearGradient', { id: 'wGrad', x1: '0', y1: '0', x2: '0', y2: '1' });
@@ -37,6 +39,7 @@ function chart(weights) {
   const pts = weights.map((w, i) => [x(times[i]), y(w.kg)]);
   const line = pts.map(([px, py]) => `${px},${py}`).join(' ');
   s.append(svg('polygon', { points: `${pts[0][0]},${H - padB} ${line} ${pts.at(-1)[0]},${H - padB}`, fill: 'url(#wGrad)' }));
+  s.append(svg('polyline', { points: avgLine, fill: 'none', stroke: 'currentColor', 'stroke-opacity': '.55', 'stroke-width': 2, 'stroke-dasharray': '5 5', 'stroke-linecap': 'round' }));
   s.append(svg('polyline', { points: line, fill: 'none', stroke: '#fc4c02', 'stroke-width': 3, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
   const [lx, ly] = pts.at(-1);
   s.append(svg('circle', { cx: lx, cy: ly, r: 8, fill: '#fc4c02', 'fill-opacity': '.2' }));
@@ -50,7 +53,9 @@ function chart(weights) {
 export async function renderWeight() {
   const root = document.getElementById('view-weight');
   const weights = await listWeights();
+  const avgs = rollingAverage(weights, 7);
   const latest = weights.at(-1);
+  const latestAvg = avgs.at(-1);
   const prev = weights.at(-2);
   const date = el('input', { type: 'date', value: localDateKey(new Date()), max: localDateKey(new Date()) });
   const kg = el('input', { inputMode: 'decimal', placeholder: 'z. B. 72,5' });
@@ -79,7 +84,13 @@ export async function renderWeight() {
               el('div', { class: 'muted' }, latest.date.split('-').reverse().join('.'))),
             diff == null ? null : el('span', { class: `chip${diff < 0 ? ' down' : ''}` }, `${diff > 0 ? '+' : ''}${de(diff)} kg`))
         : el('div', { class: 'muted' }, 'Noch kein Gewicht eingetragen.'),
-      el('div', { style: 'margin-top:12px' }, chart(weights))),
+      latestAvg
+        ? el('div', { class: 'row', style: 'margin-top:12px' },
+            el('span', { class: 'muted' }, '7-Tage-Schnitt'),
+            el('span', { class: 'num', style: 'font-size:30px' }, de(latestAvg.kg), el('small', { style: 'font-family:var(--font);font-style:normal;font-size:13px;color:var(--muted)' }, ' kg')))
+        : null,
+      el('div', { style: 'margin-top:12px' }, chart(weights, avgs)),
+      weights.length > 1 ? el('div', { class: 'legend' }, el('span', { style: 'color:#fc4c02' }, '● Einzelwerte'), el('span', {}, '- - 7-Tage-Schnitt (glättet Schwankungen)')) : null),
     el('div', { class: 'card' },
       el('div', { class: 'grid2' },
         el('div', {}, el('label', { style: 'margin-top:0' }, 'Datum'), date),

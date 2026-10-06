@@ -1,13 +1,18 @@
 import { el, openSheet, closeSheet, parseNum, segmented } from '../dom.js';
 import { scaleNutrition, checkPlausibility, localDateKey } from '../logic.js';
-import { addProduct, updateProduct, addMeal } from '../db.js';
+import { addProduct, updateProduct, addMeal, updateMeal } from '../db.js';
+import { viewedDateKey, dayLabel, longDate, timestampFor } from '../state.js';
 import { refreshCurrent } from '../nav.js';
 
 const FIELDS = [['kcal', 'Kalorien (kcal)'], ['protein', 'Protein (g)'], ['carbs', 'Kohlenhydrate (g)'], ['fat', 'Fett (g)']];
 
-// prefill: {name, basis, servingGrams, kcal, protein, carbs, fat, productId?} oder null
-export function openMealForm(prefill, info = null) {
+// prefill: {name, basis, servingGrams, kcal, protein, carbs, fat, productId?, amount?} oder null
+// opts: {info?: string, meal?: bestehende Mahlzeit (Bearbeiten), dateKey?: Tag für neue Mahlzeiten}
+export function openMealForm(prefill, opts = {}) {
   const p = prefill ?? {};
+  const { info = null, meal = null } = opts;
+  const dateKey = opts.dateKey ?? meal?.dateKey ?? viewedDateKey();
+  const today = localDateKey(new Date());
   const val = (v) => (v == null ? '' : String(v));
   const inputs = {};
   let issuesShown = false;
@@ -18,10 +23,11 @@ export function openMealForm(prefill, info = null) {
     el('option', { value: 'per100g', selected: p.basis === 'per100g', 'data-short': 'Pro 100 g' }, 'Werte gelten pro 100 g'));
   const serving = el('input', { inputMode: 'decimal', value: val(p.servingGrams), placeholder: 'Gramm pro Portion (falls bekannt)' });
   for (const [k] of FIELDS) inputs[k] = el('input', { inputMode: 'decimal', value: val(p[k]) });
-  const amountValue = el('input', { inputMode: 'decimal', value: '1' });
+  const amountValue = el('input', { inputMode: 'decimal', value: val(p.amount?.value ?? 1) });
   const amountUnit = el('select', {},
     el('option', { value: 'servings', 'data-short': 'Portion' }, 'Portion(en) / Packung(en)'),
     el('option', { value: 'g', 'data-short': 'Gramm' }, 'Gramm'));
+  amountUnit.value = p.amount?.unit === 'g' ? 'g' : 'servings';
 
   const notes = el('div');
   const preview = el('div', { class: 'card muted' });
@@ -86,27 +92,30 @@ export function openMealForm(prefill, info = null) {
       return;
     }
     saveBtn.disabled = true;
-    const now = new Date();
-    let productId = p.productId;
-    if (productId != null) await updateProduct({ id: productId, ...v.product });
-    else productId = await addProduct(v.product);
-    await addMeal({
-      timestamp: now.toISOString(),
-      dateKey: localDateKey(now),
-      productId,
-      name: v.product.name,
-      amount: v.amount,
-      ...v.scaled,
-    });
-    closeSheet();
-    refreshCurrent();
+    try {
+      let productId = p.productId;
+      if (productId != null) await updateProduct({ id: productId, ...v.product });
+      else productId = await addProduct(v.product);
+      const data = { productId, name: v.product.name, amount: v.amount, ...v.scaled };
+      if (meal) {
+        await updateMeal({ ...meal, ...data }); // id, Zeitstempel und Tag bleiben erhalten
+      } else {
+        await addMeal({ timestamp: timestampFor(dateKey), dateKey, ...data });
+      }
+      closeSheet();
+      refreshCurrent();
+    } catch {
+      saveBtn.disabled = false;
+      notes.replaceChildren(el('div', { class: 'note bad' }, 'Speichern fehlgeschlagen (Speicher voll?). Bitte erneut versuchen.'));
+    }
   }
 
   const all = [name, basis, serving, amountValue, amountUnit, ...Object.values(inputs)];
   for (const i of all) i.addEventListener('input', refresh);
 
   openSheet(
-    el('h1', {}, prefill ? 'Mahlzeit prüfen' : 'Mahlzeit eintragen'),
+    el('h1', {}, meal ? 'Mahlzeit bearbeiten' : prefill ? 'Mahlzeit prüfen' : 'Mahlzeit eintragen'),
+    dateKey !== today ? el('div', { class: 'note warn', style: 'margin-top:-4px' }, `${meal ? 'Mahlzeit von' : 'Wird eingetragen für'} ${dayLabel(dateKey)}, ${longDate(dateKey)}`) : null,
     info ? el('div', { class: 'muted', style: 'margin:-8px 4px 8px' }, info) : null,
     prefill && p.productId == null && p.basis == null
       ? el('div', { class: 'note warn' }, 'Die Bezugsgröße (pro Portion oder pro 100 g) wurde nicht erkannt. Bitte am Etikett prüfen.')

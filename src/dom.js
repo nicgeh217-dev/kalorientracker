@@ -36,6 +36,16 @@ export function openSheet(...content) {
   root.replaceChildren(el('div', { class: 'overlay' }, el('div', { class: 'sheet' }, ...content)));
 }
 
+// Kurze Einblendung unten mit optionaler Aktion (z. B. "Rückgängig").
+export function toast(text, actionLabel, onAction, ms = 5000) {
+  document.getElementById('toast-root')?.remove();
+  const node = el('div', { id: 'toast-root', class: 'toast', role: 'status' },
+    el('span', {}, text),
+    actionLabel ? el('button', { onClick: () => { node.remove(); onAction?.(); } }, actionLabel) : null);
+  document.body.append(node);
+  setTimeout(() => node.remove(), ms);
+}
+
 export function closeSheet() {
   document.getElementById('dialog-root').replaceChildren();
 }
