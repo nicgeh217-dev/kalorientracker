@@ -4,31 +4,36 @@ import { openMealForm } from './meal-form.js';
 
 let filter = '';
 
+// Das Suchfeld wird nur einmal angelegt; beim Tippen wird nur die Liste neu gezeichnet.
+// Sonst bricht die Tastatur-Komposition (Hangul/Gboard) ab.
 export async function renderProducts() {
   const root = document.getElementById('view-products');
-  const all = await listProducts();
-  const q = filter.trim().toLowerCase();
-  const shown = all
-    .filter((p) => p.name.toLowerCase().includes(q))
-    .sort((a, b) => a.name.localeCompare(b.name, 'de'));
-
+  const list = el('div');
   const search = el('input', { type: 'search', placeholder: 'Suchen …', value: filter });
   search.addEventListener('input', () => {
     filter = search.value;
-    renderProducts().then(() => {
-      const again = document.querySelector('#view-products input[type=search]');
-      again.focus();
-      again.setSelectionRange(filter.length, filter.length);
-    });
+    if (!search.composing) drawList();
   });
+  search.addEventListener('compositionstart', () => { search.composing = true; });
+  search.addEventListener('compositionend', () => { search.composing = false; filter = search.value; drawList(); });
+
+  async function drawList() {
+    const all = await listProducts();
+    const q = filter.trim().toLowerCase();
+    const shown = all
+      .filter((p) => p.name.toLowerCase().includes(q))
+      .sort((a, b) => a.name.localeCompare(b.name, 'de'));
+    list.replaceChildren(...(shown.length
+      ? shown.map(productCard)
+      : [el('div', { class: 'muted' }, all.length ? 'Nichts gefunden.' : 'Noch keine Produkte. Sie erscheinen hier, sobald du eine Mahlzeit speicherst.')]));
+  }
 
   root.replaceChildren(
     el('h1', {}, 'Produkte'),
     search,
     el('div', { class: 'muted', style: 'margin:8px 0' }, 'Antippen, um eine Mahlzeit mit diesem Produkt einzutragen. Änderungen am Produkt wirken sich nicht auf bereits gespeicherte Mahlzeiten aus.'),
-    ...(shown.length
-      ? shown.map(productCard)
-      : [el('div', { class: 'muted' }, all.length ? 'Nichts gefunden.' : 'Noch keine Produkte. Sie erscheinen hier, sobald du eine Mahlzeit speicherst.')]));
+    list);
+  await drawList();
 }
 
 function productCard(p) {

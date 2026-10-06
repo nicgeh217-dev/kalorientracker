@@ -1,4 +1,4 @@
-import { registerRenderer, showView } from './nav.js';
+import { registerRenderer, showView, refreshCurrent } from './nav.js';
 import { renderToday, setScanHandler } from './views/today.js';
 import { startScan } from './views/scan.js';
 import { renderProducts } from './views/products.js';
@@ -14,6 +14,12 @@ setScanHandler(startScan);
 document.getElementById('nav').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-view]');
   if (b) showView(b.dataset.view);
+});
+
+// Nach der Rückkehr aus dem Hintergrund (z. B. am nächsten Morgen) neu zeichnen,
+// damit "Heute" nicht den Stand von gestern zeigt.
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && !document.querySelector('.sheet')) refreshCurrent();
 });
 
 if ('serviceWorker' in navigator) {

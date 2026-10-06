@@ -80,6 +80,9 @@ export function openMealForm(prefill) {
       issuesShown = true;
       notes.replaceChildren(...v.issues.map((i) => el('div', { class: 'note warn' }, i)));
       saveBtn.textContent = 'Trotzdem speichern';
+      // Kurz sperren, damit ein Doppeltipp die Warnung nicht überspringt.
+      saveBtn.disabled = true;
+      setTimeout(() => { saveBtn.disabled = false; }, 800);
       return;
     }
     saveBtn.disabled = true;
