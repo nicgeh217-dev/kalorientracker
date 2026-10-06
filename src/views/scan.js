@@ -9,19 +9,19 @@ function showError(message, retry) {
     el('h1', {}, 'Scan nicht möglich'),
     el('div', { class: 'note bad' }, message),
     el('div', { class: 'actions' },
-      el('button', { onClick: () => { closeSheet(); openMealForm(null); } }, 'Manuell eintragen'),
+      el('button', { class: 'btn', onClick: () => { closeSheet(); openMealForm(null); } }, 'Manuell eintragen'),
       el('button', { class: 'primary', onClick: () => { closeSheet(); retry(); } }, 'Nochmal'),
-      el('button', { class: 'wide', onClick: closeSheet }, 'Abbrechen')));
+      el('button', { class: 'btn wide', onClick: closeSheet }, 'Abbrechen')));
 }
 
 export async function startScan() {
-  const { geminiKey } = await getSettings();
+  const { geminiKey, geminiModel } = await getSettings();
   if (!geminiKey) {
     openSheet(
       el('h1', {}, 'Gemini-Key fehlt'),
       el('div', { class: 'note warn' }, 'Für den Foto-Scan brauchst du einen Gemini-API-Key. Du trägst ihn einmal in den Einstellungen ein.'),
       el('div', { class: 'actions' },
-        el('button', { onClick: closeSheet }, 'Abbrechen'),
+        el('button', { class: 'btn', onClick: closeSheet }, 'Abbrechen'),
         el('button', { class: 'primary', onClick: () => { closeSheet(); showView('settings'); } }, 'Zu den Einstellungen')));
     return;
   }
@@ -32,9 +32,9 @@ export async function startScan() {
     input.remove();
     if (!file) return;
     openSheet(el('h1', {}, 'Lese Etikett …'), el('div', { class: 'muted' }, 'Das dauert ein paar Sekunden.'));
-    const result = await scanLabel(file, geminiKey);
+    const result = await scanLabel(file, geminiKey, geminiModel || undefined);
     closeSheet();
-    if (result.ok) openMealForm(result.label);
+    if (result.ok) openMealForm(result.label, `Erkannt mit ${result.model} in ${result.seconds.toFixed(1).replace('.', ',')} s`);
     else showError(result.error, startScan);
   });
   document.body.append(input);

@@ -25,5 +25,5 @@ Unter **Einstellungen → Sicherung exportieren** lädt die App eine JSON-Datei 
 npm test          # Logik-Tests (Node)
 python -m http.server 8080   # lokal öffnen unter http://localhost:8080
 ```
-- Gemini-Modell: Konstante `MODEL` in `src/gemini.js`.
+- Gemini-Modell: in den Einstellungen wählbar (Standard `gemini-3.8-flash`; Auswahlliste `MODELS` in `src/gemini.js`, eigene ID möglich).
 - Spec und Plan: `docs/superpowers/`.

@@ -1,4 +1,5 @@
 import { el } from '../dom.js';
+import { MODELS, DEFAULT_MODEL } from '../gemini.js';
 import { getSettings, saveSettings, exportAll, replaceAll } from '../db.js';
 import { buildBackup, parseBackup } from '../backup.js';
 import { localDateKey } from '../logic.js';
@@ -11,6 +12,15 @@ export async function renderSettings() {
 
   const goal = el('input', { inputMode: 'numeric', placeholder: 'z. B. 2200', value: s.calorieGoal ?? '' });
   const key = el('input', { type: 'password', placeholder: 'AIza …', value: s.geminiKey ?? '', autocomplete: 'off' });
+  const known = MODELS.some((m) => m.id === s.geminiModel);
+  const model = el('select', {},
+    ...MODELS.map((m) => el('option', { value: m.id, selected: (s.geminiModel || DEFAULT_MODEL) === m.id }, m.label)),
+    el('option', { value: '__custom', selected: Boolean(s.geminiModel) && !known }, 'Eigene Modell-ID …'));
+  const custom = el('input', { placeholder: 'z. B. gemini-3.8-flash', value: !known ? (s.geminiModel ?? '') : '' });
+  const syncCustom = () => { custom.hidden = model.value !== '__custom'; };
+  model.addEventListener('change', syncCustom);
+  syncCustom();
+
   const toggle = el('button', {
     class: 'small ghost',
     onClick: () => {
@@ -27,7 +37,11 @@ export async function renderSettings() {
       if (g !== null && !(Number.isInteger(g) && g > 0 && g < 10000)) {
         return say('Das Kalorienziel muss eine ganze Zahl zwischen 1 und 9999 sein.', 'bad');
       }
-      await saveSettings({ ...(await getSettings()), calorieGoal: g, geminiKey: key.value.trim() || null });
+      const chosen = model.value === '__custom' ? custom.value.trim() : model.value;
+      if (model.value === '__custom' && !/^[A-Za-z0-9._-]+$/.test(chosen)) {
+        return say('Bitte eine gültige Modell-ID eintragen (nur Buchstaben, Zahlen, Punkt, Bindestrich).', 'bad');
+      }
+      await saveSettings({ ...(await getSettings()), calorieGoal: g, geminiKey: key.value.trim() || null, geminiModel: chosen || null });
       say('Gespeichert.', 'warn');
     },
   }, 'Speichern');
@@ -70,6 +84,8 @@ export async function renderSettings() {
       el('label', {}, 'Tägliches Kalorienziel (kcal)'), goal,
       el('label', {}, 'Gemini-API-Key (nur auf diesem Handy gespeichert)'),
       el('div', { class: 'row' }, key, toggle),
+      el('label', {}, 'Gemini-Modell'), model, custom,
+      el('div', { class: 'muted', style: 'margin:6px 4px 0' }, 'Schnell = kürzere Wartezeit, Genau = liest kleine koreanische Schrift zuverlässiger. Nach jedem Scan siehst du Modell und Dauer.'),
       msg,
       el('div', { class: 'actions' }, el('div', { class: 'wide', style: 'display:grid' }, save))),
     el('div', { class: 'card' },
