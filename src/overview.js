@@ -45,3 +45,38 @@ export function pickRecent(meals, limit = 6) {
   }
   return out;
 }
+
+const dayNumber = (dateKey) => {
+  const [y, m, d] = dateKey.split('-').map(Number);
+  return Date.UTC(y, m - 1, d) / 86400000;
+};
+
+// Grobe Prognose, wann das Zielgewicht erreicht wird: lineare Regression über die letzten 28 Tage.
+// status: nodata | reached | flat | wrongway | far (> 2 Jahre) | ok (mit date, perWeek in kg)
+export function forecast(weights, target) {
+  const all = [...weights].sort((a, b) => a.date.localeCompare(b.date));
+  if (!all.length) return { status: 'nodata' };
+  const latest = all.at(-1);
+  if (Math.abs(latest.kg - target) <= 0.3) return { status: 'reached' };
+
+  const from = addDays(latest.date, -28);
+  const win = all.filter((w) => w.date > from);
+  const x0 = dayNumber(win[0].date);
+  const xs = win.map((w) => dayNumber(w.date) - x0);
+  if (win.length < 3 || xs.at(-1) < 7) return { status: 'nodata' };
+
+  const n = win.length;
+  const mx = xs.reduce((s, v) => s + v, 0) / n;
+  const my = win.reduce((s, w) => s + w.kg, 0) / n;
+  const sxx = xs.reduce((s, v) => s + (v - mx) ** 2, 0);
+  const sxy = xs.reduce((s, v, i) => s + (v - mx) * (win[i].kg - my), 0);
+  const slope = sxy / sxx; // kg pro Tag
+  const current = my + slope * (xs.at(-1) - mx);
+  const diff = target - current;
+
+  if (Math.abs(slope) < 0.005) return { status: 'flat' };
+  if (Math.sign(slope) !== Math.sign(diff)) return { status: 'wrongway' };
+  const days = Math.round(diff / slope);
+  if (days > 730) return { status: 'far' };
+  return { status: 'ok', date: addDays(latest.date, days), days, perWeek: Math.round(slope * 7 * 10) / 10 };
+}
