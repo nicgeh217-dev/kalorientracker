@@ -10,7 +10,7 @@ const FIELDS = [['kcal', 'Kalorien (kcal)'], ['protein', 'Protein (g)'], ['carbs
 // opts: {info?: string, meal?: bestehende Mahlzeit (Bearbeiten), dateKey?: Tag für neue Mahlzeiten}
 export function openMealForm(prefill, opts = {}) {
   const p = prefill ?? {};
-  const { info = null, meal = null, estimate = null } = opts;
+  const { info = null, meal = null, estimate = null, onSaved = null, onCancel = null, onRefine = null } = opts;
   const isEstimate = Boolean(estimate || p.estimated || meal?.estimated);
   const dateKey = opts.dateKey ?? meal?.dateKey ?? viewedDateKey();
   const today = localDateKey(new Date());
@@ -108,6 +108,7 @@ export function openMealForm(prefill, opts = {}) {
       }
       closeSheet();
       refreshCurrent();
+      await onSaved?.();
     } catch {
       saveBtn.disabled = false;
       notes.replaceChildren(el('div', { class: 'note bad' }, 'Speichern fehlgeschlagen (Speicher voll?). Bitte erneut versuchen.'));
@@ -121,7 +122,7 @@ export function openMealForm(prefill, opts = {}) {
     el('h1', {}, meal ? 'Mahlzeit bearbeiten' : prefill ? 'Mahlzeit prüfen' : 'Mahlzeit eintragen'),
     dateKey !== today ? el('div', { class: 'note warn', style: 'margin-top:-4px' }, `${meal ? 'Mahlzeit von' : 'Wird eingetragen für'} ${dayLabel(dateKey)}, ${longDate(dateKey)}`) : null,
     info ? el('div', { class: 'muted', style: 'margin:-8px 4px 8px' }, info) : null,
-    estimate ? estimateBanner(estimate) : (isEstimate ? el('div', { class: 'muted', style: 'margin:-8px 4px 8px' }, '~ Dieser Eintrag ist eine Schätzung.') : null),
+    estimate ? estimateBanner(estimate, onRefine) : (isEstimate ? el('div', { class: 'muted', style: 'margin:-8px 4px 8px' }, '~ Dieser Eintrag ist eine Schätzung.') : null),
     prefill && p.productId == null && p.basis == null
       ? el('div', { class: 'note warn' }, 'Die Bezugsgröße (pro Portion oder pro 100 g) wurde nicht erkannt. Bitte am Etikett prüfen.')
       : null,
@@ -134,15 +135,16 @@ export function openMealForm(prefill, opts = {}) {
     amountValue, el('div', { style: 'height:8px' }), segmented(amountUnit),
     preview, notes,
     el('div', { class: 'actions' },
-      el('button', { class: 'btn', onClick: closeSheet }, 'Abbrechen'), saveBtn));
+      el('button', { class: 'btn', onClick: () => { onCancel?.(); closeSheet(); } }, 'Abbrechen'), saveBtn));
   refresh();
 }
 
 const CONFIDENCE = { high: 'hohe Sicherheit', medium: 'mittlere Sicherheit', low: 'geringe Sicherheit, bitte genau prüfen' };
 
-function estimateBanner({ confidence, note, kcalMin, kcalMax }) {
+function estimateBanner({ confidence, note, kcalMin, kcalMax }, onRefine) {
   return el('div', { class: `note ${confidence === 'low' ? 'bad' : 'warn'}` },
     el('b', {}, `Geschätzt${confidence ? ` (${CONFIDENCE[confidence]})` : ''}`),
     note ? el('div', {}, note) : null,
-    kcalMin != null && kcalMax != null ? el('div', {}, `Spanne: ${kcalMin}–${kcalMax} kcal. Passe unten die Menge an, wenn du nur einen Teil gegessen hast.`) : null);
+    kcalMin != null && kcalMax != null ? el('div', {}, `Spanne: ${kcalMin}–${kcalMax} kcal. Passe unten die Menge an, wenn du nur einen Teil gegessen hast.`) : null,
+    onRefine ? el('button', { class: 'small ghost', style: 'margin-top:10px', onClick: onRefine }, 'Mit Hinweis neu schätzen') : null);
 }

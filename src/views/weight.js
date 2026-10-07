@@ -1,8 +1,8 @@
 import { el } from '../dom.js';
 import { parseWeight } from '../weight-input.js';
-import { setWeight, listWeights } from '../db.js';
+import { setWeight, listWeights, getSettings } from '../db.js';
 import { localDateKey } from '../logic.js';
-import { rollingAverage } from '../overview.js';
+import { rollingAverage, forecast } from '../overview.js';
 
 const NS = 'http://www.w3.org/2000/svg';
 const svg = (tag, attrs = {}, text) => {
@@ -13,7 +13,7 @@ const svg = (tag, attrs = {}, text) => {
 };
 const de = (n) => n.toFixed(1).replace('.', ',');
 
-function chart(weights, avgs) {
+function chart(weights, avgs, target) {
   if (weights.length < 2) {
     return el('div', { class: 'muted' }, 'Das Diagramm erscheint ab zwei Einträgen.');
   }
@@ -21,7 +21,8 @@ function chart(weights, avgs) {
   const times = weights.map((w) => new Date(w.date).getTime());
   const kgs = weights.map((w) => w.kg);
   const t0 = Math.min(...times), t1 = Math.max(...times);
-  const lo = Math.floor(Math.min(...kgs) - 0.5), hi = Math.ceil(Math.max(...kgs) + 0.5);
+  const withTarget = target == null ? kgs : [...kgs, target];
+  const lo = Math.floor(Math.min(...withTarget) - 0.5), hi = Math.ceil(Math.max(...withTarget) + 0.5);
   const x = (t) => padL + ((t - t0) / (t1 - t0 || 1)) * (W - padL - padR);
   const y = (k) => padT + (1 - (k - lo) / (hi - lo || 1)) * (H - padT - padB);
 
@@ -35,6 +36,10 @@ function chart(weights, avgs) {
   for (const k of [lo, (lo + hi) / 2, hi]) {
     s.append(svg('line', { x1: padL, x2: W - padR, y1: y(k), y2: y(k), stroke: 'currentColor', 'stroke-opacity': '.1' }));
     s.append(svg('text', { x: 0, y: y(k) + 4, 'font-size': 11, 'font-weight': 600, fill: 'currentColor', 'fill-opacity': '.5' }, k.toFixed(1)));
+  }
+  if (target != null) {
+    s.append(svg('line', { x1: padL, x2: W - padR, y1: y(target), y2: y(target), stroke: '#1f9d55', 'stroke-width': 2, 'stroke-dasharray': '2 5', 'stroke-linecap': 'round' }));
+    s.append(svg('text', { x: W - padR, y: y(target) - 5, 'font-size': 11, 'font-weight': 700, fill: '#1f9d55', 'text-anchor': 'end' }, `Ziel ${target.toString().replace('.', ',')}`));
   }
   const pts = weights.map((w, i) => [x(times[i]), y(w.kg)]);
   const line = pts.map(([px, py]) => `${px},${py}`).join(' ');
@@ -53,6 +58,7 @@ function chart(weights, avgs) {
 export async function renderWeight() {
   const root = document.getElementById('view-weight');
   const weights = await listWeights();
+  const target = (await getSettings()).targetWeight ?? null;
   const avgs = rollingAverage(weights, 7);
   const latest = weights.at(-1);
   const latestAvg = avgs.at(-1);
@@ -89,8 +95,9 @@ export async function renderWeight() {
             el('span', { class: 'muted' }, '7-Tage-Schnitt'),
             el('span', { class: 'num', style: 'font-size:30px' }, de(latestAvg.kg), el('small', { style: 'font-family:var(--font);font-style:normal;font-size:13px;color:var(--muted)' }, ' kg')))
         : null,
-      el('div', { style: 'margin-top:12px' }, chart(weights, avgs)),
+      el('div', { style: 'margin-top:12px' }, chart(weights, avgs, target)),
       weights.length > 1 ? el('div', { class: 'legend' }, el('span', { style: 'color:#fc4c02' }, '● Einzelwerte'), el('span', {}, '- - 7-Tage-Schnitt (glättet Schwankungen)')) : null),
+    target != null && latest ? goalCard(weights, latest, target) : null,
     el('div', { class: 'card' },
       el('div', { class: 'grid2' },
         el('div', {}, el('label', { style: 'margin-top:0' }, 'Datum'), date),
@@ -108,4 +115,26 @@ export async function renderWeight() {
               el('span', { class: 'muted' }, `${w.date.split('-').reverse().join('.')}${d == null ? '' : ` · ${d > 0 ? '+' : ''}${de(d)}`}`));
           }))]
       : []));
+}
+
+const fmtDate = (d) => new Date(d + 'T00:00:00').toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric' });
+
+function goalCard(weights, latest, target) {
+  const f = forecast(weights, target);
+  const left = Math.abs(latest.kg - target);
+  const text = {
+    reached: 'Ziel erreicht. Jetzt Gewicht halten.',
+    nodata: 'Für eine Prognose brauche ich mindestens 3 Einträge aus 7 Tagen.',
+    flat: 'Dein Gewicht ist zurzeit stabil. Mit diesem Verlauf erreichst du das Ziel nicht.',
+    wrongway: 'Dein Trend geht gerade vom Ziel weg.',
+    far: 'Beim aktuellen Tempo dauert es mehr als 2 Jahre.',
+  }[f.status];
+  return el('div', { class: 'card' },
+    el('div', { class: 'row' },
+      el('span', { class: 'muted' }, 'Zielgewicht'),
+      el('span', { class: 'num', style: 'font-size:30px' }, de(target), el('small', { style: 'font-family:var(--font);font-style:normal;font-size:13px;color:var(--muted)' }, ' kg'))),
+    el('div', { class: 'muted', style: 'margin-top:6px' }, f.status === 'reached' ? '' : `Noch ${de(left)} kg ${latest.kg > target ? 'abnehmen' : 'zunehmen'}.`),
+    f.status === 'ok'
+      ? el('div', { class: 'note warn', style: 'margin-bottom:0' }, `Prognose: etwa am ${fmtDate(f.date)} (${f.perWeek > 0 ? '+' : ''}${de(f.perWeek)} kg pro Woche). Grobe Schätzung aus den letzten 4 Wochen.`)
+      : el('div', { class: 'muted', style: 'margin-top:6px' }, text));
 }

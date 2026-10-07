@@ -202,3 +202,18 @@ textarea:focus { border-color: var(--orange); background: var(--card); }
 .thumb img { width: 100%; height: 100%; object-fit: cover; border-radius: 16px; box-shadow: var(--shadow); }
 .thumb button { position: absolute; top: -6px; right: -6px; width: 26px; height: 26px; min-height: 0; padding: 0; border: 2px solid var(--bg); border-radius: 50%; background: var(--text); color: var(--bg); font-size: 15px; line-height: 1; }
 .tag { align-self: center; padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; background: var(--warn-bg); color: var(--warn-text); }
+
+.prow { display: flex; align-items: center; }
+.prow + .prow { border-top: 1px solid var(--line); }
+.prow .main { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 8px 14px 16px; border: 0; background: transparent; color: var(--text); text-align: left; border-radius: 0; }
+.prow .main:active { background: var(--fill); transform: none; }
+.prow .edit { flex: none; width: 48px; height: 48px; min-height: 0; margin-right: 6px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--muted); font-size: 18px; }
+
+.pgoal { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.pgoal .row b { font-family: var(--num); font-style: italic; font-weight: 800; font-size: 22px; }
+.pbar { height: 8px; border-radius: 6px; background: var(--track); overflow: hidden; margin-top: 8px; }
+.pbar > div { height: 100%; border-radius: 6px; background: var(--p); transition: width .8s cubic-bezier(.22,1,.36,1); }
+.qrow { display: flex; align-items: center; gap: 12px; }
+.qrow img, .qph { flex: none; width: 56px; height: 56px; border-radius: 14px; object-fit: cover; background: var(--fill); display: grid; place-items: center; color: var(--muted); }
+.qtxt { flex: 1; min-width: 0; }
+.qtxt strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

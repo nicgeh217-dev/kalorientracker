@@ -17,11 +17,17 @@ Persönliche Handy-App (PWA): Nährwerttabelle fotografieren, Gemini liest die W
   - Gibt es keine Tabelle (Restaurant, Bäcker) oder nur eine Beschreibung, **schätzt** die KI das ganze Gericht. Das ist markiert (**~**, "Schätzung") und kann 20–40 % danebenliegen.
   - Werte prüfen und korrigieren, Menge angeben, speichern.
 - **Manuell:** Werte selbst eintragen, wenn das Foto nichts taugt.
-- **Produkte:** bereits gescannte Produkte erneut eintragen, ohne neues Foto.
+- **Produkte:** bereits gescannte Produkte erneut eintragen, ohne neues Foto. Mit ✎ umbenennen, Werte korrigieren oder löschen (alte Mahlzeiten bleiben).
+- **Offline:** Ohne Internet kannst du Fotos „für später speichern“. Sie erscheinen auf „Heute“ unter „Wartet auf Auswertung“ und werden online ausgewertet.
+- **Schätzung nachbessern:** Im Formular „Mit Hinweis neu schätzen“, z. B. „kleine Portion, ohne Öl“.
+- **Ziele (Einstellungen):** Kalorien, optional Protein und Zielgewicht. Beim Zielgewicht zeigt „Gewicht“ eine grobe Prognose aus den letzten 4 Wochen.
 - **Gewicht:** ein Eintrag pro Tag, Diagramm über die Zeit.
 
+## Tipp: Gemini-Key absichern
+In Google AI Studio / Google Cloud den Key auf die Website-Adresse der App (`nicgeh217-dev.github.io`) beschränken und ein Kostenlimit setzen. Dann richtet ein abgegriffener Key kaum Schaden an.
+
 ## Sicherung
-Unter **Einstellungen → Sicherung exportieren** lädt die App eine JSON-Datei herunter (ohne Gemini-Key). Mach das regelmäßig und lege die Datei in die Cloud. Wenn du Browserdaten löschst oder das Handy wechselst, stellt **Sicherung importieren** alles wieder her.
+Unter **Einstellungen → Sicherung exportieren** lädt die App eine JSON-Datei herunter (ohne Gemini-Key). Mach das regelmäßig und lege die Datei in die Cloud. Fotos in der Warteschlange sind nicht Teil der Sicherung. Wenn du Browserdaten löschst oder das Handy wechselst, stellt **Sicherung importieren** alles wieder her.
 
 ## Entwicklung
 ```

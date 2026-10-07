@@ -3,6 +3,8 @@ import { MODELS, DEFAULT_MODEL } from '../gemini.js';
 import { getSettings, saveSettings, exportAll, replaceAll } from '../db.js';
 import { buildBackup, parseBackup } from '../backup.js';
 import { localDateKey } from '../logic.js';
+import { parseIntGoal } from '../goals.js';
+import { parseWeight } from '../weight-input.js';
 
 export async function renderSettings() {
   const root = document.getElementById('view-settings');
@@ -11,6 +13,8 @@ export async function renderSettings() {
   const say = (text, kind = 'warn') => msg.replaceChildren(el('div', { class: `note ${kind}` }, text));
 
   const goal = el('input', { inputMode: 'numeric', placeholder: 'z. B. 2200', value: s.calorieGoal ?? '' });
+  const proteinGoal = el('input', { inputMode: 'numeric', placeholder: 'optional, z. B. 120', value: s.proteinGoal ?? '' });
+  const targetWeight = el('input', { inputMode: 'decimal', placeholder: 'optional, z. B. 68,5', value: s.targetWeight == null ? '' : String(s.targetWeight).replace('.', ',') });
   const key = el('input', { type: 'password', placeholder: 'AIza …', value: s.geminiKey ?? '', autocomplete: 'off' });
   const known = MODELS.some((m) => m.id === s.geminiModel);
   const model = el('select', {},
@@ -32,16 +36,17 @@ export async function renderSettings() {
   const save = el('button', {
     class: 'primary',
     onClick: async () => {
-      const raw = goal.value.trim();
-      const g = raw === '' ? null : Number(raw);
-      if (g !== null && !(Number.isInteger(g) && g > 0 && g < 10000)) {
-        return say('Das Kalorienziel muss eine ganze Zahl zwischen 1 und 9999 sein.', 'bad');
-      }
+      const g = parseIntGoal(goal.value, { max: 9999 });
+      if (!g.ok) return say('Das Kalorienziel muss eine ganze Zahl zwischen 1 und 9999 sein.', 'bad');
+      const pg = parseIntGoal(proteinGoal.value, { max: 500 });
+      if (!pg.ok) return say('Das Proteinziel muss eine ganze Zahl zwischen 1 und 500 g sein (oder leer).', 'bad');
+      const tw = targetWeight.value.trim() === '' ? null : parseWeight(targetWeight.value);
+      if (targetWeight.value.trim() !== '' && tw == null) return say('Das Zielgewicht muss zwischen 20 und 400 kg liegen, z. B. 68,5 (oder leer).', 'bad');
       const chosen = model.value === '__custom' ? custom.value.trim() : model.value;
       if (model.value === '__custom' && !/^[A-Za-z0-9._-]+$/.test(chosen)) {
         return say('Bitte eine gültige Modell-ID eintragen (nur Buchstaben, Zahlen, Punkt, Bindestrich).', 'bad');
       }
-      await saveSettings({ ...(await getSettings()), calorieGoal: g, geminiKey: key.value.trim() || null, geminiModel: chosen || null });
+      await saveSettings({ ...(await getSettings()), calorieGoal: g.value, proteinGoal: pg.value, targetWeight: tw, geminiKey: key.value.trim() || null, geminiModel: chosen || null });
       say('Gespeichert.', 'warn');
     },
   }, 'Speichern');
@@ -82,6 +87,8 @@ export async function renderSettings() {
     el('h1', {}, 'Einstellungen'),
     el('div', { class: 'card' },
       el('label', {}, 'Tägliches Kalorienziel (kcal)'), goal,
+      el('label', {}, 'Tägliches Proteinziel (g, optional)'), proteinGoal,
+      el('label', {}, 'Zielgewicht (kg, optional)'), targetWeight,
       el('label', {}, 'Gemini-API-Key (nur auf diesem Handy gespeichert)'),
       el('div', { class: 'row' }, key, toggle),
       el('label', {}, 'Gemini-Modell'), model, custom,
