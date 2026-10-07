@@ -5,14 +5,20 @@ let dbPromise = null;
 function open() {
   if (dbPromise) return dbPromise;
   dbPromise = new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 1);
-    req.onupgradeneeded = () => {
+    const req = indexedDB.open(DB_NAME, 2);
+    req.onupgradeneeded = (e) => {
       const db = req.result;
-      db.createObjectStore('products', { keyPath: 'id', autoIncrement: true });
-      const meals = db.createObjectStore('meals', { keyPath: 'id', autoIncrement: true });
-      meals.createIndex('dateKey', 'dateKey');
-      db.createObjectStore('weights', { keyPath: 'date' });
-      db.createObjectStore('settings');
+      if (e.oldVersion < 1) {
+        db.createObjectStore('products', { keyPath: 'id', autoIncrement: true });
+        const meals = db.createObjectStore('meals', { keyPath: 'id', autoIncrement: true });
+        meals.createIndex('dateKey', 'dateKey');
+        db.createObjectStore('weights', { keyPath: 'date' });
+        db.createObjectStore('settings');
+      }
+      if (e.oldVersion < 2) {
+        // Fotos, die offline aufgenommen wurden und auf Auswertung warten (nicht Teil der Sicherung).
+        db.createObjectStore('queue', { keyPath: 'id', autoIncrement: true });
+      }
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -41,6 +47,9 @@ export async function addProduct(p) {
 export const listProducts = () => getAll('products');
 export async function getProduct(id) {
   return wrap((await store('products')).get(id));
+}
+export async function deleteProduct(id) {
+  await wrap((await store('products', 'readwrite')).delete(id));
 }
 export async function updateProduct(p) {
   await wrap((await store('products', 'readwrite')).put(p));
@@ -106,4 +115,18 @@ export async function replaceAll(data) {
       reject(e);
     }
   });
+}
+
+// ---------- Warteschlange (offline aufgenommene Fotos) ----------
+// item: { blobs: Blob[], hint: string, dateKey: string, createdAt: string }
+export async function addQueued(item) {
+  const { id, ...rest } = item;
+  return wrap((await store('queue', 'readwrite')).add(rest));
+}
+export async function listQueued() {
+  const list = await getAll('queue');
+  return list.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+}
+export async function deleteQueued(id) {
+  await wrap((await store('queue', 'readwrite')).delete(id));
 }

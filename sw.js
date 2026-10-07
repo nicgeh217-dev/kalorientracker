@@ -1,4 +1,4 @@
-const CACHE = 'kalorientracker-v9';
+const CACHE = 'kalorientracker-v10';
 const ASSETS = [
   './', './index.html', './styles.css', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png',
@@ -6,7 +6,7 @@ const ASSETS = [
   './src/views/today.js', './src/views/meal-form.js', './src/views/scan.js',
   './src/gemini.js', './src/gemini-parse.js', './src/gemini-retry.js', './src/overview.js', './src/state.js', './src/backup.js', './src/weight-input.js',
   './fonts/barlow-condensed-700i.woff2', './fonts/barlow-condensed-800i.woff2', './fonts/figtree.woff2',
-  './src/views/products.js', './src/views/weight.js', './src/views/settings.js'
+  './src/views/products.js', './src/views/product-form.js', './src/goals.js', './src/views/weight.js', './src/views/settings.js'
 ];
 
 self.addEventListener('install', (e) => {

@@ -88,14 +88,15 @@ function fallbackFor(model) {
 }
 
 // input: { files: File[] (0..MAX_PHOTOS), hint: string }
-// Wirft nie: liefert immer {ok, label, model, seconds} oder {ok:false, error}.
+// Wirft nie: liefert immer {ok, label, model, seconds} oder {ok:false, error, reason?}.
+// reason: 'offline' | 'network' | 'overloaded' | 'other' – die ersten drei lassen sich später wiederholen.
 export async function analyzeFood({ files = [], hint = '' }, apiKey, model = DEFAULT_MODEL) {
   if (!apiKey) return { ok: false, error: 'Kein Gemini-Key hinterlegt.' };
   const text = hint.trim();
   if (!files.length && text.length < 3) return { ok: false, error: 'Bitte ein Foto hinzufügen oder das Essen beschreiben.' };
   if (files.length > MAX_PHOTOS) return { ok: false, error: `Maximal ${MAX_PHOTOS} Fotos pro Eintrag.` };
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-    return { ok: false, error: 'Du bist offline. Die Auswertung braucht Internet.' };
+    return { ok: false, reason: 'offline', error: 'Du bist offline. Die Auswertung braucht Internet.' };
   }
   const started = performance.now();
   const primary = model || DEFAULT_MODEL;
@@ -119,10 +120,10 @@ export async function analyzeFood({ files = [], hint = '' }, apiKey, model = DEF
       return { status: res.status, json: res.ok ? await res.json() : undefined };
     };
     const r = await runWithFallback([primary, fallbackFor(primary)], call);
-    if (!r.ok) return { ok: false, error: httpError(r.status, r.model) };
+    if (!r.ok) return { ok: false, reason: r.status >= 500 ? 'overloaded' : 'other', error: httpError(r.status, r.model) };
     const parsed = parseLabelResponse(r.json);
     return parsed.ok ? { ...parsed, model: r.model, seconds: (performance.now() - started) / 1000 } : parsed;
   } catch (e) {
-    return { ok: false, error: 'Die Auswertung ist fehlgeschlagen (Netzwerk oder Bild). Bitte erneut versuchen.' };
+    return { ok: false, reason: 'network', error: 'Die Auswertung ist fehlgeschlagen (Netzwerk oder Bild). Bitte erneut versuchen.' };
   }
 }

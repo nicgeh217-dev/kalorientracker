@@ -1,6 +1,7 @@
 import { el } from '../dom.js';
 import { listProducts } from '../db.js';
 import { openMealForm } from './meal-form.js';
+import { openProductForm } from './product-form.js';
 
 let filter = '';
 
@@ -31,16 +32,18 @@ export async function renderProducts() {
   root.replaceChildren(
     el('h1', {}, 'Produkte'),
     el('div', { class: 'search' }, search),
-    el('div', { class: 'muted', style: 'margin:0 4px 12px' }, 'Antippen, um eine Mahlzeit mit diesem Produkt einzutragen. Änderungen am Produkt wirken sich nicht auf bereits gespeicherte Mahlzeiten aus.'),
+    el('div', { class: 'muted', style: 'margin:0 4px 12px' }, 'Antippen trägt eine Mahlzeit mit diesem Produkt ein. Mit ✎ benennst du ein Produkt um, korrigierst Werte oder löschst es. Bereits gespeicherte Mahlzeiten ändern sich dadurch nicht.'),
     list);
   await drawList();
 }
 
 function productCard(p) {
   const basis = p.basis === 'per100g' ? 'pro 100 g' : 'pro Portion';
-  return el('button', { onClick: () => openMealForm({ ...p, productId: p.id }) },
-    el('div', {},
-      el('strong', {}, p.name),
-      el('div', { class: 'muted' }, `${p.estimated ? '~ geschätzt · ' : ''}${basis} · P ${p.protein ?? '–'} · KH ${p.carbs ?? '–'} · F ${p.fat ?? '–'}`)),
-    el('div', { class: 'num kc' }, String(p.kcal)));
+  return el('div', { class: 'prow' },
+    el('button', { class: 'main', onClick: () => openMealForm({ ...p, productId: p.id }) },
+      el('div', {},
+        el('strong', {}, p.name),
+        el('div', { class: 'muted' }, `${p.estimated ? '~ geschätzt · ' : ''}${basis} · P ${p.protein ?? '–'} · KH ${p.carbs ?? '–'} · F ${p.fat ?? '–'}`)),
+      el('div', { class: 'num kc' }, String(p.kcal))),
+    el('button', { class: 'edit', 'aria-label': `${p.name} bearbeiten`, onClick: () => openProductForm(p) }, '✎'));
 }
