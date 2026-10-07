@@ -1,4 +1,4 @@
-import { el, toast } from '../dom.js';
+import { el, toast, mount } from '../dom.js';
 import { dayTotals } from '../logic.js';
 import { addDays, weekSummary, pickRecent } from '../overview.js';
 import { mealsForDate, deleteMeal, getSettings, addMeal, listMeals, getProduct, listQueued, deleteQueued } from '../db.js';
@@ -64,7 +64,7 @@ export async function renderToday() {
   const weekDays = weekKeys.map((k, i) => ({ dateKey: k, kcal: dayTotals(weekMeals[i]).kcal, meals: weekMeals[i].length }));
   const recent = pickRecent(everyMeal, 6);
 
-  root.replaceChildren(
+  mount(root,
     el('div', { class: 'dayhead' },
       el('div', {}, el('div', { class: 'eyebrow' }, longDate(dateKey)), el('h1', {}, dayLabel(dateKey))),
       el('div', { class: 'daynav' },

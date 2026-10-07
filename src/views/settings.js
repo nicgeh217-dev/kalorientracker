@@ -1,4 +1,4 @@
-import { el } from '../dom.js';
+import { el, mount } from '../dom.js';
 import { MODELS, DEFAULT_MODEL } from '../gemini.js';
 import { getSettings, saveSettings, exportAll, replaceAll } from '../db.js';
 import { buildBackup, parseBackup } from '../backup.js';
@@ -82,7 +82,7 @@ export async function renderSettings() {
     }
   });
 
-  root.replaceChildren(
+  mount(root,
     el('div', { class: 'eyebrow' }, 'Persönlich'),
     el('h1', {}, 'Einstellungen'),
     el('div', { class: 'card' },

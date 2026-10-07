@@ -1,4 +1,4 @@
-import { el } from '../dom.js';
+import { el, mount } from '../dom.js';
 import { parseWeight } from '../weight-input.js';
 import { setWeight, listWeights, getSettings } from '../db.js';
 import { localDateKey } from '../logic.js';
@@ -80,7 +80,7 @@ export async function renderWeight() {
 
   const diff = latest && prev ? latest.kg - prev.kg : null;
 
-  root.replaceChildren(
+  mount(root,
     el('div', { class: 'eyebrow' }, 'Körpergewicht'),
     el('h1', {}, 'Gewicht'),
     el('div', { class: 'card weight-hero' },

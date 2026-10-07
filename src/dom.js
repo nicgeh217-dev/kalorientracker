@@ -31,6 +31,12 @@ export function segmented(select) {
   return wrap;
 }
 
+// Ersetzt den Inhalt einer Ansicht. Leere Einträge (null/undefined/false) werden ausgelassen,
+// denn Element.replaceChildren(null) würde sonst den Text "null" anzeigen.
+export function mount(root, ...children) {
+  root.replaceChildren(...children.flat().filter((c) => c != null && c !== false));
+}
+
 export function openSheet(...content) {
   const root = document.getElementById('dialog-root');
   root.replaceChildren(el('div', { class: 'overlay' }, el('div', { class: 'sheet' }, ...content)));

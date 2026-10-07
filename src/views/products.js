@@ -1,4 +1,4 @@
-import { el } from '../dom.js';
+import { el, mount } from '../dom.js';
 import { listProducts } from '../db.js';
 import { openMealForm } from './meal-form.js';
 import { openProductForm } from './product-form.js';
@@ -29,7 +29,7 @@ export async function renderProducts() {
       : el('div', { class: 'card muted' }, all.length ? 'Nichts gefunden.' : 'Noch keine Produkte. Sie erscheinen hier, sobald du eine Mahlzeit speicherst.'));
   }
 
-  root.replaceChildren(
+  mount(root,
     el('h1', {}, 'Produkte'),
     el('div', { class: 'search' }, search),
     el('div', { class: 'muted', style: 'margin:0 4px 12px' }, 'Antippen trägt eine Mahlzeit mit diesem Produkt ein. Mit ✎ benennst du ein Produkt um, korrigierst Werte oder löschst es. Bereits gespeicherte Mahlzeiten ändern sich dadurch nicht.'),
