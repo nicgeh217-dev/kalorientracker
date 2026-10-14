@@ -17,7 +17,7 @@ Fall A – in mindestens einem Foto ist eine Nährwerttabelle lesbar (oft korean
 - basis = "per100g", wenn die Werte für 100 g bzw. 100 ml gelten, "perServing", wenn sie für eine Portion/Packung gelten, sonst null.
 - servingGrams = Gramm (oder ml) einer Portion, falls angegeben, sonst null.
 - kcal, protein, carbs, fat = Zahlen für diese Bezugsgröße. Nicht lesbare Werte = null.
-- name = Produktname von der Verpackung, falls sichtbar, sonst null.
+- name = Produktname von der Verpackung, falls sichtbar, sonst null. Ist der Name nicht deutsch (z. B. Koreanisch/Hangul), gib ihn als kurze deutsche Übersetzung mit dem Originalnamen in Klammern an, z. B. "Thunfisch-Kimbap (삼각김밥 참치마요)". Höchstens 60 Zeichen.
 - confidence, note, kcalMin, kcalMax = null.
 
 Fall B – keine lesbare Nährwerttabelle (Restaurantgericht, Bäckerware, Obst, Verpackung ohne Tabelle) oder nur eine Textbeschreibung:

@@ -41,7 +41,7 @@ export function parseLabelResponse(apiJson) {
   return {
     ok: true,
     label: {
-      name: typeof obj.name === 'string' && obj.name.trim() ? obj.name.trim() : null,
+      name: typeof obj.name === 'string' && obj.name.trim() ? obj.name.trim().slice(0, 80) : null,
       source: estimate ? 'estimate' : 'label',
       basis: estimate ? 'perServing' : (BASES.includes(obj.basis) ? obj.basis : null),
       servingGrams: num(obj.servingGrams),
