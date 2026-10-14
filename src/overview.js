@@ -51,32 +51,50 @@ const dayNumber = (dateKey) => {
   return Date.UTC(y, m - 1, d) / 86400000;
 };
 
-// Grobe Prognose, wann das Zielgewicht erreicht wird: lineare Regression über die letzten 28 Tage.
-// status: nodata | reached | flat | wrongway | far (> 2 Jahre) | ok (mit date, perWeek in kg)
-export function forecast(weights, target) {
+// Lineare Regression über die letzten 28 Tage. null, wenn zu wenig Daten (min. minN Einträge, min. minSpan Tage Abstand).
+// slope: kg pro Tag, current: gefitteter Wert beim letzten Eintrag.
+function fitTrend(weights, { minN = 3, minSpan = 7 } = {}) {
   const all = [...weights].sort((a, b) => a.date.localeCompare(b.date));
-  if (!all.length) return { status: 'nodata' };
+  if (!all.length) return null;
   const latest = all.at(-1);
-  if (Math.abs(latest.kg - target) <= 0.3) return { status: 'reached' };
-
   const from = addDays(latest.date, -28);
   const win = all.filter((w) => w.date > from);
   const x0 = dayNumber(win[0].date);
   const xs = win.map((w) => dayNumber(w.date) - x0);
-  if (win.length < 3 || xs.at(-1) < 7) return { status: 'nodata' };
+  if (win.length < minN || xs.at(-1) < minSpan) return null;
 
   const n = win.length;
   const mx = xs.reduce((s, v) => s + v, 0) / n;
   const my = win.reduce((s, w) => s + w.kg, 0) / n;
   const sxx = xs.reduce((s, v) => s + (v - mx) ** 2, 0);
   const sxy = xs.reduce((s, v, i) => s + (v - mx) * (win[i].kg - my), 0);
-  const slope = sxy / sxx; // kg pro Tag
-  const current = my + slope * (xs.at(-1) - mx);
-  const diff = target - current;
+  const slope = sxy / sxx;
+  return { slope, current: my + slope * (xs.at(-1) - mx), latestDate: latest.date };
+}
 
-  if (Math.abs(slope) < 0.005) return { status: 'flat' };
-  if (Math.sign(slope) !== Math.sign(diff)) return { status: 'wrongway' };
-  const days = Math.round(diff / slope);
+// Grobe Prognose, wann das Zielgewicht erreicht wird.
+// status: nodata | reached | flat | wrongway | far (> 2 Jahre) | ok (mit date, perWeek in kg)
+export function forecast(weights, target) {
+  const sorted = [...weights].sort((a, b) => a.date.localeCompare(b.date));
+  if (!sorted.length) return { status: 'nodata' };
+  const latest = sorted.at(-1);
+  if (Math.abs(latest.kg - target) <= 0.3) return { status: 'reached' };
+
+  const t = fitTrend(sorted);
+  if (!t) return { status: 'nodata' };
+  const diff = target - t.current;
+  if (Math.abs(t.slope) < 0.005) return { status: 'flat' };
+  if (Math.sign(t.slope) !== Math.sign(diff)) return { status: 'wrongway' };
+  const days = Math.round(diff / t.slope);
   if (days > 730) return { status: 'far' };
-  return { status: 'ok', date: addDays(latest.date, days), days, perWeek: Math.round(slope * 7 * 10) / 10 };
+  return { status: 'ok', date: addDays(t.latestDate, days), days, perWeek: Math.round(t.slope * 7 * 10) / 10 };
+}
+
+// Warnt, wenn der Gewichtstrend schneller als 1 % des Körpergewichts pro Woche fällt (min. 4 Einträge über >= 10 Tage).
+export function fastLossWarning(weights) {
+  const t = fitTrend(weights, { minN: 4, minSpan: 10 });
+  if (!t) return null;
+  const perWeek = t.slope * 7;
+  if (perWeek > -0.01 * t.current) return null;
+  return { perWeekKg: Math.round(perWeek * 10) / 10, percent: Math.round((-perWeek / t.current) * 1000) / 10 };
 }
