@@ -23,6 +23,16 @@ Persönliche Handy-App (PWA): Nährwerttabelle fotografieren, Gemini liest die W
 - **Ziele (Einstellungen):** Kalorien, optional Protein und Zielgewicht. Beim Zielgewicht zeigt „Gewicht“ eine grobe Prognose aus den letzten 4 Wochen.
 - **Gewicht:** ein Eintrag pro Tag, Diagramm über die Zeit.
 
+## Kalorienrechner (Einstellungen → Kalorienrechner öffnen)
+Berechnet ein Tagesziel aus Geschlecht, Alter, Größe, Gewicht, Aktivität und Ziel (halten, langsam/moderat abnehmen, zunehmen). Alternativ trägst du dein Ziel weiter selbst ein.
+
+- **Formel:** Grundumsatz nach Mifflin-St Jeor × Aktivitätsfaktor (1,4 / 1,6 / 1,8 / 2,0 nach EFSA). Ergebnis ist ein **Startwert**, im Einzelfall ±10–20 % daneben.
+- **Anpassung beim Abnehmen:** Wer leichter wird, verbraucht weniger. Die App schlägt ein neues Ziel vor, wenn sich dein 7-Tage-Schnitt um mindestens 1 kg seit der letzten Rechnung geändert hat. Übernommen wird es **nur nach deiner Bestätigung** ("Übernehmen"/"Später"). Bei erreichtem Zielgewicht schlägt sie die Erhaltung vor. Ein selbst eingetipptes Ziel schaltet die Vorschläge ab.
+- **Schutzgrenzen:** nur ab 18 Jahren; kein Abnehmen bei BMI unter 18,5; Zielgewicht nicht unter BMI 18,5; Defizit höchstens 20 % des Gesamtverbrauchs; Ziel nie unter dem Grundumsatz und mindestens 1.200 kcal (Frauen) bzw. 1.500 kcal (Männer). Diese Mindestwerte sind eine vorsichtige App-Grenze, keine bestätigte Leitlinie.
+- **Warnung:** Fällt dein Gewichtstrend schneller als ca. 1 % pro Woche, zeigt die App eine Warnung.
+- **Kein Ersatz für ärztliche Beratung.** Bei Schwangerschaft/Stillzeit, Diabetes, Herz- oder Nierenerkrankungen, Medikamenten oder einer Essstörung bitte ärztlich klären.
+- Quellen: Frankenfield et al. 2005 (Mifflin-St Jeor am genauesten unter den gängigen Formeln, J Am Diet Assoc), Hall et al. 2011 (Lancet: Energieverbrauch sinkt mit dem Gewicht, die 3500-kcal-Regel überschätzt die Abnahme), EFSA (Aktivitätsfaktoren), NICE/NHS (ca. 500–600 kcal Defizit, 0,5–1 kg pro Woche).
+
 ## Tipp: Gemini-Key absichern
 In Google AI Studio / Google Cloud den Key auf die Website-Adresse der App (`nicgeh217-dev.github.io`) beschränken und ein Kostenlimit setzen. Dann richtet ein abgegriffener Key kaum Schaden an.
 

@@ -1,7 +1,9 @@
 import { el, toast, mount } from '../dom.js';
-import { dayTotals } from '../logic.js';
-import { addDays, weekSummary, pickRecent } from '../overview.js';
-import { mealsForDate, deleteMeal, getSettings, addMeal, listMeals, getProduct, listQueued, deleteQueued } from '../db.js';
+import { dayTotals, localDateKey } from '../logic.js';
+import { suggestAdjustment, currentAge } from '../calorie.js';
+import { fastLossCard } from './notes.js';
+import { addDays, weekSummary, pickRecent, rollingAverage, fastLossWarning } from '../overview.js';
+import { mealsForDate, deleteMeal, getSettings, addMeal, listMeals, getProduct, listQueued, deleteQueued, listWeights, saveSettings } from '../db.js';
 import { showView } from '../nav.js';
 import { viewedDateKey, isViewingToday, setViewedDateKey, dayLabel, longDate, timestampFor } from '../state.js';
 import { openMealForm } from './meal-form.js';
@@ -46,11 +48,12 @@ export async function renderToday() {
   const dateKey = viewedDateKey();
   const isToday = isViewingToday();
   const weekKeys = Array.from({ length: 7 }, (_, i) => addDays(dateKey, i - 6));
-  const [settings, weekMeals, everyMeal, queued] = await Promise.all([
+  const [settings, weekMeals, everyMeal, queued, weights] = await Promise.all([
     getSettings(),
     Promise.all(weekKeys.map((k) => mealsForDate(k))),
     listMeals(),
     listQueued(),
+    listWeights(),
   ]);
   const meals = weekMeals[6];
   const t = dayTotals(meals);
@@ -63,6 +66,12 @@ export async function renderToday() {
 
   const weekDays = weekKeys.map((k, i) => ({ dateKey: k, kcal: dayTotals(weekMeals[i]).kcal, meals: weekMeals[i].length }));
   const recent = pickRecent(everyMeal, 6);
+
+  // Kalorienrechner: Vorschlag (nur mit Bestätigung) und Warnung bei zu schneller Abnahme
+  const lastW = weights.at(-1);
+  const avgW = lastW && lastW.date >= addDays(localDateKey(new Date()), -14) ? rollingAverage(weights, 7).at(-1).kg : null;
+  const suggestion = isToday ? suggestAdjustment({ settings, avgWeightKg: avgW }) : null;
+  const fastLoss = isToday ? fastLossWarning(weights) : null;
 
   mount(root,
     el('div', { class: 'dayhead' },
@@ -82,6 +91,8 @@ export async function renderToday() {
             el('div', {}, el('b', {}, String(goal)), 'Ziel'))
         : el('div', { class: 'note warn', style: 'margin-bottom:0' }, 'Noch kein Kalorienziel. ',
             el('a', { href: '#', onClick: (e) => { e.preventDefault(); showView('settings'); } }, 'In den Einstellungen eintragen'))),
+    suggestion ? suggestionCard(suggestion, settings) : null,
+    fastLossCard(fastLoss),
     el('div', { class: 'card' },
       el('div', { class: 'macros' },
         macro('Protein', t.protein, 'var(--p)'),
@@ -213,4 +224,31 @@ function queueCard(item) {
       el('button', { class: 'x', 'aria-label': 'Eintrag verwerfen', onClick: async () => {
         if (confirm('Diesen gespeicherten Eintrag verwerfen?')) { await deleteQueued(item.id); renderToday(); }
       } }, '×')));
+}
+
+const de1 = (n) => String(n).replace('.', ',');
+
+function suggestionCard(s, settings) {
+  const diff = s.weightKg - settings.calcProfile.calcWeightKg;
+  const text = s.reason === 'reachedTarget'
+    ? `Zielgewicht erreicht. Neues Tagesziel zum Halten: ${s.to} kcal (bisher ${s.from}).`
+    : `Du bist ${de1(Math.abs(Math.round(diff * 10) / 10))} kg ${diff < 0 ? 'leichter' : 'schwerer'} als bei der letzten Berechnung, dein Körper braucht dadurch ${diff < 0 ? 'weniger' : 'mehr'} Energie. Vorschlag: ${s.from} → ${s.to} kcal pro Tag.`;
+  return el('div', { class: 'card suggest' },
+    el('b', {}, 'Tagesziel anpassen?'),
+    el('div', { class: 'muted', style: 'margin:4px 0 10px' }, text),
+    el('div', { class: 'actions', style: 'margin:0' },
+      el('button', { class: 'btn', onClick: async () => {
+        await saveSettings({ ...(await getSettings()), suggestionDismissedWeight: s.weightKg });
+        renderToday();
+      } }, 'Später'),
+      el('button', { class: 'primary', onClick: async () => {
+        const fresh = await getSettings();
+        await saveSettings({
+          ...fresh,
+          calorieGoal: s.to,
+          suggestionDismissedWeight: null,
+          calcProfile: { ...fresh.calcProfile, age: currentAge(fresh.calcProfile), calcDate: localDateKey(new Date()), calcWeightKg: s.weightKg, goal: s.calc.goalId },
+        });
+        renderToday();
+      } }, 'Übernehmen')));
 }

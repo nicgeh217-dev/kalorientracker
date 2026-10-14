@@ -5,6 +5,8 @@ import { buildBackup, parseBackup } from '../backup.js';
 import { localDateKey } from '../logic.js';
 import { parseIntGoal } from '../goals.js';
 import { parseWeight } from '../weight-input.js';
+import { minHealthyWeight } from '../calorie.js';
+import { openCalculator } from './calculator.js';
 
 export async function renderSettings() {
   const root = document.getElementById('view-settings');
@@ -42,11 +44,15 @@ export async function renderSettings() {
       if (!pg.ok) return say('Das Proteinziel muss eine ganze Zahl zwischen 1 und 500 g sein (oder leer).', 'bad');
       const tw = targetWeight.value.trim() === '' ? null : parseWeight(targetWeight.value);
       if (targetWeight.value.trim() !== '' && tw == null) return say('Das Zielgewicht muss zwischen 20 und 400 kg liegen, z. B. 68,5 (oder leer).', 'bad');
+      const minW = s.calcProfile?.heightCm ? minHealthyWeight(s.calcProfile.heightCm) : null;
+      if (tw != null && minW != null && tw < minW) return say(`Ein Zielgewicht unter ${String(minW).replace('.', ',')} kg entspräche einem BMI unter 18,5 (Untergewicht). Bitte wähle ein höheres Ziel.`, 'bad');
       const chosen = model.value === '__custom' ? custom.value.trim() : model.value;
       if (model.value === '__custom' && !/^[A-Za-z0-9._-]+$/.test(chosen)) {
         return say('Bitte eine gültige Modell-ID eintragen (nur Buchstaben, Zahlen, Punkt, Bindestrich).', 'bad');
       }
-      await saveSettings({ ...(await getSettings()), calorieGoal: g.value, proteinGoal: pg.value, targetWeight: tw, geminiKey: key.value.trim() || null, geminiModel: chosen || null });
+      const fresh = await getSettings();
+      const manualChange = fresh.calcProfile && g.value !== fresh.calorieGoal; // eigenes Ziel eingetippt: keine Rechner-Vorschläge mehr
+      await saveSettings({ ...fresh, autoGoal: manualChange ? false : fresh.autoGoal, calorieGoal: g.value, proteinGoal: pg.value, targetWeight: tw, geminiKey: key.value.trim() || null, geminiModel: chosen || null });
       say('Gespeichert.', 'warn');
     },
   }, 'Speichern');
@@ -87,6 +93,8 @@ export async function renderSettings() {
     el('h1', {}, 'Einstellungen'),
     el('div', { class: 'card' },
       el('label', {}, 'Tägliches Kalorienziel (kcal)'), goal,
+      el('button', { class: 'btn', style: 'width:100%;margin-top:8px', onClick: openCalculator }, 'Kalorienrechner öffnen'),
+      calcInfo(s),
       el('label', {}, 'Tägliches Proteinziel (g, optional)'), proteinGoal,
       el('label', {}, 'Zielgewicht (kg, optional)'), targetWeight,
       el('label', {}, 'Gemini-API-Key (nur auf diesem Handy gespeichert)'),
@@ -102,4 +110,13 @@ export async function renderSettings() {
         exportBtn,
         el('button', { class: 'btn', onClick: () => importInput.click() }, 'Sicherung importieren'),
         importInput)));
+}
+
+function calcInfo(s) {
+  const p = s.calcProfile;
+  if (!p) return el('div', { class: 'muted', style: 'margin:6px 4px 0' }, 'Eigenes Ziel eintippen oder den Rechner aus Geschlecht, Alter, Größe, Gewicht und Aktivität nutzen.');
+  const when = new Date(p.calcDate + 'T00:00:00').toLocaleDateString('de-DE');
+  return el('div', { class: 'muted', style: 'margin:6px 4px 0' }, s.autoGoal
+    ? `Berechnet am ${when} bei ${String(p.calcWeightKg).replace('.', ',')} kg. Wenn sich dein Gewicht ändert, schlägt die App ein neues Ziel vor.`
+    : `Eigenes Ziel (Rechner vom ${when}). Es gibt keine automatischen Vorschläge. Im Rechner kannst du sie wieder einschalten.`);
 }
