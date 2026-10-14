@@ -5,7 +5,7 @@ import { renderProducts } from './views/products.js';
 import { renderWeight } from './views/weight.js';
 import { renderSettings } from './views/settings.js';
 import { listQueued } from './db.js';
-import { toast } from './dom.js';
+import { toast, el } from './dom.js';
 
 registerRenderer('today', renderToday);
 registerRenderer('products', renderProducts);
@@ -33,8 +33,22 @@ document.addEventListener('visibilitychange', () => {
   if (!document.hidden && !document.querySelector('.sheet')) refreshCurrent();
 });
 
+// Neue App-Version: Sobald ein neuer Service Worker übernimmt, bieten wir "Neu laden" an.
+function showUpdateBanner() {
+  if (document.getElementById('update-banner')) return;
+  document.body.append(el('div', { id: 'update-banner', role: 'status' },
+    el('span', {}, 'Neue Version verfügbar. Lade neu, wenn du gerade nichts bearbeitest.'),
+    el('button', { onClick: () => location.reload() }, 'Neu laden')));
+}
+
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').catch(() => {});
+  const hadController = Boolean(navigator.serviceWorker.controller); // Erstinstallation löst keinen Hinweis aus
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController) showUpdateBanner(); });
+  navigator.serviceWorker.register('sw.js').then((reg) => {
+    const check = () => reg.update().catch(() => {});
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); });
+    setInterval(check, 30 * 60 * 1000);
+  }).catch(() => {});
 }
 
 showView('today');
