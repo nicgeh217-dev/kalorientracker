@@ -217,3 +217,17 @@ textarea:focus { border-color: var(--orange); background: var(--card); }
 .qrow img, .qph { flex: none; width: 56px; height: 56px; border-radius: 14px; object-fit: cover; background: var(--fill); display: grid; place-items: center; color: var(--muted); }
 .qtxt { flex: 1; min-width: 0; }
 .qtxt strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------- Kalorienrechner ---------- */
+.choices { display: grid; gap: 8px; }
+.opt { display: grid; gap: 2px; min-height: 56px; padding: 10px 14px; border: 2px solid transparent; border-radius: 14px; background: var(--fill); color: var(--text); text-align: left; font-weight: 400; }
+.opt b { font-weight: 700; }
+.opt span { font-size: 13px; color: var(--muted); }
+.opt.on { border-color: var(--orange); background: var(--orange-soft); }
+label.checkrow { display: flex; align-items: flex-start; gap: 12px; margin: 16px 4px 8px; color: var(--text); font-weight: 500; font-size: 14px; }
+.calc-res .row { padding: 6px 0; border-bottom: 1px solid var(--line); }
+.calc-res .row b { font-family: var(--num); font-style: italic; font-weight: 800; font-size: 20px; }
+.calc-target { padding-top: 12px; }
+.calc-target .num { font-size: 56px; color: var(--orange); }
+.calc-target .num small { font-family: var(--font); font-style: normal; font-size: 15px; color: var(--muted); }
+.suggest { border: 2px solid var(--orange); }

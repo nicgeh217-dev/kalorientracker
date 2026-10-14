@@ -2,7 +2,8 @@ import { el, mount } from '../dom.js';
 import { parseWeight } from '../weight-input.js';
 import { setWeight, listWeights, getSettings } from '../db.js';
 import { localDateKey } from '../logic.js';
-import { rollingAverage, forecast } from '../overview.js';
+import { rollingAverage, forecast, fastLossWarning } from '../overview.js';
+import { fastLossCard } from './notes.js';
 
 const NS = 'http://www.w3.org/2000/svg';
 const svg = (tag, attrs = {}, text) => {
@@ -97,6 +98,7 @@ export async function renderWeight() {
         : null,
       el('div', { style: 'margin-top:12px' }, chart(weights, avgs, target)),
       weights.length > 1 ? el('div', { class: 'legend' }, el('span', { style: 'color:#fc4c02' }, '● Einzelwerte'), el('span', {}, '- - 7-Tage-Schnitt (glättet Schwankungen)')) : null),
+    fastLossCard(fastLossWarning(weights)),
     target != null && latest ? goalCard(weights, latest, target) : null,
     el('div', { class: 'card' },
       el('div', { class: 'grid2' },
