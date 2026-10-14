@@ -1,5 +1,8 @@
+import { localDateKey } from './logic.js';
+
+// Gerätezustand (Key, letzte Sicherung, Snooze) gehört nicht in die Sicherungsdatei.
 export function buildBackup(data, now) {
-  const { geminiKey, ...settings } = data.settings ?? {};
+  const { geminiKey, lastBackupAt, backupSnoozedUntil, ...settings } = data.settings ?? {};
   return {
     version: 1,
     exportedAt: now.toISOString(),
@@ -36,4 +39,26 @@ export function parseBackup(text) {
     return { ok: false, error: 'Ein Gewichtseintrag in der Datei ist ungültig.' };
   }
   return { ok: true, data: { products: b.products, meals: b.meals, weights: b.weights, settings: b.settings } };
+}
+
+const dayNumber = (key) => {
+  const [y, m, d] = key.split('-').map(Number);
+  return Date.UTC(y, m - 1, d) / 86400000;
+};
+
+// Wann soll die App an eine Sicherung erinnern?
+// - noch nie gesichert: ab 3 Tagen mit Daten ("never")
+// - zuletzt vor >= 7 Tagen und seitdem neue Daten ("old")
+// snoozedUntil: 'YYYY-MM-DD', bis zu diesem Tag (ausschließlich) ist die Erinnerung ausgeblendet.
+export function backupReminder({ lastBackupAt, firstDataDate, lastDataDate, snoozedUntil, today = new Date() }) {
+  if (!firstDataDate) return null;
+  const todayKey = localDateKey(today);
+  if (snoozedUntil && snoozedUntil > todayKey) return null;
+  if (lastBackupAt) {
+    const backupKey = localDateKey(new Date(lastBackupAt));
+    const days = dayNumber(todayKey) - dayNumber(backupKey);
+    return days >= 7 && lastDataDate && lastDataDate > backupKey ? { kind: 'old', days } : null;
+  }
+  const days = dayNumber(todayKey) - dayNumber(firstDataDate);
+  return days >= 3 ? { kind: 'never', days } : null;
 }

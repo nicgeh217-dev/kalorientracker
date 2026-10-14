@@ -95,3 +95,10 @@ test('note wird getrimmt, leer -> null', () => {
   assert.equal(parseLabelResponse(wrap(JSON.stringify({ ...est, note: '   ' }))).label.note, null);
   assert.equal(parseLabelResponse(wrap(JSON.stringify({ ...est, note: '  Hallo  ' }))).label.note, 'Hallo');
 });
+
+test('Name: übersetzt mit Original in Klammern bleibt erhalten, sehr lange Namen werden gekürzt', () => {
+  const r = parseLabelResponse(wrap(JSON.stringify({ ...good, name: 'Thunfisch-Kimbap (삼각김밥 참치마요)' })));
+  assert.equal(r.label.name, 'Thunfisch-Kimbap (삼각김밥 참치마요)');
+  const long = parseLabelResponse(wrap(JSON.stringify({ ...good, name: 'x'.repeat(200) })));
+  assert.equal(long.label.name.length, 80);
+});

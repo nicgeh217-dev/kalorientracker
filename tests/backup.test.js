@@ -57,3 +57,44 @@ test('Gewicht mit ungültigem kg -> Fehler', () => {
   b.weights = [{ date: '2026-10-06', kg: 'viel' }];
   assert.equal(parseBackup(JSON.stringify(b)).ok, false);
 });
+
+import { backupReminder } from '../src/backup.js';
+
+test('buildBackup entfernt Gerätezustand (letzte Sicherung, Snooze)', () => {
+  const b = buildBackup({ ...data, settings: { ...data.settings, lastBackupAt: '2026-10-01T10:00:00.000Z', backupSnoozedUntil: '2026-10-20' } }, now);
+  assert.ok(!('lastBackupAt' in b.settings));
+  assert.ok(!('backupSnoozedUntil' in b.settings));
+});
+
+const today = new Date(2026, 9, 15); // 15.10.2026
+const base = { lastBackupAt: null, firstDataDate: '2026-10-01', lastDataDate: '2026-10-14', snoozedUntil: null, today };
+
+test('Erinnerung: keine Daten -> keine Erinnerung', () => {
+  assert.equal(backupReminder({ ...base, firstDataDate: null, lastDataDate: null }), null);
+});
+
+test('Erinnerung: noch nie gesichert, Daten >= 3 Tage alt', () => {
+  assert.deepEqual(backupReminder(base), { kind: 'never', days: 14 });
+  assert.equal(backupReminder({ ...base, firstDataDate: '2026-10-13' }), null); // erst 2 Tage Daten
+  assert.notEqual(backupReminder({ ...base, firstDataDate: '2026-10-12' }), null); // genau 3 Tage
+});
+
+test('Erinnerung: Sicherung >= 7 Tage alt und seitdem neue Daten', () => {
+  const lastBackupAt = new Date(2026, 9, 8, 12, 0).toISOString(); // 7 Tage her
+  assert.deepEqual(backupReminder({ ...base, lastBackupAt }), { kind: 'old', days: 7 });
+});
+
+test('Erinnerung: Sicherung jünger als 7 Tage -> keine', () => {
+  const lastBackupAt = new Date(2026, 9, 9, 12, 0).toISOString(); // 6 Tage her
+  assert.equal(backupReminder({ ...base, lastBackupAt }), null);
+});
+
+test('Erinnerung: alte Sicherung, aber seitdem keine neuen Daten -> keine', () => {
+  const lastBackupAt = new Date(2026, 9, 1, 12, 0).toISOString();
+  assert.equal(backupReminder({ ...base, lastBackupAt, lastDataDate: '2026-10-01' }), null);
+});
+
+test('Erinnerung: Später (Snooze) unterdrückt bis zum genannten Tag', () => {
+  assert.equal(backupReminder({ ...base, snoozedUntil: '2026-10-18' }), null);
+  assert.equal(backupReminder({ ...base, snoozedUntil: '2026-10-15' }) !== null, true); // Snooze gilt nur bis vor dem Tag
+});
