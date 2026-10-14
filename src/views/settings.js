@@ -1,7 +1,8 @@
 import { el, mount } from '../dom.js';
 import { MODELS, DEFAULT_MODEL } from '../gemini.js';
 import { getSettings, saveSettings, exportAll, replaceAll } from '../db.js';
-import { buildBackup, parseBackup } from '../backup.js';
+import { parseBackup } from '../backup.js';
+import { shareBackup, downloadBackup } from '../backup-share.js';
 import { localDateKey } from '../logic.js';
 import { parseIntGoal } from '../goals.js';
 import { parseWeight } from '../weight-input.js';
@@ -57,20 +58,16 @@ export async function renderSettings() {
     },
   }, 'Speichern');
 
-  const exportBtn = el('button', {
+  const shareBtn = el('button', {
     class: 'btn',
     onClick: async () => {
-      const backup = buildBackup(await exportAll(), new Date());
-      const url = URL.createObjectURL(new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' }));
-      const a = el('a', { href: url, download: `kalorientracker-${localDateKey(new Date())}.json` });
-      document.body.append(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      const r = await shareBackup();
+      if (r !== 'cancelled') { say(r === 'shared' ? 'Sicherung geteilt.' : 'Sicherung heruntergeladen.', 'warn'); renderSettings(); }
     },
-  }, 'Sicherung exportieren');
+  }, 'Sicherung teilen');
+  const exportBtn = el('button', { class: 'btn', onClick: async () => { await downloadBackup(); renderSettings(); } }, 'Als Datei speichern');
 
-  const importInput = el('input', { type: 'file', accept: 'application/json,.json', hidden: true });
+  const importInput = el('input', { type: 'file', accept: 'application/json,.json,text/plain', hidden: true });
   importInput.addEventListener('change', async () => {
     const file = importInput.files?.[0];
     importInput.value = '';
@@ -105,8 +102,10 @@ export async function renderSettings() {
       el('div', { class: 'actions' }, el('div', { class: 'wide', style: 'display:grid' }, save))),
     el('div', { class: 'card' },
       el('h2', { style: 'margin:0 0 6px' }, 'Sicherung'),
-      el('div', { class: 'muted' }, 'Exportiert Mahlzeiten, Produkte, Gewicht und Ziel (ohne Gemini-Key). Beim Import werden alle aktuellen Daten ersetzt.'),
+      el('div', { class: 'muted' }, 'Sichert Mahlzeiten, Produkte, Gewicht und Ziele (ohne Gemini-Key). „Sicherung teilen“ öffnet das Teilen-Menü deines Handys, z. B. Google Drive. Beim Import werden alle aktuellen Daten ersetzt.'),
+      el('div', { class: 'muted', style: 'margin-top:8px' }, lastBackupText(s.lastBackupAt)),
       el('div', { class: 'actions' },
+        shareBtn,
         exportBtn,
         el('button', { class: 'btn', onClick: () => importInput.click() }, 'Sicherung importieren'),
         importInput)));
@@ -119,4 +118,11 @@ function calcInfo(s) {
   return el('div', { class: 'muted', style: 'margin:6px 4px 0' }, s.autoGoal
     ? `Berechnet am ${when} bei ${String(p.calcWeightKg).replace('.', ',')} kg. Wenn sich dein Gewicht ändert, schlägt die App ein neues Ziel vor.`
     : `Eigenes Ziel (Rechner vom ${when}). Es gibt keine automatischen Vorschläge. Im Rechner kannst du sie wieder einschalten.`);
+}
+
+function lastBackupText(iso) {
+  if (!iso) return 'Letzte Sicherung: noch nie.';
+  const days = Math.round((Date.now() - new Date(iso).getTime()) / 86400000);
+  const when = days <= 0 ? 'heute' : days === 1 ? 'gestern' : `vor ${days} Tagen`;
+  return `Letzte Sicherung: ${when} (${new Date(iso).toLocaleDateString('de-DE')}).`;
 }

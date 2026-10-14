@@ -2,6 +2,8 @@ import { el, toast, mount } from '../dom.js';
 import { dayTotals, localDateKey } from '../logic.js';
 import { suggestAdjustment, currentAge } from '../calorie.js';
 import { fastLossCard } from './notes.js';
+import { backupReminder } from '../backup.js';
+import { shareBackup } from '../backup-share.js';
 import { addDays, weekSummary, pickRecent, rollingAverage, fastLossWarning } from '../overview.js';
 import { mealsForDate, deleteMeal, getSettings, addMeal, listMeals, getProduct, listQueued, deleteQueued, listWeights, saveSettings } from '../db.js';
 import { showView } from '../nav.js';
@@ -72,6 +74,11 @@ export async function renderToday() {
   const avgW = lastW && lastW.date >= addDays(localDateKey(new Date()), -14) ? rollingAverage(weights, 7).at(-1).kg : null;
   const suggestion = isToday ? suggestAdjustment({ settings, avgWeightKg: avgW }) : null;
   const fastLoss = isToday ? fastLossWarning(weights) : null;
+  const dataDates = [...everyMeal.map((m) => m.dateKey), ...weights.map((w) => w.date)].sort();
+  const reminder = isToday ? backupReminder({
+    lastBackupAt: settings.lastBackupAt, snoozedUntil: settings.backupSnoozedUntil,
+    firstDataDate: dataDates[0] ?? null, lastDataDate: dataDates.at(-1) ?? null,
+  }) : null;
 
   mount(root,
     el('div', { class: 'dayhead' },
@@ -93,6 +100,7 @@ export async function renderToday() {
             el('a', { href: '#', onClick: (e) => { e.preventDefault(); showView('settings'); } }, 'In den Einstellungen eintragen'))),
     suggestion ? suggestionCard(suggestion, settings) : null,
     fastLossCard(fastLoss),
+    reminder ? backupCard(reminder) : null,
     el('div', { class: 'card' },
       el('div', { class: 'macros' },
         macro('Protein', t.protein, 'var(--p)'),
@@ -251,4 +259,22 @@ function suggestionCard(s, settings) {
         });
         renderToday();
       } }, 'Übernehmen')));
+}
+
+function backupCard(r) {
+  const text = r.kind === 'never'
+    ? `Du hast noch keine Sicherung gemacht, deine Daten gibt es seit ${r.days} Tagen nur auf diesem Handy. Eine Sicherung schützt vor Verlust, z. B. bei Handydefekt.`
+    : `Deine letzte Sicherung ist ${r.days} Tage alt, seitdem sind neue Einträge dazugekommen.`;
+  return el('div', { class: 'card suggest' },
+    el('b', {}, 'Daten sichern?'),
+    el('div', { class: 'muted', style: 'margin:4px 0 10px' }, text),
+    el('div', { class: 'actions', style: 'margin:0' },
+      el('button', { class: 'btn', onClick: async () => {
+        await saveSettings({ ...(await getSettings()), backupSnoozedUntil: addDays(localDateKey(new Date()), 3) });
+        renderToday();
+      } }, 'In 3 Tagen'),
+      el('button', { class: 'primary', onClick: async () => {
+        const res = await shareBackup();
+        if (res !== 'cancelled') { toast(res === 'shared' ? 'Sicherung geteilt.' : 'Sicherung heruntergeladen.'); renderToday(); }
+      } }, 'Jetzt sichern')));
 }
