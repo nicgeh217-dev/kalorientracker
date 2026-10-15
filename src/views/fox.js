@@ -44,7 +44,7 @@ const ACCESSORY_SHAPES = {
   beanie: () => s('g', {},
     s('path', { d: 'M 74 62 Q 100 22 126 62 Z', fill: '#2563eb' }),
     s('rect', { x: 72, y: 58, width: 56, height: 9, rx: 4.5, fill: '#1d4ed8' }),
-    s('circle', { cx: 100, cy: 28, r: 7, fill: '#fff' })),
+    s('circle', { cx: 100, cy: 38, r: 7, fill: '#fff' })),
   glasses: () => s('g', { fill: 'rgba(255,255,255,.22)', stroke: DARK, 'stroke-width': 3 },
     s('circle', { cx: 76, cy: 92, r: 14 }),
     s('circle', { cx: 124, cy: 92, r: 14 }),
@@ -63,8 +63,8 @@ export function foxSvg({ mood = 'curious', accessories = [], munch = false, size
 
   svg.append(
     s('g', { class: 'tail' },
-      s('ellipse', { cx: 166, cy: 128, rx: 17, ry: 38, fill: ORANGE, transform: 'rotate(28 166 128)' }),
-      s('ellipse', { cx: 181, cy: 101, rx: 10, ry: 14, fill: CREAM, transform: 'rotate(28 181 101)' })),
+      s('path', { d: 'M 124 176 C 172 190 204 160 196 112 C 190 138 164 150 126 152 Z', fill: ORANGE }),
+      s('path', { d: 'M 196 112 C 201 134 196 156 180 170 C 188 154 188 138 192 124 Z', fill: CREAM })),
     s('g', { class: 'body' },
       s('ellipse', { cx: 100, cy: 152, rx: 42, ry: 38, fill: ORANGE }),
       s('ellipse', { cx: 100, cy: 160, rx: 24, ry: 24, fill: CREAM }),
@@ -86,7 +86,8 @@ export function foxSvg({ mood = 'curious', accessories = [], munch = false, size
   }
   svg.append(head);
 
-  for (const id of ['scarf', 'glasses', 'beanie', 'crown']) if (has(id)) svg.append(ACCESSORY_SHAPES[id]());
+  // Die Krone ersetzt die Mütze, sonst überlagern sich beide.
+  for (const id of ['scarf', 'glasses', 'beanie', 'crown']) if (has(id) && !(id === 'beanie' && has('crown'))) svg.append(ACCESSORY_SHAPES[id]());
 
   if (mood === 'sleeping') {
     const z = (x, y, size2, delay) => {
