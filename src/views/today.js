@@ -3,6 +3,9 @@ import { dayTotals, localDateKey } from '../logic.js';
 import { suggestAdjustment, currentAge } from '../calorie.js';
 import { fastLossCard } from './notes.js';
 import { backupReminder } from '../backup.js';
+import { trackingDays, streak, petLevel, nextLevelAt, accessoriesFor, newUnlocks, petMood, petMessage, daysBetween } from '../pet.js';
+import { foxSvg } from './fox.js';
+import { openPetIntro, openPetSheet } from './pet-sheet.js';
 import { shareBackup } from '../backup-share.js';
 import { addDays, weekSummary, pickRecent, rollingAverage, fastLossWarning } from '../overview.js';
 import { mealsForDate, deleteMeal, getSettings, addMeal, listMeals, getProduct, listQueued, deleteQueued, listWeights, saveSettings } from '../db.js';
@@ -42,6 +45,9 @@ function go(dateKey) {
 }
 
 let queueUrls = [];
+let prevTodayCount = null; // für die Kau-Animation, wenn gerade ein Eintrag dazukam
+let introOpen = false;
+let celebratedLevel = null;
 
 export async function renderToday() {
   const root = document.getElementById('view-today');
@@ -58,6 +64,7 @@ export async function renderToday() {
     listWeights(),
   ]);
   const meals = weekMeals[6];
+  const todayKey = localDateKey(new Date());
   const t = dayTotals(meals);
   const goal = settings.calorieGoal;
   const progress = goal ? Math.min(1, t.kcal / goal) : 0;
@@ -74,6 +81,32 @@ export async function renderToday() {
   const avgW = lastW && lastW.date >= addDays(localDateKey(new Date()), -14) ? rollingAverage(weights, 7).at(-1).kg : null;
   const suggestion = isToday ? suggestAdjustment({ settings, avgWeightKg: avgW }) : null;
   const fastLoss = isToday ? fastLossWarning(weights) : null;
+  // Fuchs-Begleiter (alles aus den Einträgen abgeleitet)
+  const petDays = trackingDays(everyMeal);
+  const petStreak = streak(petDays, todayKey);
+  const petTotal = petDays.length;
+  const petLvl = petLevel(petTotal);
+  const todayCount = everyMeal.filter((m) => m.dateKey === todayKey).length;
+  const munch = isToday && prevTodayCount != null && todayCount > prevTodayCount;
+  if (isToday) prevTodayCount = todayCount;
+  const petCfg = settings.pet;
+  let petNode = null;
+  if (isToday && !petCfg && !introOpen && !document.querySelector('.sheet')) {
+    introOpen = true;
+    openPetIntro(petLvl);
+  } else if (isToday && petCfg && petCfg.enabled !== false) {
+    petNode = petCard({
+      cfg: petCfg, level: petLvl, total: petTotal, streak: petStreak, todayCount, munch, todayKey,
+      daysSinceLast: petDays.length ? daysBetween(petDays.at(-1), todayKey) : null,
+      weightToday: weights.some((w) => w.date === todayKey),
+    });
+    const fresh = newUnlocks(petLvl, petCfg.seenLevel ?? petLvl);
+    if (fresh.length && celebratedLevel !== petLvl) {
+      celebratedLevel = petLvl;
+      saveSettings({ ...settings, pet: { ...petCfg, seenLevel: petLvl } });
+      toast(`${petCfg.name} hat etwas Neues: ${fresh.map((a) => a.label).join(', ')}!`);
+    }
+  }
   const dataDates = [...everyMeal.map((m) => m.dateKey), ...weights.map((w) => w.date)].sort();
   const reminder = isToday ? backupReminder({
     lastBackupAt: settings.lastBackupAt, snoozedUntil: settings.backupSnoozedUntil,
@@ -99,6 +132,7 @@ export async function renderToday() {
         : el('div', { class: 'note warn', style: 'margin-bottom:0' }, 'Noch kein Kalorienziel. ',
             el('a', { href: '#', onClick: (e) => { e.preventDefault(); showView('settings'); } }, 'In den Einstellungen eintragen'))),
     suggestion ? suggestionCard(suggestion, settings) : null,
+    petNode,
     fastLossCard(fastLoss),
     reminder ? backupCard(reminder) : null,
     el('div', { class: 'card' },
@@ -277,4 +311,24 @@ function backupCard(r) {
         const res = await shareBackup();
         if (res !== 'cancelled') { toast(res === 'shared' ? 'Sicherung geteilt.' : 'Sicherung heruntergeladen.'); renderToday(); }
       } }, 'Jetzt sichern')));
+}
+
+function petCard({ cfg, level, total, streak: stk, todayCount, daysSinceLast, weightToday, munch, todayKey }) {
+  const hour = new Date().getHours();
+  const mood = munch ? 'happy' : petMood({ todayCount, hour, daysSinceLast, streakCurrent: stk.current, weightToday });
+  const text = munch
+    ? 'Lecker, danke fürs Eintragen!'
+    : petMessage({ mood, hour, name: cfg.name, streak: stk.current, todayCount, totalDays: total, dateKey: todayKey });
+  const stats = total === 0
+    ? `${cfg.name} wartet auf deinen ersten Eintrag`
+    : `${cfg.name} · ${stk.current} ${stk.current === 1 ? 'Tag' : 'Tage'} in Folge · Rekord ${stk.best}`;
+  return el('button', {
+    class: 'card pet-card',
+    'aria-label': `${cfg.name} öffnen`,
+    onClick: () => openPetSheet({ name: cfg.name, level, total, streak: stk, nextAt: nextLevelAt(total) }),
+  },
+    el('div', { class: 'pet-fox' }, foxSvg({ mood, accessories: accessoriesFor(level).map((a) => a.id), munch, size: 96 })),
+    el('div', { class: 'pet-text' },
+      el('div', { class: 'bubble' }, text),
+      el('div', { class: 'muted pet-stats' }, stats)));
 }
