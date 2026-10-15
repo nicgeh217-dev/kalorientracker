@@ -16,6 +16,8 @@ export async function renderSettings() {
   const say = (text, kind = 'warn') => msg.replaceChildren(el('div', { class: `note ${kind}` }, text));
 
   const goal = el('input', { inputMode: 'numeric', placeholder: 'z. B. 2200', value: s.calorieGoal ?? '' });
+  const petOn = el('input', { type: 'checkbox', checked: s.pet?.enabled !== false });
+  petOn.style.cssText = 'width:22px;min-height:22px;height:22px;flex:none';
   const proteinGoal = el('input', { inputMode: 'numeric', placeholder: 'optional, z. B. 120', value: s.proteinGoal ?? '' });
   const targetWeight = el('input', { inputMode: 'decimal', placeholder: 'optional, z. B. 68,5', value: s.targetWeight == null ? '' : String(s.targetWeight).replace('.', ',') });
   const key = el('input', { type: 'password', placeholder: 'AIza …', value: s.geminiKey ?? '', autocomplete: 'off' });
@@ -53,7 +55,8 @@ export async function renderSettings() {
       }
       const fresh = await getSettings();
       const manualChange = fresh.calcProfile && g.value !== fresh.calorieGoal; // eigenes Ziel eingetippt: keine Rechner-Vorschläge mehr
-      await saveSettings({ ...fresh, autoGoal: manualChange ? false : fresh.autoGoal, calorieGoal: g.value, proteinGoal: pg.value, targetWeight: tw, geminiKey: key.value.trim() || null, geminiModel: chosen || null });
+      const petPatch = fresh.pet || !petOn.checked ? { pet: { name: 'Foxi', seenLevel: 0, ...(fresh.pet ?? {}), enabled: petOn.checked } } : {};
+      await saveSettings({ ...fresh, ...petPatch, autoGoal: manualChange ? false : fresh.autoGoal, calorieGoal: g.value, proteinGoal: pg.value, targetWeight: tw, geminiKey: key.value.trim() || null, geminiModel: chosen || null });
       say('Gespeichert.', 'warn');
     },
   }, 'Speichern');
@@ -100,6 +103,9 @@ export async function renderSettings() {
       el('div', { class: 'muted', style: 'margin:6px 4px 0' }, 'Schnell = kürzere Wartezeit, Genau = liest kleine koreanische Schrift zuverlässiger. Nach jedem Scan siehst du Modell und Dauer.'),
       msg,
       el('div', { class: 'actions' }, el('div', { class: 'wide', style: 'display:grid' }, save))),
+    el('div', { class: 'card' },
+      el('label', { class: 'checkrow', style: 'margin:0' }, petOn, el('span', {}, 'Fuchs-Begleiter anzeigen (erinnert freundlich ans Tracken, bewertet nie dein Essen)')),
+      el('div', { class: 'muted', style: 'margin:6px 4px 0' }, 'Wird mit „Speichern“ oben übernommen.')),
     el('div', { class: 'card' },
       el('h2', { style: 'margin:0 0 6px' }, 'Sicherung'),
       el('div', { class: 'muted' }, 'Sichert Mahlzeiten, Produkte, Gewicht und Ziele (ohne Gemini-Key). „Sicherung teilen“ öffnet das Teilen-Menü deines Handys, z. B. Google Drive. Beim Import werden alle aktuellen Daten ersetzt.'),
