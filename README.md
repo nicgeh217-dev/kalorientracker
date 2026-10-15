@@ -23,6 +23,15 @@ Persönliche Handy-App (PWA): Nährwerttabelle fotografieren, Gemini liest die W
 - **Ziele (Einstellungen):** Kalorien, optional Protein und Zielgewicht. Beim Zielgewicht zeigt „Gewicht“ eine grobe Prognose aus den letzten 4 Wochen.
 - **Gewicht:** ein Eintrag pro Tag, Diagramm über die Zeit.
 
+## Fuchs-Begleiter
+Ein kleiner Fuchs oben auf „Heute“ erinnert dich in der App ans Tracken und freut sich über Einträge. Beim ersten Start kannst du ihn benennen oder ablehnen.
+
+- **Stimmungen:** neugierig (heute noch nichts eingetragen, mit Sprüchen je nach Tageszeit: Frühstück, Mittag, Nachmittag, Abend), glücklich (eingetragen, kaut kurz nach jedem Eintrag), stolz (Serien-Meilensteine oder Gewicht eingetragen), „vermisst dich“ (2 oder mehr Tage ohne Eintrag, ohne Vorwurf), schläft (nachts, 22–5 Uhr).
+- **Fortschritt:** Jeder Tag mit mindestens einem Eintrag zählt. Bei 3, 7, 14, 30 und 60 Tagen schaltet der Fuchs Halstuch, Mütze, Brille, Krone und Umhang frei. Dazu „Tage in Folge“ und Rekord. Antippen zeigt Details und erlaubt Umbenennen.
+- **Grundregel:** Der Fuchs reagiert nur darauf, **ob** du einträgst, nie auf Kalorien, Essen oder Gewicht. Seine Sprüche werden per Test auf Wertungen (Diät, „zu viel“, Körper usw.) geprüft. Er wird nie krank und stirbt nie, eine Lücke setzt nur die Serie zurück.
+- **Ausblenden:** im Fuchs-Dialog („Ausblenden“) oder in den Einstellungen (Haken). Der Zustand wird immer aus deinen Einträgen berechnet, nichts geht bei einer Sicherung verloren.
+- **Grenze:** Die Erinnerungen erscheinen nur, wenn du die App öffnest. Echte Push-Nachrichten bei geschlossener App brauchen einen Server und sind nicht eingebaut. Stell dir dafür feste Handy-Wecker (z. B. 12:30 und 19:30).
+
 ## Kalorienrechner (Einstellungen → Kalorienrechner öffnen)
 Berechnet ein Tagesziel aus Geschlecht, Alter, Größe, Gewicht, Aktivität und Ziel (halten, langsam/moderat abnehmen, zunehmen). Alternativ trägst du dein Ziel weiter selbst ein.
 
