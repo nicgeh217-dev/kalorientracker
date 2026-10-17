@@ -130,7 +130,7 @@ export function runQueued(item) {
   return run({ photos, hint: item.hint ?? '', queuedId: item.id, dateKey: item.dateKey });
 }
 
-export async function startScan() {
+export async function startScan(initial = null) {
   const { geminiKey } = await getSettings();
   if (!geminiKey) {
     openSheet(
@@ -141,5 +141,12 @@ export async function startScan() {
         el('button', { class: 'primary', onClick: () => { closeSheet(); showView('settings'); } }, 'Zu den Einstellungen')));
     return;
   }
-  openScanSheet({ photos: [], hint: '' });
+  openScanSheet({ photos: initial?.photos ?? [], hint: initial?.hint ?? '' });
+}
+
+// Fotos, die per "Teilen in die App" kamen (oder Text), direkt im Scan-Dialog öffnen.
+export async function startScanWithFiles(files, hint = '') {
+  const photos = files.slice(0, MAX_PHOTOS).map((file) => ({ file, url: URL.createObjectURL(file) }));
+  if (files.length > MAX_PHOTOS) toast(`Nur die ersten ${MAX_PHOTOS} Fotos wurden übernommen.`);
+  return startScan({ photos, hint });
 }

@@ -268,3 +268,16 @@ label.checkrow { display: flex; align-items: flex-start; gap: 12px; margin: 16px
 @keyframes zfloat { 0% { opacity: 0; transform: translateY(6px); } 30% { opacity: 1; } 100% { opacity: 0; transform: translateY(-10px); } }
 @keyframes twinkle { 0%, 100% { transform: scale(.8); opacity: .7; } 50% { transform: scale(1.15); opacity: 1; } }
 @keyframes chew { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(1.9); } }
+
+/* ---------- Kalender-Heatmap ---------- */
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-top: 6px; }
+.cal-head span { text-align: center; font-size: 11px; font-weight: 700; letter-spacing: .04em; color: var(--muted); }
+.cal-day { position: relative; aspect-ratio: 1; min-height: 0; padding: 0; border: 0; border-radius: 10px; background: var(--fill); color: var(--text); font-size: 13px; font-weight: 600; }
+.cal-day.lv1 { background: rgba(252, 76, 2, .28); }
+.cal-day.lv2 { background: rgba(252, 76, 2, .6); color: #fff; }
+.cal-day.lv3 { background: var(--orange); color: #fff; }
+.cal-day.today { box-shadow: 0 0 0 2px var(--text); }
+.cal-day.sel { box-shadow: 0 0 0 2px var(--orange); }
+.cal-day.future { opacity: .35; }
+.cal-day .wdot { position: absolute; bottom: 4px; left: 50%; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: var(--p); box-shadow: 0 0 0 1px rgba(255, 255, 255, .6); }
+.cal-empty { aspect-ratio: 1; }

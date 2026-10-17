@@ -6,6 +6,7 @@ import { backupReminder } from '../backup.js';
 import { trackingDays, streak, petLevel, nextLevelAt, accessoriesFor, newUnlocks, petMood, petMessage, daysBetween } from '../pet.js';
 import { foxSvg } from './fox.js';
 import { openPetIntro, openPetSheet } from './pet-sheet.js';
+import { monthGrid, shiftMonth } from '../calendar.js';
 import { shareBackup } from '../backup-share.js';
 import { addDays, weekSummary, pickRecent, rollingAverage, fastLossWarning } from '../overview.js';
 import { mealsForDate, deleteMeal, getSettings, addMeal, listMeals, getProduct, listQueued, deleteQueued, listWeights, saveSettings } from '../db.js';
@@ -47,6 +48,7 @@ function go(dateKey) {
 let queueUrls = [];
 let prevTodayCount = null; // für die Kau-Animation, wenn gerade ein Eintrag dazukam
 let introOpen = false;
+let calMonth = null; // angezeigter Kalendermonat {year, month}; null = aktueller Monat
 let celebratedLevel = null;
 
 export async function renderToday() {
@@ -159,7 +161,9 @@ export async function renderToday() {
           ? 'Noch nichts eingetragen. Tippe auf die Kamera, um ein Etikett zu scannen.'
           : 'Für diesen Tag ist nichts eingetragen. Du kannst es mit den Buttons oben nachtragen.')]),
     el('h2', {}, 'Letzte 7 Tage'),
-    weekCard(weekDays, goal, dateKey));
+    weekCard(weekDays, goal, dateKey),
+    el('h2', {}, 'Kalender'),
+    calendarCard({ everyMeal, weights, todayKey, selected: dateKey }));
 }
 
 function macro(label, grams, color) {
@@ -331,4 +335,35 @@ function petCard({ cfg, level, total, streak: stk, todayCount, daysSinceLast, we
     el('div', { class: 'pet-text' },
       el('div', { class: 'bubble' }, text),
       el('div', { class: 'muted pet-stats' }, stats)));
+}
+
+const WEEKDAYS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+
+// Heatmap: welche Tage hast du eingetragen? Die Farbe zeigt nur die Anzahl der Einträge, nicht Kalorien.
+function calendarCard({ everyMeal, weights, todayKey, selected }) {
+  const counts = {};
+  for (const m of everyMeal) counts[m.dateKey] = (counts[m.dateKey] ?? 0) + 1;
+  const todayMonth = { year: Number(todayKey.slice(0, 4)), month: Number(todayKey.slice(5, 7)) };
+  const cal = calMonth ?? todayMonth;
+  const g = monthGrid({ year: cal.year, month: cal.month, counts, weightDays: new Set(weights.map((w) => w.date)), todayKey });
+  const label = new Date(cal.year, cal.month - 1, 1).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
+  const isCurrent = cal.year === todayMonth.year && cal.month === todayMonth.month;
+  const move = (delta) => { calMonth = shiftMonth(cal, delta); renderToday(); };
+
+  const cell = (c) => el('button', {
+    class: `cal-day lv${c.level}${c.isToday ? ' today' : ''}${c.dateKey === selected ? ' sel' : ''}${c.isFuture ? ' future' : ''}`,
+    disabled: c.isFuture,
+    'aria-label': `${c.day}. ${label}: ${c.count} ${c.count === 1 ? 'Eintrag' : 'Einträge'}${c.weight ? ', Gewicht eingetragen' : ''}`,
+    onClick: () => { go(c.dateKey); window.scrollTo({ top: 0, behavior: 'smooth' }); },
+  }, String(c.day), c.weight ? el('span', { class: 'wdot' }) : null);
+
+  return el('div', { class: 'card cal' },
+    el('div', { class: 'row' },
+      el('b', {}, label),
+      el('div', { class: 'xrow' },
+        el('button', { class: 'x', 'aria-label': 'Vorheriger Monat', onClick: () => move(-1) }, '‹'),
+        el('button', { class: 'x', 'aria-label': 'Nächster Monat', disabled: isCurrent, onClick: () => move(1) }, '›'))),
+    el('div', { class: 'cal-grid cal-head' }, ...WEEKDAYS.map((d) => el('span', {}, d))),
+    ...g.weeks.map((week) => el('div', { class: 'cal-grid' }, ...week.map((c) => (c ? cell(c) : el('span', { class: 'cal-empty' }))))),
+    el('div', { class: 'muted', style: 'margin-top:10px' }, `${g.tracked} von ${g.elapsed} Tagen mit Einträgen. Je kräftiger die Farbe, desto mehr Einträge. Blauer Punkt: Gewicht eingetragen.`));
 }
