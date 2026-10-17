@@ -5,7 +5,8 @@ import path from 'node:path';
 
 // Wächter: Jede ausgelieferte Datei muss im Service-Worker-Cache stehen, sonst fehlt sie offline.
 const sw = fs.readFileSync('sw.js', 'utf8');
-const assets = new Set([...sw.matchAll(/'(\.[^']*)'/g)].map((m) => m[1].replace(/^\.\//, '')));
+const list = sw.slice(sw.indexOf('const ASSETS = ['), sw.indexOf('];', sw.indexOf('const ASSETS = [')));
+const assets = new Set([...list.matchAll(/'(\.[^']*)'/g)].map((m) => m[1].replace(/^\.\//, '')));
 
 const walk = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
   e.isDirectory() ? walk(path.join(dir, e.name)) : [path.join(dir, e.name).split(path.sep).join('/')]);
