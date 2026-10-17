@@ -1,6 +1,8 @@
 import { registerRenderer, showView, refreshCurrent } from './nav.js';
 import { renderToday } from './views/today.js';
-import { startScan } from './views/scan.js';
+import { startScan, startScanWithFiles } from './views/scan.js';
+import { parseLaunchAction } from './launch.js';
+import { takeSharedItems } from './share-inbox.js';
 import { renderProducts } from './views/products.js';
 import { renderWeight } from './views/weight.js';
 import { renderSettings } from './views/settings.js';
@@ -51,4 +53,22 @@ if ('serviceWorker' in navigator) {
   }).catch(() => {});
 }
 
+// Start über Kurzbefehl (langes Drücken aufs Icon) oder "Teilen in die App".
+async function handleLaunch() {
+  const action = parseLaunchAction(location.search);
+  if (!action) return;
+  history.replaceState(null, '', location.pathname); // Adresse aufräumen, damit ein Neuladen nichts doppelt auslöst
+  if (action === 'scan') return startScan();
+  if (action === 'weight') {
+    await showView('weight');
+    document.querySelector('#view-weight input[inputmode="decimal"]')?.focus();
+    return undefined;
+  }
+  const { files, text } = await takeSharedItems();
+  if (files.length || text) return startScanWithFiles(files, text);
+  toast('Es sind keine Fotos angekommen.');
+  return undefined;
+}
+
 showView('today');
+handleLaunch();
