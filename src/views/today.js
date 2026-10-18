@@ -3,13 +3,15 @@ import { dayTotals, localDateKey } from '../logic.js';
 import { suggestAdjustment, currentAge } from '../calorie.js';
 import { fastLossCard } from './notes.js';
 import { backupReminder } from '../backup.js';
+import { pickNotice } from '../notices.js';
 import { trackingDays, streak, petLevel, nextLevelAt, accessoriesFor, newUnlocks, petMood, petMessage, daysBetween } from '../pet.js';
 import { foxSvg } from './fox.js';
 import { openPetIntro, openPetSheet } from './pet-sheet.js';
-import { monthGrid, shiftMonth } from '../calendar.js';
 import { shareBackup } from '../backup-share.js';
-import { addDays, weekSummary, pickRecent, rollingAverage, fastLossWarning } from '../overview.js';
-import { mealsForDate, deleteMeal, getSettings, addMeal, listMeals, getProduct, listQueued, deleteQueued, listWeights, saveSettings } from '../db.js';
+import { addDays, pickRecent, rollingAverage, fastLossWarning } from '../overview.js';
+import {
+  mealsForDate, deleteMeal, restoreMeal, getSettings, addMeal, listMeals, getProduct, listQueued, deleteQueued, addQueued, listWeights, saveSettings,
+} from '../db.js';
 import { showView } from '../nav.js';
 import { viewedDateKey, isViewingToday, setViewedDateKey, dayLabel, longDate, timestampFor } from '../state.js';
 import { openMealForm } from './meal-form.js';
@@ -24,7 +26,6 @@ const svg = (tag, attrs = {}) => {
 
 const R = 92;
 const CIRC = 2 * Math.PI * R;
-const BAR_AREA = 80; // px Höhe für Balken in der Wochenansicht
 
 function ring(progress) {
   const s = svg('svg', { viewBox: '0 0 220 220', 'aria-hidden': 'true' });
@@ -48,7 +49,6 @@ function go(dateKey) {
 let queueUrls = [];
 let prevTodayCount = null; // für die Kau-Animation, wenn gerade ein Eintrag dazukam
 let introOpen = false;
-let calMonth = null; // angezeigter Kalendermonat {year, month}; null = aktueller Monat
 let celebratedLevel = null;
 
 export async function renderToday() {
@@ -57,32 +57,37 @@ export async function renderToday() {
   queueUrls = [];
   const dateKey = viewedDateKey();
   const isToday = isViewingToday();
-  const weekKeys = Array.from({ length: 7 }, (_, i) => addDays(dateKey, i - 6));
-  const [settings, weekMeals, everyMeal, queued, weights] = await Promise.all([
+  const [settings, meals, everyMeal, queued, weights] = await Promise.all([
     getSettings(),
-    Promise.all(weekKeys.map((k) => mealsForDate(k))),
+    mealsForDate(dateKey),
     listMeals(),
     listQueued(),
     listWeights(),
   ]);
-  const meals = weekMeals[6];
   const todayKey = localDateKey(new Date());
   const t = dayTotals(meals);
   const goal = settings.calorieGoal;
   const progress = goal ? Math.min(1, t.kcal / goal) : 0;
   const over = goal && t.kcal > goal;
   const centerNum = goal ? Math.abs(goal - t.kcal) : t.kcal;
-  const centerUnit = goal ? (over ? 'kcal drüber' : 'kcal übrig') : 'kcal gegessen';
-  const macroKcal = { p: t.protein * 4, c: t.carbs * 4, f: t.fat * 9 };
-
-  const weekDays = weekKeys.map((k, i) => ({ dateKey: k, kcal: dayTotals(weekMeals[i]).kcal, meals: weekMeals[i].length }));
+  const centerUnit = goal ? (over ? 'kcal drüber' : 'kcal übrig') : 'kcal';
   const recent = pickRecent(everyMeal, 6);
 
   // Kalorienrechner: Vorschlag (nur mit Bestätigung) und Warnung bei zu schneller Abnahme
   const lastW = weights.at(-1);
-  const avgW = lastW && lastW.date >= addDays(localDateKey(new Date()), -14) ? rollingAverage(weights, 7).at(-1).kg : null;
+  const avgW = lastW && lastW.date >= addDays(todayKey, -14) ? rollingAverage(weights, 7).at(-1).kg : null;
   const suggestion = isToday ? suggestAdjustment({ settings, avgWeightKg: avgW }) : null;
   const fastLoss = isToday ? fastLossWarning(weights) : null;
+  const dataDates = [...everyMeal.map((m) => m.dateKey), ...weights.map((w) => w.date)].sort();
+  const reminder = isToday ? backupReminder({
+    lastBackupAt: settings.lastBackupAt, snoozedUntil: settings.backupSnoozedUntil,
+    firstDataDate: dataDates[0] ?? null, lastDataDate: dataDates.at(-1) ?? null,
+  }) : null;
+  const notice = pickNotice({ fastLoss, suggestion, backup: reminder });
+  const noticeNode = notice
+    ? { fastLoss: () => fastLossCard(notice.data), suggestion: () => suggestionCard(notice.data, settings), backup: () => backupCard(notice.data) }[notice.kind]()
+    : null;
+
   // Fuchs-Begleiter (alles aus den Einträgen abgeleitet)
   const petDays = trackingDays(everyMeal);
   const petStreak = streak(petDays, todayKey);
@@ -97,7 +102,7 @@ export async function renderToday() {
     introOpen = true;
     openPetIntro(petLvl);
   } else if (isToday && petCfg && petCfg.enabled !== false) {
-    petNode = petCard({
+    petNode = petStrip({
       cfg: petCfg, level: petLvl, total: petTotal, streak: petStreak, todayCount, munch, todayKey,
       daysSinceLast: petDays.length ? daysBetween(petDays.at(-1), todayKey) : null,
       weightToday: weights.some((w) => w.date === todayKey),
@@ -109,11 +114,6 @@ export async function renderToday() {
       toast(`${petCfg.name} hat etwas Neues: ${fresh.map((a) => a.label).join(', ')}!`);
     }
   }
-  const dataDates = [...everyMeal.map((m) => m.dateKey), ...weights.map((w) => w.date)].sort();
-  const reminder = isToday ? backupReminder({
-    lastBackupAt: settings.lastBackupAt, snoozedUntil: settings.backupSnoozedUntil,
-    firstDataDate: dataDates[0] ?? null, lastDataDate: dataDates.at(-1) ?? null,
-  }) : null;
 
   mount(root,
     el('div', { class: 'dayhead' },
@@ -121,53 +121,39 @@ export async function renderToday() {
       el('div', { class: 'daynav' },
         el('button', { 'aria-label': 'Vorheriger Tag', onClick: () => go(addDays(dateKey, -1)) }, '‹'),
         el('button', { 'aria-label': 'Nächster Tag', disabled: isToday, onClick: () => go(addDays(dateKey, 1)) }, '›'))),
+    noticeNode,
     petNode,
-    el('div', { class: 'card hero' },
+    el('div', { class: 'card hero2' },
       el('div', { class: `ring${over ? ' over' : ''}` },
         ring(progress),
         el('div', { class: 'center' },
           el('div', { class: 'num' }, String(centerNum)),
           el('div', { class: 'unit' }, centerUnit))),
-      goal
-        ? el('div', { class: 'hero-meta' },
-            el('div', {}, el('b', {}, String(t.kcal)), 'Gegessen'),
-            el('div', {}, el('b', {}, String(goal)), 'Ziel'))
-        : el('div', { class: 'note warn', style: 'margin-bottom:0' }, 'Noch kein Kalorienziel. ',
-            el('a', { href: '#', onClick: (e) => { e.preventDefault(); showView('settings'); } }, 'In den Einstellungen eintragen'))),
-    suggestion ? suggestionCard(suggestion, settings) : null,
-    fastLossCard(fastLoss),
-    reminder ? backupCard(reminder) : null,
-    el('div', { class: 'card' },
-      el('div', { class: 'macros' },
-        macro('Protein', t.protein, 'var(--p)'),
-        macro('Kohlenhydr.', t.carbs, 'var(--c)'),
-        macro('Fett', t.fat, 'var(--f)')),
-      el('div', { class: 'split', 'aria-hidden': 'true' },
-        el('i', { style: `flex-grow:${macroKcal.p};background:var(--p)` }),
-        el('i', { style: `flex-grow:${macroKcal.c};background:var(--c)` }),
-        el('i', { style: `flex-grow:${macroKcal.f};background:var(--f)` })),
-      settings.proteinGoal ? proteinGoalRow(t.protein, settings.proteinGoal) : null),
-    el('div', { class: 'actions' },
-      el('button', { class: 'btn', onClick: () => openMealForm(null) }, 'Manuell eintragen'),
-      el('button', { class: 'btn', onClick: () => showView('products') }, 'Aus Produkten')),
+      el('div', { class: 'hero-side' },
+        goal
+          ? el('div', { class: 'hs-row' },
+              el('div', {}, el('b', {}, String(t.kcal)), 'gegessen'),
+              el('div', {}, el('b', {}, String(goal)), 'Ziel'))
+          : el('div', { class: 'note warn', style: 'margin:0' }, 'Noch kein Ziel. ',
+              el('a', { href: '#', onClick: (e) => { e.preventDefault(); showView('settings'); } }, 'Jetzt festlegen')),
+        el('div', { class: 'hs-macros' },
+          macro('Protein', t.protein, 'var(--p)'),
+          macro('Kohlenh.', t.carbs, 'var(--c)'),
+          macro('Fett', t.fat, 'var(--f)')),
+        settings.proteinGoal ? proteinGoalRow(t.protein, settings.proteinGoal) : null)),
     queued.length ? el('h2', {}, 'Wartet auf Auswertung') : null,
     ...queued.map(queueCard),
-    recent.length ? el('h2', {}, 'Zuletzt gegessen') : null,
     recent.length ? el('div', { class: 'chips' }, ...recent.map((m) => recentChip(m, dateKey))) : null,
     el('h2', {}, 'Mahlzeiten'),
     ...(meals.length
       ? [...meals].reverse().map(mealCard)
       : [el('div', { class: 'card muted' }, isToday
-          ? 'Noch nichts eingetragen. Tippe auf die Kamera, um ein Etikett zu scannen.'
-          : 'Für diesen Tag ist nichts eingetragen. Du kannst es mit den Buttons oben nachtragen.')]),
-    el('h2', {}, 'Letzte 7 Tage'),
-    weekCard(weekDays, goal, dateKey),
-    el('h2', {}, 'Kalender'),
-    calendarCard({ everyMeal, weights, todayKey, selected: dateKey }));
+          ? 'Noch nichts eingetragen. Tippe auf den Kamera-Button, um etwas einzutragen.'
+          : 'Für diesen Tag ist nichts eingetragen. Mit dem Kamera-Button kannst du es nachtragen.')]));
 }
 
 function macro(label, grams, color) {
-  return el('div', { class: 'macro' },
+  return el('div', { class: 'mm' },
     el('div', { class: 'lbl' }, el('span', { class: 'dot', style: `background:${color}` }), label),
     el('div', { class: 'num' }, String(grams), el('small', {}, 'g')));
 }
@@ -186,28 +172,6 @@ function recentChip(m, dateKey) {
   }, el('b', {}, m.name), el('span', {}, `${m.kcal} kcal`));
 }
 
-function weekCard(days, goal, selected) {
-  const s = weekSummary(days, goal);
-  const maxVal = Math.max(goal || 0, ...days.map((d) => d.kcal), 1);
-  const bars = el('div', { class: 'bars' },
-    goal ? el('div', { class: 'goalline', style: `bottom:${22 + (goal / maxVal) * BAR_AREA}px` }) : null,
-    ...days.map((d) => {
-      const [y, m, dd] = d.dateKey.split('-').map(Number);
-      const wd = new Date(y, m - 1, dd).toLocaleDateString('de-DE', { weekday: 'short' }).replace('.', '');
-      const cls = [d.meals ? 'has' : '', goal && d.kcal > goal ? 'over' : '', d.dateKey === selected ? 'sel' : ''].join(' ').trim();
-      return el('button', { class: cls, 'aria-label': `${dayLabel(d.dateKey)}: ${d.kcal} kcal`, onClick: () => go(d.dateKey) },
-        el('i', { style: `height:${Math.max(4, (d.kcal / maxVal) * BAR_AREA)}px` }), wd);
-    }));
-  return el('div', { class: 'card' },
-    el('div', { class: 'week-stats' },
-      el('div', {}, el('div', { class: 'num' }, s.avgKcal == null ? '–' : String(s.avgKcal)), el('div', { class: 'lbl' }, 'Ø kcal pro Tag')),
-      goal ? el('div', {}, el('div', { class: 'num' }, `${s.daysInGoal}/${s.loggedDays}`), el('div', { class: 'lbl' }, 'Tage im Ziel')) : null),
-    bars,
-    el('div', { class: 'legend' },
-      el('span', {}, 'Der Schnitt zählt nur Tage mit Einträgen.'),
-      goal ? el('span', {}, '- - Ziel') : null));
-}
-
 async function editMeal(m) {
   const product = m.productId != null ? await getProduct(m.productId) : null;
   const prefill = product
@@ -218,7 +182,7 @@ async function editMeal(m) {
 
 function mealCard(m, i) {
   const time = new Date(m.timestamp).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-  const amt = m.amount ? ` · ${m.amount.value} ${m.amount.unit === 'g' ? 'g' : '×'}` : '';
+  const amt = m.amount ? ` · ${String(m.amount.value).replace('.', ',')} ${m.amount.unit === 'g' ? 'g' : '×'}` : '';
   return el('div', { class: 'card meal', style: `--i:${i}` },
     el('div', { class: 'meal-top' },
       el('div', {}, el('strong', {}, m.name), el('div', { class: 'muted' }, `${time}${amt}`)),
@@ -228,10 +192,9 @@ function mealCard(m, i) {
           class: 'x',
           'aria-label': `${m.name} löschen`,
           onClick: async () => {
-            if (confirm(`"${m.name}" löschen?`)) {
-              await deleteMeal(m.id);
-              renderToday();
-            }
+            await deleteMeal(m.id);
+            renderToday();
+            toast(`${m.name} gelöscht`, 'Rückgängig', async () => { await restoreMeal(m); renderToday(); });
           },
         }, '×'))),
     el('div', { class: 'meal-stats' },
@@ -268,7 +231,12 @@ function queueCard(item) {
     el('div', { class: 'xrow' },
       el('button', { class: 'small primary', disabled: offline, onClick: () => runQueued(item) }, 'Auswerten'),
       el('button', { class: 'x', 'aria-label': 'Eintrag verwerfen', onClick: async () => {
-        if (confirm('Diesen gespeicherten Eintrag verwerfen?')) { await deleteQueued(item.id); renderToday(); }
+        await deleteQueued(item.id);
+        renderToday();
+        toast('Eintrag verworfen', 'Rückgängig', async () => {
+          await addQueued({ blobs: item.blobs, hint: item.hint, dateKey: item.dateKey, createdAt: item.createdAt });
+          renderToday();
+        });
       } }, '×')));
 }
 
@@ -317,53 +285,21 @@ function backupCard(r) {
       } }, 'Jetzt sichern')));
 }
 
-function petCard({ cfg, level, total, streak: stk, todayCount, daysSinceLast, weightToday, munch, todayKey }) {
+// Schmale Zeile: kleiner Fuchs, Sprechblase, Serie. Details (Stufen, Rekord, Umbenennen) im Dialog.
+function petStrip({ cfg, level, total, streak: stk, todayCount, daysSinceLast, weightToday, munch, todayKey }) {
   const hour = new Date().getHours();
   const mood = munch ? 'happy' : petMood({ todayCount, hour, daysSinceLast, streakCurrent: stk.current, weightToday });
   const text = munch
     ? 'Lecker, danke fürs Eintragen!'
     : petMessage({ mood, hour, name: cfg.name, streak: stk.current, todayCount, totalDays: total, dateKey: todayKey });
-  const stats = total === 0
-    ? `${cfg.name} wartet auf deinen ersten Eintrag`
-    : `${cfg.name} · ${stk.current} ${stk.current === 1 ? 'Tag' : 'Tage'} in Folge · Rekord ${stk.best}`;
   return el('button', {
-    class: 'card pet-card',
-    'aria-label': `${cfg.name} öffnen`,
+    class: 'pet-strip',
+    'aria-label': `${cfg.name} öffnen. ${stk.current} Tage in Folge, Rekord ${stk.best}`,
     onClick: () => openPetSheet({ name: cfg.name, level, total, streak: stk, nextAt: nextLevelAt(total) }),
   },
-    el('div', { class: 'pet-fox' }, foxSvg({ mood, accessories: accessoriesFor(level).map((a) => a.id), munch, size: 96 })),
-    el('div', { class: 'pet-text' },
-      el('div', { class: 'bubble' }, text),
-      el('div', { class: 'muted pet-stats' }, stats)));
-}
-
-const WEEKDAYS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
-
-// Heatmap: welche Tage hast du eingetragen? Die Farbe zeigt nur die Anzahl der Einträge, nicht Kalorien.
-function calendarCard({ everyMeal, weights, todayKey, selected }) {
-  const counts = {};
-  for (const m of everyMeal) counts[m.dateKey] = (counts[m.dateKey] ?? 0) + 1;
-  const todayMonth = { year: Number(todayKey.slice(0, 4)), month: Number(todayKey.slice(5, 7)) };
-  const cal = calMonth ?? todayMonth;
-  const g = monthGrid({ year: cal.year, month: cal.month, counts, weightDays: new Set(weights.map((w) => w.date)), todayKey });
-  const label = new Date(cal.year, cal.month - 1, 1).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
-  const isCurrent = cal.year === todayMonth.year && cal.month === todayMonth.month;
-  const move = (delta) => { calMonth = shiftMonth(cal, delta); renderToday(); };
-
-  const cell = (c) => el('button', {
-    class: `cal-day lv${c.level}${c.isToday ? ' today' : ''}${c.dateKey === selected ? ' sel' : ''}${c.isFuture ? ' future' : ''}`,
-    disabled: c.isFuture,
-    'aria-label': `${c.day}. ${label}: ${c.count} ${c.count === 1 ? 'Eintrag' : 'Einträge'}${c.weight ? ', Gewicht eingetragen' : ''}`,
-    onClick: () => { go(c.dateKey); window.scrollTo({ top: 0, behavior: 'smooth' }); },
-  }, String(c.day), c.weight ? el('span', { class: 'wdot' }) : null);
-
-  return el('div', { class: 'card cal' },
-    el('div', { class: 'row' },
-      el('b', {}, label),
-      el('div', { class: 'xrow' },
-        el('button', { class: 'x', 'aria-label': 'Vorheriger Monat', onClick: () => move(-1) }, '‹'),
-        el('button', { class: 'x', 'aria-label': 'Nächster Monat', disabled: isCurrent, onClick: () => move(1) }, '›'))),
-    el('div', { class: 'cal-grid cal-head' }, ...WEEKDAYS.map((d) => el('span', {}, d))),
-    ...g.weeks.map((week) => el('div', { class: 'cal-grid' }, ...week.map((c) => (c ? cell(c) : el('span', { class: 'cal-empty' }))))),
-    el('div', { class: 'muted', style: 'margin-top:10px' }, `${g.tracked} von ${g.elapsed} Tagen mit Einträgen. Je kräftiger die Farbe, desto mehr Einträge. Blauer Punkt: Gewicht eingetragen.`));
+    el('div', { class: 'pet-fox' }, foxSvg({ mood, accessories: accessoriesFor(level).map((a) => a.id), munch, size: 54 })),
+    el('div', { class: 'bubble' }, text),
+    total > 0
+      ? el('div', { class: 'streak' }, el('b', {}, String(stk.current)), el('span', {}, stk.current === 1 ? 'Tag' : 'Tage'))
+      : null);
 }

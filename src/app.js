@@ -4,6 +4,8 @@ import { startScan, startScanWithFiles } from './views/scan.js';
 import { parseLaunchAction } from './launch.js';
 import { takeSharedItems } from './share-inbox.js';
 import { renderProducts } from './views/products.js';
+import { renderHistory } from './views/history.js';
+import { openAddMenu } from './views/add-menu.js';
 import { renderWeight } from './views/weight.js';
 import { renderSettings } from './views/settings.js';
 import { listQueued } from './db.js';
@@ -11,10 +13,11 @@ import { toast, el } from './dom.js';
 
 registerRenderer('today', renderToday);
 registerRenderer('products', renderProducts);
+registerRenderer('history', renderHistory);
 registerRenderer('weight', renderWeight);
 registerRenderer('settings', renderSettings);
 
-document.getElementById('fab').addEventListener('click', () => startScan());
+document.getElementById('fab').addEventListener('click', () => openAddMenu());
 
 document.getElementById('nav').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-view]');

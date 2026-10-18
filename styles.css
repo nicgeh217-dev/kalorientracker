@@ -281,3 +281,52 @@ label.checkrow { display: flex; align-items: flex-start; gap: 12px; margin: 16px
 .cal-day.future { opacity: .35; }
 .cal-day .wdot { position: absolute; bottom: 4px; left: 50%; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: var(--p); box-shadow: 0 0 0 1px rgba(255, 255, 255, .6); }
 .cal-empty { aspect-ratio: 1; }
+
+/* ---------- Korrekturen und Formular ---------- */
+/* Buttons in Karten hatten dieselbe Farbe wie die Karte und waren im Dunkelmodus unsichtbar */
+.card .btn, .card button.plain { background: var(--fill); box-shadow: none; }
+.fsum { margin: 8px 4px 0; font-size: 13px; color: var(--muted); }
+.fpreview { margin: 14px 0 0; padding: 14px 16px; border-radius: 16px; background: var(--card); box-shadow: var(--shadow); }
+.kcalbig { font-size: 44px; color: var(--text); }
+.kcalbig small { font-family: var(--font); font-style: normal; font-size: 14px; font-weight: 700; color: var(--muted); }
+.quick { display: flex; gap: 8px; margin: 4px 0 10px; }
+.chipbtn { flex: 1; min-height: 44px; padding: 0; border: 0; border-radius: 12px; background: var(--fill); color: var(--text); font-weight: 700; }
+.chipbtn.on { background: var(--orange-soft); color: var(--orange); }
+:focus-visible { outline: 3px solid var(--orange); outline-offset: 2px; }
+input:focus-visible, textarea:focus-visible { outline: none; }
+
+/* ---------- Heute kompakt ---------- */
+.hero2 { display: grid; grid-template-columns: 132px 1fr; gap: 16px; align-items: center; padding: 16px; }
+.hero2 .ring { width: 132px; height: 132px; }
+.hero2 .ring .center .num { font-size: 42px; }
+.hero2 .ring .center .unit { font-size: 11px; margin-top: 2px; }
+.hero-side { display: grid; gap: 12px; min-width: 0; }
+.hs-row { display: flex; gap: 20px; font-size: 12px; font-weight: 600; color: var(--muted); }
+.hs-row b { display: block; font-family: var(--num); font-style: italic; font-weight: 800; font-size: 26px; line-height: 1; color: var(--text); }
+.hs-macros { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.mm .lbl { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; color: var(--muted); margin-bottom: 2px; white-space: nowrap; }
+.mm .num { font-size: 22px; }
+.mm .num small { font-size: 12px; margin-left: 1px; color: var(--muted); }
+.hero2 .pgoal { margin-top: 0; padding-top: 8px; }
+.hero2 .pgoal .row b { font-size: 16px; }
+
+.pet-strip { display: flex; align-items: center; gap: 10px; width: 100%; margin-bottom: 12px; padding: 8px 14px 8px 8px; border: 0; border-radius: 20px; background: var(--card); box-shadow: var(--shadow); color: var(--text); text-align: left; font-weight: 400; }
+.pet-strip .pet-fox { flex: none; width: 54px; height: 54px; }
+.pet-strip .bubble { flex: 1; min-width: 0; padding: 8px 12px; font-size: 14px; }
+.pet-strip .bubble::before { top: 16px; }
+.pet-strip .streak { flex: none; display: grid; justify-items: center; line-height: 1; color: var(--orange); }
+.pet-strip .streak b { font-family: var(--num); font-style: italic; font-weight: 800; font-size: 24px; }
+.pet-strip .streak span { font-size: 11px; font-weight: 700; color: var(--muted); margin-top: 2px; }
+
+/* ---------- Eintragen-Menü ---------- */
+.menu { display: grid; gap: 8px; margin-top: 4px; }
+.menu-item { display: grid; gap: 2px; min-height: 64px; padding: 12px 16px; border: 0; border-radius: 18px; background: var(--card); color: var(--text); text-align: left; font-weight: 400; box-shadow: var(--shadow); }
+.menu-item b { font-size: 17px; font-weight: 700; }
+.menu-item span { font-size: 13px; color: var(--muted); }
+.menu-item.primary-item { background: linear-gradient(135deg, var(--orange), var(--orange-2)); color: #fff; box-shadow: 0 8px 20px rgba(252, 76, 2, .28); }
+.menu-item.primary-item span { color: rgba(255, 255, 255, .85); }
+
+/* Mahlzeiten-Karte: Inhalt bricht um, statt aus der Karte zu ragen (z. B. mit "Schätzung"-Etikett) */
+.meal { grid-template-columns: minmax(0, 1fr); }
+.meal-stats { flex-wrap: wrap; row-gap: 8px; column-gap: 16px; }
+.meal-stats .tag { order: 3; }

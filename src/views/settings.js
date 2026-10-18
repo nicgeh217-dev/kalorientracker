@@ -1,4 +1,5 @@
 import { el, mount } from '../dom.js';
+import { showView } from '../nav.js';
 import { MODELS, DEFAULT_MODEL } from '../gemini.js';
 import { getSettings, saveSettings, exportAll, replaceAll } from '../db.js';
 import { parseBackup } from '../backup.js';
@@ -106,6 +107,8 @@ export async function renderSettings() {
     el('div', { class: 'card' },
       el('label', { class: 'checkrow', style: 'margin:0' }, petOn, el('span', {}, 'Fuchs-Begleiter anzeigen (erinnert freundlich ans Tracken, bewertet nie dein Essen)')),
       el('div', { class: 'muted', style: 'margin:6px 4px 0' }, 'Wird mit „Speichern“ oben übernommen.')),
+    el('div', { class: 'card' },
+      el('button', { class: 'btn', style: 'width:100%', onClick: () => showView('products') }, 'Gespeicherte Produkte verwalten')),
     el('div', { class: 'card' },
       el('h2', { style: 'margin:0 0 6px' }, 'Sicherung'),
       el('div', { class: 'muted' }, 'Sichert Mahlzeiten, Produkte, Gewicht und Ziele (ohne Gemini-Key). „Sicherung teilen“ öffnet das Teilen-Menü deines Handys, z. B. Google Drive. Beim Import werden alle aktuellen Daten ersetzt.'),

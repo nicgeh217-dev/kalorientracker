@@ -12,20 +12,21 @@ Persönliche Handy-App (PWA): Nährwerttabelle fotografieren, Gemini liest die W
 3. Gemini-API-Key eintragen (https://aistudio.google.com/apikey). Der Key wird nur lokal auf dem Handy gespeichert, nicht im Code und nicht im Repo.
 
 ## Benutzung
-- **Kamera-Button:** Fotos aufnehmen oder aus der Galerie wählen (bis zu 4 Fotos desselben Produkts, z. B. Vorderseite und Nährwerttabelle), optional mit Beschreibung. Dann **Auswerten**.
+- **Heute:** oben der Tag mit Pfeilen, dann (höchstens ein) Hinweis, der Fuchs als schmale Zeile und eine kompakte Kalorien-Karte mit Ring, Makros und Proteinziel. Direkt darunter die Schnellauswahl „Zuletzt gegessen“ und deine **Mahlzeiten**, damit du ohne Scrollen siehst, was du gegessen hast. Gelöscht wird mit „Rückgängig“ statt Rückfrage.
+- **Kamera-Button (unten Mitte):** öffnet die Auswahl **Foto aufnehmen, Aus Galerie, Beschreiben, Aus Produkten, Manuell**. Fotos (bis zu 4 desselben Produkts, z. B. Vorderseite und Nährwerttabelle) und Beschreibung landen im Scan-Dialog, dort **Auswerten**.
   - Ist eine Nährwerttabelle lesbar, werden die Werte exakt abgelesen. Rot markierte Felder wurden nicht erkannt.
   - Koreanische Produktnamen werden ins Deutsche übersetzt, der Originalname steht in Klammern (Name im Formular prüfbar). Gibt es keine Tabelle (Restaurant, Bäcker) oder nur eine Beschreibung, **schätzt** die KI das ganze Gericht. Das ist markiert (**~**, "Schätzung") und kann 20–40 % danebenliegen.
-  - Werte prüfen und korrigieren, Menge angeben, speichern.
+  - Im Formular siehst du nach einem Scan nur Name, Nährwerte als Zusammenfassung und die Menge mit Schnelltasten (½, 1, 1½, 2 bzw. 50/100/150/200 g). **Werte bearbeiten** klappt alle Felder auf. Fehlen Werte, ist das Formular gleich aufgeklappt und die Felder sind markiert. Bei „pro 100 g“ ist Gramm die Standardeinheit.
 - **Kurzbefehle auf dem App-Icon (Android):** Lange aufs Icon drücken zeigt „Foto scannen“ und „Gewicht eintragen“. Beides öffnet die App direkt an der richtigen Stelle.
 - **Fotos teilen:** In der Galerie ein oder mehrere Fotos teilen und „Kalorientracker“ wählen. Die App öffnet den Scan-Dialog mit den Fotos (bis zu 4) und, falls vorhanden, dem geteilten Text als Beschreibung.
 - **Hinweis:** Kurzbefehle und Teilen funktionieren nur für die **installierte** App. Nach einem Update übernimmt Android die neuen Einträge meist innerhalb eines Tages. Sofort geht es, wenn du die App einmal vom Startbildschirm entfernst und neu installierst (Daten bleiben im Browser erhalten, mach vorher trotzdem eine Sicherung).
 - **Manuell:** Werte selbst eintragen, wenn das Foto nichts taugt.
-- **Produkte:** bereits gescannte Produkte erneut eintragen, ohne neues Foto. Mit ✎ umbenennen, Werte korrigieren oder löschen (alte Mahlzeiten bleiben).
+- **Produkte:** erreichst du über den Kamera-Button („Aus Produkten“) oder unter Einstellungen („Gespeicherte Produkte verwalten“). Antippen trägt eine Mahlzeit ein, ✎ benennt um, korrigiert Werte oder löscht (mit „Rückgängig“, alte Mahlzeiten bleiben).
 - **Offline:** Ohne Internet kannst du Fotos „für später speichern“. Sie erscheinen auf „Heute“ unter „Wartet auf Auswertung“ und werden online ausgewertet.
 - **Schätzung nachbessern:** Im Formular „Mit Hinweis neu schätzen“, z. B. „kleine Portion, ohne Öl“.
 - **Ziele (Einstellungen):** Kalorien, optional Protein und Zielgewicht. Beim Zielgewicht zeigt „Gewicht“ eine grobe Prognose aus den letzten 4 Wochen.
 - **Gewicht:** ein Eintrag pro Tag, Diagramm über die Zeit.
-- **Kalender (unten auf „Heute“):** Monatsansicht (Montag zuerst) mit Heatmap: Die Farbe zeigt nur, **wie viele Einträge** du an dem Tag hattest (nicht Kalorien), ein blauer Punkt zeigt ein eingetragenes Gewicht. Antippen springt zu dem Tag, die Pfeile blättern durch die Monate. Zukünftige Tage sind gesperrt.
+- **Verlauf (Tab in der Leiste):** „Letzte 7 Tage“ (Ø kcal, Tage im Ziel, Balken mit Ziellinie) und **Kalender**: Monatsansicht (Montag zuerst) mit Heatmap: Die Farbe zeigt nur, **wie viele Einträge** du an dem Tag hattest (nicht Kalorien), ein blauer Punkt zeigt ein eingetragenes Gewicht. Antippen springt zu dem Tag, die Pfeile blättern durch die Monate. Zukünftige Tage sind gesperrt.
 
 ## Fuchs-Begleiter
 Ein kleiner Fuchs oben auf „Heute“ erinnert dich in der App ans Tracken und freut sich über Einträge. Beim ersten Start kannst du ihn benennen oder ablehnen.

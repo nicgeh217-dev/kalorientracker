@@ -68,6 +68,13 @@ export const listMeals = () => getAll('meals');
 export async function updateMeal(m) {
   await wrap((await store('meals', 'readwrite')).put(m));
 }
+// Stellt einen gelöschten Eintrag mit derselben ID wieder her ("Rückgängig").
+export async function restoreMeal(m) {
+  await wrap((await store('meals', 'readwrite')).put(m));
+}
+export async function restoreProduct(p) {
+  await wrap((await store('products', 'readwrite')).put(p));
+}
 export async function deleteMeal(id) {
   await wrap((await store('meals', 'readwrite')).delete(id));
 }

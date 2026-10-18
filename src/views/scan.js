@@ -99,6 +99,10 @@ function openScanSheet(state) {
     el('div', { class: 'actions' },
       el('button', { class: 'btn', onClick: () => { releasePhotos(state); closeSheet(); } }, 'Abbrechen'),
       runBtn));
+  if (state.focusHint) {
+    state.focusHint = false;
+    hint.focus();
+  }
 }
 
 async function run(state) {
@@ -130,18 +134,31 @@ export function runQueued(item) {
   return run({ photos, hint: item.hint ?? '', queuedId: item.id, dateKey: item.dateKey });
 }
 
+function showKeyMissing() {
+  openSheet(
+    el('h1', {}, 'Gemini-Key fehlt'),
+    el('div', { class: 'note warn' }, 'Für den Foto-Scan brauchst du einen Gemini-API-Key. Du trägst ihn einmal in den Einstellungen ein.'),
+    el('div', { class: 'actions' },
+      el('button', { class: 'btn', onClick: closeSheet }, 'Abbrechen'),
+      el('button', { class: 'primary', onClick: () => { closeSheet(); showView('settings'); } }, 'Zu den Einstellungen')));
+}
+
 export async function startScan(initial = null) {
   const { geminiKey } = await getSettings();
-  if (!geminiKey) {
-    openSheet(
-      el('h1', {}, 'Gemini-Key fehlt'),
-      el('div', { class: 'note warn' }, 'Für den Foto-Scan brauchst du einen Gemini-API-Key. Du trägst ihn einmal in den Einstellungen ein.'),
-      el('div', { class: 'actions' },
-        el('button', { class: 'btn', onClick: closeSheet }, 'Abbrechen'),
-        el('button', { class: 'primary', onClick: () => { closeSheet(); showView('settings'); } }, 'Zu den Einstellungen')));
-    return;
-  }
-  openScanSheet({ photos: initial?.photos ?? [], hint: initial?.hint ?? '' });
+  if (!geminiKey) return showKeyMissing();
+  return openScanSheet({ photos: initial?.photos ?? [], hint: initial?.hint ?? '', focusHint: Boolean(initial?.focusHint) });
+}
+
+// Kamera oder Galerie sofort öffnen, danach landen die Fotos im Scan-Dialog.
+export async function startScanWithPicker({ camera }) {
+  const { geminiKey } = await getSettings();
+  if (!geminiKey) return showKeyMissing();
+  return pickFiles({ camera }, (files) => startScanWithFiles(files));
+}
+
+// Ohne Foto: nur beschreiben. Das Textfeld ist sofort aktiv.
+export function startDescribe() {
+  return startScan({ photos: [], hint: '', focusHint: true });
 }
 
 // Fotos, die per "Teilen in die App" kamen (oder Text), direkt im Scan-Dialog öffnen.

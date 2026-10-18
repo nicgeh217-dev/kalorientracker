@@ -27,6 +27,7 @@ export function segmented(select) {
     for (const [v, b] of buttons) b.classList.toggle('on', select.value === v);
   }
   wrap.append(...buttons.map(([, b]) => b));
+  select.addEventListener('input', sync);
   sync();
   return wrap;
 }

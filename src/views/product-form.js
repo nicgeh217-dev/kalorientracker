@@ -1,5 +1,5 @@
-import { el, openSheet, closeSheet, parseNum, segmented } from '../dom.js';
-import { updateProduct, deleteProduct } from '../db.js';
+import { el, openSheet, closeSheet, parseNum, segmented, toast } from '../dom.js';
+import { updateProduct, deleteProduct, restoreProduct } from '../db.js';
 import { refreshCurrent } from '../nav.js';
 
 const FIELDS = [['kcal', 'Kalorien (kcal)'], ['protein', 'Protein (g)'], ['carbs', 'Kohlenhydrate (g)'], ['fat', 'Fett (g)']];
@@ -38,11 +38,11 @@ export function openProductForm(p) {
   }
 
   async function remove() {
-    if (!confirm(`"${p.name}" aus der Produktliste löschen? Bereits eingetragene Mahlzeiten bleiben erhalten.`)) return;
     try {
       await deleteProduct(p.id);
       closeSheet();
       refreshCurrent();
+      toast(`${p.name} gelöscht. Eingetragene Mahlzeiten bleiben erhalten.`, 'Rückgängig', async () => { await restoreProduct(p); refreshCurrent(); });
     } catch {
       msg.replaceChildren(el('div', { class: 'note bad' }, 'Löschen fehlgeschlagen. Bitte erneut versuchen.'));
     }

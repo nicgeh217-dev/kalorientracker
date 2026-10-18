@@ -13,6 +13,7 @@
 <body>
   <main>
     <section id="view-today"></section>
+    <section id="view-history" hidden></section>
     <section id="view-products" hidden></section>
     <section id="view-weight" hidden></section>
     <section id="view-settings" hidden></section>
@@ -22,10 +23,10 @@
     <button data-view="today">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.2"/></svg>Heute
     </button>
-    <button data-view="products">
-      <svg viewBox="0 0 24 24"><path d="M5 8h14l-1 12H6L5 8z"/><path d="M9 8a3 3 0 0 1 6 0"/></svg>Produkte
+    <button data-view="history">
+      <svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="3.5"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>Verlauf
     </button>
-    <button id="fab" aria-label="Foto scannen">
+    <button id="fab" aria-label="Eintragen">
       <svg viewBox="0 0 24 24"><path d="M4 8.5h3l1.5-2h7l1.5 2h3V19H4z"/><circle cx="12" cy="13.5" r="3.6"/></svg>
     </button>
     <button data-view="weight">
