@@ -7,12 +7,12 @@ const perServ = { basis: 'perServing', servingGrams: 50, kcal: 300, protein: 12,
 
 test('per100g: 150 g -> 375 kcal, Makros proportional', () => {
   assert.deepEqual(scaleNutrition(per100, { unit: 'g', value: 150 }),
-    { kcal: 375, protein: 15, carbs: 45, fat: 12 });
+    { kcal: 375, protein: 15, carbs: 45, fat: 12, fiber: null, sugar: null });
 });
 
 test('perServing: 2 Portionen -> 600 kcal, null-Makro bleibt null', () => {
   assert.deepEqual(scaleNutrition(perServ, { unit: 'servings', value: 2 }),
-    { kcal: 600, protein: 24, carbs: 80, fat: null });
+    { kcal: 600, protein: 24, carbs: 80, fat: null, fiber: null, sugar: null });
 });
 
 test('perServing: 100 g bei servingGrams 50 -> 600 kcal', () => {
@@ -33,11 +33,30 @@ test('dayTotals zählt null als 0', () => {
     { kcal: 100, protein: null, carbs: 10, fat: 2 },
     { kcal: 200, protein: 5, carbs: null, fat: null },
   ]);
-  assert.deepEqual(t, { kcal: 300, protein: 5, carbs: 10, fat: 2 });
+  assert.deepEqual(t, { kcal: 300, protein: 5, carbs: 10, fat: 2, fiber: 0, sugar: 0 });
 });
 
 test('dayTotals leere Liste', () => {
-  assert.deepEqual(dayTotals([]), { kcal: 0, protein: 0, carbs: 0, fat: 0 });
+  assert.deepEqual(dayTotals([]), { kcal: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0 });
+});
+
+test('Ballaststoffe und Zucker werden proportional umgerechnet', () => {
+  const p = { ...per100, fiber: 3, sugar: 10 };
+  const r = scaleNutrition(p, { unit: 'g', value: 150 });
+  assert.equal(r.fiber, 4.5);
+  assert.equal(r.sugar, 15);
+});
+
+test('Produkt ohne Ballaststoffe/Zucker ergibt null, nie NaN', () => {
+  const r = scaleNutrition(per100, { unit: 'g', value: 150 });
+  assert.equal(r.fiber, null);
+  assert.equal(r.sugar, null);
+});
+
+test('dayTotals summiert Ballaststoffe und Zucker, null zählt als 0', () => {
+  const t = dayTotals([{ kcal: 1, fiber: 1.5, sugar: null }, { kcal: 1, fiber: 2, sugar: 4 }, { kcal: 1 }]);
+  assert.equal(t.fiber, 3.5);
+  assert.equal(t.sugar, 4);
 });
 
 test('checkPlausibility: 950 kcal pro 100 g -> Warnung', () => {

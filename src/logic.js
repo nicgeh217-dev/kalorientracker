@@ -26,15 +26,17 @@ export function scaleNutrition(product, amount) {
     protein: scaled(product.protein, f, true),
     carbs: scaled(product.carbs, f, true),
     fat: scaled(product.fat, f, true),
+    fiber: scaled(product.fiber, f, true),
+    sugar: scaled(product.sugar, f, true),
   };
 }
 
 export function dayTotals(meals) {
-  const t = { kcal: 0, protein: 0, carbs: 0, fat: 0 };
+  const t = { kcal: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0 };
   for (const m of meals) {
     for (const k of Object.keys(t)) t[k] += m[k] ?? 0;
   }
-  return { kcal: Math.round(t.kcal), protein: round1(t.protein), carbs: round1(t.carbs), fat: round1(t.fat) };
+  return { kcal: Math.round(t.kcal), protein: round1(t.protein), carbs: round1(t.carbs), fat: round1(t.fat), fiber: round1(t.fiber), sugar: round1(t.sugar) };
 }
 
 export function checkPlausibility(n) {
