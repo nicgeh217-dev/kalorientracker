@@ -1,5 +1,6 @@
 import { el, mount } from '../dom.js';
 import { showView } from '../nav.js';
+import { persistenceStatus } from '../storage-persist.js';
 import { MODELS, DEFAULT_MODEL } from '../gemini.js';
 import { getSettings, saveSettings, exportAll, replaceAll } from '../db.js';
 import { parseBackup } from '../backup.js';
@@ -13,6 +14,7 @@ import { openCalculator } from './calculator.js';
 export async function renderSettings() {
   const root = document.getElementById('view-settings');
   const s = await getSettings();
+  const persisted = await persistenceStatus();
   const msg = el('div');
   const say = (text, kind = 'warn') => msg.replaceChildren(el('div', { class: `note ${kind}` }, text));
 
@@ -113,6 +115,7 @@ export async function renderSettings() {
       el('h2', { style: 'margin:0 0 6px' }, 'Sicherung'),
       el('div', { class: 'muted' }, 'Sichert Mahlzeiten, Produkte, Gewicht und Ziele (ohne Gemini-Key). „Sicherung teilen“ öffnet das Teilen-Menü deines Handys, z. B. Google Drive. Beim Import werden alle aktuellen Daten ersetzt.'),
       el('div', { class: 'muted', style: 'margin-top:8px' }, lastBackupText(s.lastBackupAt)),
+      el('div', { class: 'muted', style: 'margin-top:8px' }, persistText(persisted)),
       el('div', { class: 'actions' },
         shareBtn,
         exportBtn,
@@ -134,4 +137,9 @@ function lastBackupText(iso) {
   const days = Math.round((Date.now() - new Date(iso).getTime()) / 86400000);
   const when = days <= 0 ? 'heute' : days === 1 ? 'gestern' : `vor ${days} Tagen`;
   return `Letzte Sicherung: ${when} (${new Date(iso).toLocaleDateString('de-DE')}).`;
+}
+
+function persistText(status) {
+  const state = { granted: 'ja', 'not-granted': 'nein', unsupported: 'unbekannt' }[status];
+  return `Speicher geschützt: ${state}. Lösche in Chrome nicht „Cookies und Websitedaten“ für diese Seite, sonst gehen die Daten verloren. Mach regelmäßig eine Sicherung.`;
 }
