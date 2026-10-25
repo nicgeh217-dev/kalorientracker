@@ -3,6 +3,7 @@ import { scaleNutrition, checkPlausibility, localDateKey } from '../logic.js';
 import { addProduct, updateProduct, addMeal, updateMeal } from '../db.js';
 import { viewedDateKey, dayLabel, longDate, timestampFor } from '../state.js';
 import { showView } from '../nav.js';
+import { SLOTS, slotForTime } from '../slots.js';
 import { defaultAmount, quickAmounts, amountForBasisChange } from '../amount.js';
 
 const FIELDS = [['kcal', 'Kalorien (kcal)'], ['protein', 'Protein (g)'], ['carbs', 'Kohlenhydrate (g)'], ['fat', 'Fett (g)']];
@@ -10,7 +11,7 @@ const EXTRA_FIELDS = [['fiber', 'Ballaststoffe (g)'], ['sugar', 'Zucker (g)']];
 const de = (n) => String(n).replace('.', ',');
 
 // prefill: {name, basis, servingGrams, kcal, protein, carbs, fat, fiber?, sugar?, productId?, amount?} oder null (manuell)
-// opts: {info?, meal? (Bearbeiten), dateKey?, estimate?, onSaved?, onCancel?, onRefine?}
+// opts: {info?, meal? (Bearbeiten), dateKey?, slot? (Vorauswahl Abschnitt), estimate?, onSaved?, onCancel?, onRefine?}
 // Mit Vorgabe (Scan, Produkt, Bearbeiten) zeigt das Formular nur Name, Zusammenfassung und Menge. "Werte bearbeiten" klappt den Rest auf.
 export function openMealForm(prefill, opts = {}) {
   const p = prefill ?? {};
@@ -43,6 +44,10 @@ export function openMealForm(prefill, opts = {}) {
     el('option', { value: 'servings', 'data-short': 'Portion' }, 'Portion(en) / Packung(en)'),
     el('option', { value: 'g', 'data-short': 'Gramm' }, 'Gramm'));
   amountUnit.value = start.unit === 'g' ? 'g' : 'servings';
+
+  const shortSlot = { breakfast: 'Frühstück', lunch: 'Mittag', dinner: 'Abend', snack: 'Snack' };
+  const slot = el('select', {}, ...SLOTS.map((s) => el('option', { value: s.id, 'data-short': shortSlot[s.id] }, s.label)));
+  slot.value = opts.slot ?? meal?.slot ?? slotForTime(meal?.timestamp ?? timestampFor(dateKey));
 
   const notes = el('div');
   const summary = el('div', { class: 'fsum' });
@@ -158,7 +163,7 @@ export function openMealForm(prefill, opts = {}) {
       const stored = isEstimate ? { ...v.product, estimated: true } : v.product;
       if (productId != null) await updateProduct({ id: productId, ...stored });
       else productId = await addProduct(stored);
-      const data = { productId, name: v.product.name, amount: v.amount, ...v.scaled, ...(isEstimate ? { estimated: true } : {}) };
+      const data = { productId, name: v.product.name, slot: slot.value, amount: v.amount, ...v.scaled, ...(isEstimate ? { estimated: true } : {}) };
       if (meal) {
         await updateMeal({ ...meal, ...data }); // id, Zeitstempel und Tag bleiben erhalten
       } else {
@@ -209,6 +214,7 @@ export function openMealForm(prefill, opts = {}) {
     compact ? summary : null,
     compact ? editBtn : null,
     editBox,
+    el('label', {}, 'Mahlzeit'), segmented(slot),
     el('label', {}, 'Gegessene Menge'),
     quick,
     amountValue, el('div', { style: 'height:8px' }), segmented(amountUnit),
