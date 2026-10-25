@@ -12,7 +12,8 @@ const now = new Date('2026-10-06T12:00:00Z');
 
 test('buildBackup entfernt geminiKey', () => {
   const b = buildBackup(data, now);
-  assert.equal(b.version, 1);
+  assert.equal(b.version, 2);
+  assert.deepEqual(b.days, []);
   assert.equal(b.settings.calorieGoal, 2200);
   assert.ok(!('geminiKey' in b.settings));
   assert.equal(data.settings.geminiKey, 'SECRET');
@@ -35,7 +36,7 @@ test('fremde JSON-Datei -> Fehler', () => {
 });
 
 test('falsche Version -> Fehler', () => {
-  const b = { ...buildBackup(data, now), version: 2 };
+  const b = { ...buildBackup(data, now), version: 3 };
   assert.equal(parseBackup(JSON.stringify(b)).ok, false);
 });
 
@@ -97,4 +98,35 @@ test('Erinnerung: alte Sicherung, aber seitdem keine neuen Daten -> keine', () =
 test('Erinnerung: Später (Snooze) unterdrückt bis zum genannten Tag', () => {
   assert.equal(backupReminder({ ...base, snoozedUntil: '2026-10-18' }), null);
   assert.equal(backupReminder({ ...base, snoozedUntil: '2026-10-15' }) !== null, true); // Snooze gilt nur bis vor dem Tag
+});
+
+test('buildBackup entfernt trainingDraft und nimmt Training mit', () => {
+  const b = buildBackup({ ...data, settings: { trainingDraft: { x: 1 }, calorieGoal: 1 }, days: [{ dateKey: '2026-10-06', status: 'rest' }], exercises: [{ id: 1, name: 'Bankdrücken' }], workouts: [{ id: 1, dateKey: '2026-10-06', sets: [] }] }, now);
+  assert.ok(!('trainingDraft' in b.settings));
+  assert.equal(b.days.length, 1);
+  assert.equal(b.exercises.length, 1);
+  assert.equal(b.workouts.length, 1);
+});
+
+test('Version-1-Datei wird gelesen, Training ist leer', () => {
+  const v1 = { version: 1, exportedAt: 'x', products: data.products, meals: data.meals, weights: data.weights, settings: {} };
+  const r = parseBackup(JSON.stringify(v1));
+  assert.equal(r.ok, true);
+  assert.deepEqual([r.data.days, r.data.exercises, r.data.workouts], [[], [], []]);
+});
+
+test('Version-2-Roundtrip bleibt gleich', () => {
+  const full = { ...data, days: [{ dateKey: '2026-10-06', status: 'sick' }], exercises: [{ id: 1, name: 'Kniebeuge' }], workouts: [{ id: 1, dateKey: '2026-10-06', sets: [{ kg: 60, reps: 5 }] }] };
+  const r = parseBackup(JSON.stringify(buildBackup(full, now)));
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.data.days, full.days);
+  assert.deepEqual(r.data.exercises, full.exercises);
+  assert.deepEqual(r.data.workouts, full.workouts);
+});
+
+test('ungültiger Tagesstatus, Einheit ohne sets, Übung ohne name -> Fehler', () => {
+  const base = buildBackup(data, now);
+  assert.equal(parseBackup(JSON.stringify({ ...base, days: [{ dateKey: '2026-10-06', status: 'x' }] })).ok, false);
+  assert.equal(parseBackup(JSON.stringify({ ...base, workouts: [{ id: 1, dateKey: '2026-10-06' }] })).ok, false);
+  assert.equal(parseBackup(JSON.stringify({ ...base, exercises: [{ id: 1 }] })).ok, false);
 });

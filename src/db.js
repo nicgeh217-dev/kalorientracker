@@ -1,11 +1,11 @@
 const DB_NAME = 'kalorientracker';
-const STORES = ['products', 'meals', 'weights', 'settings'];
+const STORES = ['products', 'meals', 'weights', 'settings', 'days', 'exercises', 'workouts'];
 let dbPromise = null;
 
 function open() {
   if (dbPromise) return dbPromise;
   dbPromise = new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 2);
+    const req = indexedDB.open(DB_NAME, 3);
     req.onupgradeneeded = (e) => {
       const db = req.result;
       if (e.oldVersion < 1) {
@@ -18,6 +18,12 @@ function open() {
       if (e.oldVersion < 2) {
         // Fotos, die offline aufgenommen wurden und auf Auswertung warten (nicht Teil der Sicherung).
         db.createObjectStore('queue', { keyPath: 'id', autoIncrement: true });
+      }
+      if (e.oldVersion < 3) {
+        // Tagesstatus (Ruhetag/Krank), Übungen und Trainingseinheiten.
+        db.createObjectStore('days', { keyPath: 'dateKey' });
+        db.createObjectStore('exercises', { keyPath: 'id', autoIncrement: true });
+        db.createObjectStore('workouts', { keyPath: 'id', autoIncrement: true }).createIndex('dateKey', 'dateKey');
       }
     };
     req.onsuccess = () => resolve(req.result);
@@ -96,11 +102,17 @@ export async function saveSettings(s) {
 }
 
 export async function exportAll() {
-  const [products, meals, weights, settings] = await Promise.all([
-    getAll('products'), getAll('meals'), getAll('weights'), getSettings(),
+  const [products, meals, weights, settings, days, exercises, workouts] = await Promise.all([
+    getAll('products'), getAll('meals'), getAll('weights'), getSettings(), getAll('days'), getAll('exercises'), getAll('workouts'),
   ]);
-  return { products, meals, weights, settings };
+  return { products, meals, weights, settings, days, exercises, workouts };
 }
+
+export async function setDayStatus(dateKey, status) {
+  const s = await store('days', 'readwrite');
+  await wrap(status ? s.put({ dateKey, status }) : s.delete(dateKey));
+}
+export const listDayStatuses = () => getAll('days');
 
 // Ersetzt alles in einer Transaktion; bei Fehler wird nichts verändert.
 export async function replaceAll(data) {
@@ -116,6 +128,9 @@ export async function replaceAll(data) {
       for (const p of data.products) tx.objectStore('products').put(p);
       for (const m of data.meals) tx.objectStore('meals').put(m);
       for (const w of data.weights) tx.objectStore('weights').put(w);
+      for (const d of data.days ?? []) tx.objectStore('days').put(d);
+      for (const x of data.exercises ?? []) tx.objectStore('exercises').put(x);
+      for (const w of data.workouts ?? []) tx.objectStore('workouts').put(w);
       tx.objectStore('settings').put({ calorieGoal: null, ...data.settings, geminiKey: keepKey }, 'main');
     } catch (e) {
       tx.abort();

@@ -2,13 +2,16 @@ import { localDateKey } from './logic.js';
 
 // Gerätezustand (Key, letzte Sicherung, Snooze) gehört nicht in die Sicherungsdatei.
 export function buildBackup(data, now) {
-  const { geminiKey, lastBackupAt, backupSnoozedUntil, ...settings } = data.settings ?? {};
+  const { geminiKey, lastBackupAt, backupSnoozedUntil, trainingDraft, ...settings } = data.settings ?? {};
   return {
-    version: 1,
+    version: 2,
     exportedAt: now.toISOString(),
     products: data.products,
     meals: data.meals,
     weights: data.weights,
+    days: data.days ?? [],
+    exercises: data.exercises ?? [],
+    workouts: data.workouts ?? [],
     settings,
   };
 }
@@ -22,8 +25,8 @@ export function parseBackup(text) {
   } catch {
     return { ok: false, error: 'Die Datei ist kein gültiges JSON.' };
   }
-  if (!isObj(b) || b.version !== 1) {
-    return { ok: false, error: 'Das ist keine Kalorientracker-Sicherung (Version 1).' };
+  if (!isObj(b) || (b.version !== 1 && b.version !== 2)) {
+    return { ok: false, error: 'Das ist keine Kalorientracker-Sicherung (Version 1 oder 2).' };
   }
   for (const k of ['products', 'meals', 'weights']) {
     if (!Array.isArray(b[k])) return { ok: false, error: `Feld "${k}" fehlt oder ist ungültig.` };
@@ -38,7 +41,20 @@ export function parseBackup(text) {
   if (!b.weights.every((w) => isObj(w) && typeof w.date === 'string' && typeof w.kg === 'number' && Number.isFinite(w.kg))) {
     return { ok: false, error: 'Ein Gewichtseintrag in der Datei ist ungültig.' };
   }
-  return { ok: true, data: { products: b.products, meals: b.meals, weights: b.weights, settings: b.settings } };
+  const days = b.days ?? [];
+  const exercises = b.exercises ?? [];
+  const workouts = b.workouts ?? [];
+  for (const [k, v] of [['days', days], ['exercises', exercises], ['workouts', workouts]]) {
+    if (!Array.isArray(v)) return { ok: false, error: `Feld "${k}" fehlt oder ist ungültig.` };
+  }
+  if (!days.every((d) => isObj(d) && typeof d.dateKey === 'string' && (d.status === 'rest' || d.status === 'sick'))) {
+    return { ok: false, error: 'Ein Tagesstatus in der Datei ist ungültig.' };
+  }
+  if (!exercises.every((x) => isObj(x) && typeof x.name === 'string')) return { ok: false, error: 'Eine Übung in der Datei ist ungültig.' };
+  if (!workouts.every((w) => isObj(w) && typeof w.dateKey === 'string' && Array.isArray(w.sets))) {
+    return { ok: false, error: 'Eine Trainingseinheit in der Datei ist ungültig.' };
+  }
+  return { ok: true, data: { products: b.products, meals: b.meals, weights: b.weights, days, exercises, workouts, settings: b.settings } };
 }
 
 const dayNumber = (key) => {
