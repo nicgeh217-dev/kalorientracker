@@ -10,9 +10,9 @@
   src: url('fonts/figtree.woff2') format('woff2'); }
 
 :root {
-  --orange: #fc4c02;
+  --orange: #f2711c;
   --orange-2: #ff8a3d;
-  --orange-soft: rgba(252, 76, 2, .12);
+  --orange-soft: rgba(242, 113, 28, .14);
   --bg: #f2f2f7;
   --card: #ffffff;
   --fill: #f2f2f7;
@@ -24,15 +24,16 @@
   --warn-bg: #fff4d6; --warn-text: #8a5a00;
   --bad-bg: #ffe3e0; --bad-text: #b3180f;
   --shadow: 0 1px 2px rgba(0,0,0,.04), 0 6px 20px rgba(0,0,0,.05);
-  --p: #2f80ed; --c: #f5a524; --f: #a855f7;
+  --n-protein: #ff6b57; --n-carbs: #ffb020; --n-fat: #4da3ff; --n-fiber: #3ccf7a; --n-sugar: #ff7ac0;
+  --p: var(--n-protein); --c: var(--n-carbs); --f: var(--n-fat);
   --font: 'Figtree', -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
   --num: 'Barlow Condensed', 'Arial Narrow', sans-serif;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #000; --card: #1c1c1e; --fill: #2c2c2e; --text: #f5f5f7; --muted: #8e8e93;
+    --bg: #0e0e10; --card: #18181b; --fill: #26262b; --text: #f5f5f7; --muted: #8e8e93;
     --line: rgba(255,255,255,.10); --track: rgba(255,255,255,.12);
-    --orange-soft: rgba(252, 76, 2, .22);
+    --orange-soft: rgba(242, 113, 28, .24);
     --warn-bg: #3a2c05; --warn-text: #ffd479; --bad-bg: #3d1411; --bad-text: #ff9b92;
     --shadow: none;
   }
@@ -46,9 +47,9 @@ section[hidden] { display: none; }
 a { color: var(--orange); font-weight: 600; text-decoration: none; }
 
 /* ---------- Typografie ---------- */
-.eyebrow { font-size: 13px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 0 4px 2px; }
-h1 { font-size: 34px; line-height: 1.1; font-weight: 700; letter-spacing: -.02em; margin: 0 4px 16px; }
-h2 { font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 28px 4px 10px; }
+.eyebrow { font-size: 14px; font-weight: 600; color: var(--muted); margin: 0 4px 2px; }
+h1 { font-family: var(--num); font-style: italic; text-transform: uppercase; font-size: 40px; line-height: 1; font-weight: 800; letter-spacing: .01em; margin: 0 4px 16px; }
+h2 { font-size: 15px; font-weight: 700; color: var(--muted); margin: 28px 4px 10px; }
 .num { font-family: var(--num); font-style: italic; font-weight: 800; letter-spacing: -.01em; line-height: .95; font-variant-numeric: tabular-nums; }
 .muted { color: var(--muted); font-size: 14px; }
 
@@ -62,7 +63,7 @@ button { font: inherit; cursor: pointer; transition: transform .12s ease, opacit
 button:active { transform: scale(.96); }
 button:disabled { opacity: .45; }
 .btn, button.plain { min-height: 50px; padding: 0 18px; border: 0; border-radius: 16px; background: var(--card); color: var(--text); font-weight: 600; box-shadow: var(--shadow); }
-button.primary { background: linear-gradient(135deg, var(--orange), var(--orange-2)); color: #fff; box-shadow: 0 8px 20px rgba(252,76,2,.28); }
+button.primary { background: linear-gradient(135deg, var(--orange), var(--orange-2)); color: #fff; box-shadow: 0 8px 20px rgba(242,113,28,.28); }
 button.danger { color: var(--bad-text); }
 button.small { min-height: 36px; padding: 0 12px; border-radius: 12px; font-size: 14px; }
 button.ghost { border: 0; background: var(--fill); color: var(--text); font-weight: 600; }
@@ -149,7 +150,7 @@ svg.chart { width: 100%; height: auto; display: block; }
 #nav button[data-view].active { color: var(--orange); }
 #nav svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 #fab { width: 62px; height: 62px; min-height: 0; padding: 0; margin: -26px auto 0; border: 4px solid var(--bg); border-radius: 50%;
-  display: grid; place-items: center; color: #fff; background: linear-gradient(135deg, var(--orange), var(--orange-2)); box-shadow: 0 10px 24px rgba(252,76,2,.4); }
+  display: grid; place-items: center; color: #fff; background: linear-gradient(135deg, var(--orange), var(--orange-2)); box-shadow: 0 10px 24px rgba(242,113,28,.4); }
 #fab svg { width: 28px; height: 28px; fill: none; stroke: #fff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
 /* ---------- Bottom-Sheet ---------- */
@@ -273,13 +274,13 @@ label.checkrow { display: flex; align-items: flex-start; gap: 12px; margin: 16px
 .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-top: 6px; }
 .cal-head span { text-align: center; font-size: 11px; font-weight: 700; letter-spacing: .04em; color: var(--muted); }
 .cal-day { position: relative; aspect-ratio: 1; min-height: 0; padding: 0; border: 0; border-radius: 10px; background: var(--fill); color: var(--text); font-size: 13px; font-weight: 600; }
-.cal-day.lv1 { background: rgba(252, 76, 2, .28); }
-.cal-day.lv2 { background: rgba(252, 76, 2, .6); color: #fff; }
+.cal-day.lv1 { background: rgba(242, 113, 28, .28); }
+.cal-day.lv2 { background: rgba(242, 113, 28, .6); color: #fff; }
 .cal-day.lv3 { background: var(--orange); color: #fff; }
 .cal-day.today { box-shadow: 0 0 0 2px var(--text); }
 .cal-day.sel { box-shadow: 0 0 0 2px var(--orange); }
 .cal-day.future { opacity: .35; }
-.cal-day .wdot { position: absolute; bottom: 4px; left: 50%; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: var(--p); box-shadow: 0 0 0 1px rgba(255, 255, 255, .6); }
+.cal-day .wsdot { position: absolute; bottom: 4px; left: 50%; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: var(--n-fat); box-shadow: 0 0 0 1px rgba(255, 255, 255, .6); }
 .cal-empty { aspect-ratio: 1; }
 
 /* ---------- Korrekturen und Formular ---------- */
@@ -323,7 +324,7 @@ input:focus-visible, textarea:focus-visible { outline: none; }
 .menu-item { display: grid; gap: 2px; min-height: 64px; padding: 12px 16px; border: 0; border-radius: 18px; background: var(--card); color: var(--text); text-align: left; font-weight: 400; box-shadow: var(--shadow); }
 .menu-item b { font-size: 17px; font-weight: 700; }
 .menu-item span { font-size: 13px; color: var(--muted); }
-.menu-item.primary-item { background: linear-gradient(135deg, var(--orange), var(--orange-2)); color: #fff; box-shadow: 0 8px 20px rgba(252, 76, 2, .28); }
+.menu-item.primary-item { background: linear-gradient(135deg, var(--orange), var(--orange-2)); color: #fff; box-shadow: 0 8px 20px rgba(242, 113, 28, .28); }
 .menu-item.primary-item span { color: rgba(255, 255, 255, .85); }
 
 /* Mahlzeiten-Karte: Inhalt bricht um, statt aus der Karte zu ragen (z. B. mit "Schätzung"-Etikett) */
@@ -342,9 +343,16 @@ input:focus-visible, textarea:focus-visible { outline: none; }
 .wd.sel { background: var(--orange); color: #fff; }
 .wd.sel .wl, .wd.sel .wn { color: #fff; }
 .wdot { width: 6px; height: 6px; border-radius: 50%; background: transparent; }
-.wdot.has { background: var(--orange); }
-.wdot.rest { background: #4da3ff; }
-.wdot.sick { background: #ff7ac0; }
-.wd.sel .wdot.has { background: #fff; }
+.wsdot.has { background: var(--orange); }
+.wsdot.rest { background: #4da3ff; }
+.wsdot.sick { background: #ff7ac0; }
+.wd.sel .wsdot.has { background: #fff; }
 .wnav { width: 32px; min-height: 44px; padding: 0; border: 0; background: transparent; color: var(--text); font-size: 22px; }
 .wnav:disabled { opacity: .3; }
+
+/* Mehr-Tab */
+.morelist { padding: 4px 16px; }
+.morerow { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 56px; padding: 0; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; color: var(--text); font-size: 16px; font-weight: 600; text-align: left; }
+.morerow:last-child { border-bottom: 0; }
+.morerow small { display: block; margin-top: 1px; font-size: 13px; font-weight: 400; color: var(--muted); }
+.morerow .chev { flex: none; color: var(--muted); font-size: 22px; }

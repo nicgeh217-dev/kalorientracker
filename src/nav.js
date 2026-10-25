@@ -1,4 +1,6 @@
-const VIEWS = ['today', 'history', 'products', 'weight', 'settings'];
+const VIEWS = ['today', 'history', 'products', 'weight', 'more', 'settings'];
+// Unterseiten leuchten in der Leiste unter ihrem Eintrag.
+const NAV_ENTRY = { products: 'more', settings: 'more' };
 const renderers = {};
 let current = 'today'; // Die Produktseite hat keinen Eintrag in der Leiste, deshalb merken wir uns die Ansicht selbst.
 
@@ -10,7 +12,7 @@ export function showView(name) {
   current = name;
   for (const v of VIEWS) document.getElementById(`view-${v}`).hidden = v !== name;
   for (const b of document.querySelectorAll('#nav button')) {
-    b.classList.toggle('active', b.dataset.view === name);
+    b.classList.toggle('active', b.dataset.view === (NAV_ENTRY[name] ?? name));
   }
   return renderers[name]?.();
 }

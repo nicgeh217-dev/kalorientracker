@@ -18,7 +18,7 @@ export function weekStrip({ selected, todayKey, counts = {}, statuses = {}, onSe
     },
       el('span', { class: 'wl' }, DAY_LETTERS[i]),
       el('span', { class: 'wn' }, String(Number(key.slice(8)))),
-      el('span', { class: `wdot${status ? ` ${status}` : counts[key] ? ' has' : ''}` }));
+      el('span', { class: `wsdot${status ? ` ${status}` : counts[key] ? ' has' : ''}` }));
   });
   const nextDisabled = days[6] >= todayKey;
   return el('div', { class: 'weekstrip' },

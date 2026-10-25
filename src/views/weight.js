@@ -31,7 +31,7 @@ function chart(weights, avgs, target) {
   const s = svg('svg', { class: 'chart', viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Gewichtsverlauf' });
   const defs = svg('defs');
   const grad = svg('linearGradient', { id: 'wGrad', x1: '0', y1: '0', x2: '0', y2: '1' });
-  grad.append(svg('stop', { offset: '0', 'stop-color': '#fc4c02', 'stop-opacity': '.32' }), svg('stop', { offset: '1', 'stop-color': '#fc4c02', 'stop-opacity': '0' }));
+  grad.append(svg('stop', { offset: '0', 'stop-color': '#f2711c', 'stop-opacity': '.32' }), svg('stop', { offset: '1', 'stop-color': '#f2711c', 'stop-opacity': '0' }));
   defs.append(grad);
   s.append(defs);
   for (const k of [lo, (lo + hi) / 2, hi]) {
@@ -46,10 +46,10 @@ function chart(weights, avgs, target) {
   const line = pts.map(([px, py]) => `${px},${py}`).join(' ');
   s.append(svg('polygon', { points: `${pts[0][0]},${H - padB} ${line} ${pts.at(-1)[0]},${H - padB}`, fill: 'url(#wGrad)' }));
   s.append(svg('polyline', { points: avgLine, fill: 'none', stroke: 'currentColor', 'stroke-opacity': '.55', 'stroke-width': 2, 'stroke-dasharray': '5 5', 'stroke-linecap': 'round' }));
-  s.append(svg('polyline', { points: line, fill: 'none', stroke: '#fc4c02', 'stroke-width': 3, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
+  s.append(svg('polyline', { points: line, fill: 'none', stroke: '#f2711c', 'stroke-width': 3, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
   const [lx, ly] = pts.at(-1);
-  s.append(svg('circle', { cx: lx, cy: ly, r: 8, fill: '#fc4c02', 'fill-opacity': '.2' }));
-  s.append(svg('circle', { cx: lx, cy: ly, r: 4.5, fill: '#fc4c02', stroke: 'var(--card)', 'stroke-width': 2 }));
+  s.append(svg('circle', { cx: lx, cy: ly, r: 8, fill: '#f2711c', 'fill-opacity': '.2' }));
+  s.append(svg('circle', { cx: lx, cy: ly, r: 4.5, fill: '#f2711c', stroke: 'var(--card)', 'stroke-width': 2 }));
   const fmt = (d) => d.slice(8, 10) + '.' + d.slice(5, 7) + '.';
   s.append(svg('text', { x: padL, y: H - 6, 'font-size': 11, 'font-weight': 600, fill: 'currentColor', 'fill-opacity': '.5' }, fmt(weights[0].date)));
   s.append(svg('text', { x: W - padR, y: H - 6, 'font-size': 11, 'font-weight': 600, fill: 'currentColor', 'fill-opacity': '.5', 'text-anchor': 'end' }, fmt(weights.at(-1).date)));
@@ -97,7 +97,7 @@ export async function renderWeight() {
             el('span', { class: 'num', style: 'font-size:30px' }, de(latestAvg.kg), el('small', { style: 'font-family:var(--font);font-style:normal;font-size:13px;color:var(--muted)' }, ' kg')))
         : null,
       el('div', { style: 'margin-top:12px' }, chart(weights, avgs, target)),
-      weights.length > 1 ? el('div', { class: 'legend' }, el('span', { style: 'color:#fc4c02' }, '● Einzelwerte'), el('span', {}, '- - 7-Tage-Schnitt (glättet Schwankungen)')) : null),
+      weights.length > 1 ? el('div', { class: 'legend' }, el('span', { style: 'color:#f2711c' }, '● Einzelwerte'), el('span', {}, '- - 7-Tage-Schnitt (glättet Schwankungen)')) : null),
     fastLossCard(fastLossWarning(weights)),
     target != null && latest ? goalCard(weights, latest, target) : null,
     el('div', { class: 'card' },

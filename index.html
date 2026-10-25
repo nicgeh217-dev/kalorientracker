@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#fc4c02">
+  <meta name="theme-color" content="#f2711c">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon-192.png">
   <link rel="preload" href="fonts/barlow-condensed-800i.woff2" as="font" type="font/woff2" crossorigin>
@@ -16,6 +16,7 @@
     <section id="view-history" hidden></section>
     <section id="view-products" hidden></section>
     <section id="view-weight" hidden></section>
+    <section id="view-more" hidden></section>
     <section id="view-settings" hidden></section>
   </main>
   <div id="dialog-root"></div>
@@ -32,8 +33,8 @@
     <button data-view="weight">
       <svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4.5"/><path d="M8.3 9.6a5 5 0 0 1 7.4 0"/><path d="M12 13.2l2-2.7"/></svg>Gewicht
     </button>
-    <button data-view="settings">
-      <svg viewBox="0 0 24 24"><path d="M4 8h9M17 8h3M4 16h3M11 16h9"/><circle cx="15" cy="8" r="2"/><circle cx="9" cy="16" r="2"/></svg>Einstellungen
+    <button data-view="more">
+      <svg viewBox="0 0 24 24"><circle cx="6" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18" cy="12" r="1.6"/></svg>Mehr
     </button>
   </nav>
   <script type="module" src="src/app.js"></script>

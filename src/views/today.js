@@ -33,7 +33,7 @@ function ring(progress) {
   const s = svg('svg', { viewBox: '0 0 220 220', 'aria-hidden': 'true' });
   const defs = svg('defs');
   const g = svg('linearGradient', { id: 'ringGrad', x1: '0', y1: '0', x2: '1', y2: '1' });
-  g.append(svg('stop', { offset: '0', 'stop-color': '#fc4c02' }), svg('stop', { offset: '1', 'stop-color': '#ff8a3d' }));
+  g.append(svg('stop', { offset: '0', 'stop-color': '#f2711c' }), svg('stop', { offset: '1', 'stop-color': '#ff8a3d' }));
   defs.append(g);
   const track = svg('circle', { class: 'track', cx: 110, cy: 110, r: R });
   const fg = svg('circle', { class: 'fg', cx: 110, cy: 110, r: R, 'stroke-dasharray': CIRC, 'stroke-dashoffset': CIRC });
