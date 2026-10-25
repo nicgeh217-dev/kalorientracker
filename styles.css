@@ -66,7 +66,7 @@ button { font: inherit; cursor: pointer; transition: transform .12s ease, opacit
 button:active { transform: scale(.96); }
 button:disabled { opacity: .45; }
 .btn, button.plain { min-height: 50px; padding: 0 18px; border: 0; border-radius: 16px; background: var(--card); color: var(--text); font-weight: 600; box-shadow: var(--shadow); }
-button.primary { background: linear-gradient(135deg, var(--orange), var(--orange-2)); color: var(--on-orange); box-shadow: 0 8px 20px rgba(242,113,28,.28); }
+button.primary { min-height: 50px; padding: 0 20px; border: 0; border-radius: 16px; background: linear-gradient(135deg, var(--orange), var(--orange-2)); color: var(--on-orange); font-weight: 700; box-shadow: 0 8px 20px rgba(242,113,28,.28), inset 0 1px 0 rgba(255,255,255,.28); }
 button.danger { color: var(--bad-text); }
 button.small { min-height: 36px; padding: 0 12px; border-radius: 12px; font-size: 14px; }
 button.ghost { border: 0; background: var(--fill); color: var(--text); font-weight: 600; }
