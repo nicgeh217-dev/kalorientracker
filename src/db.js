@@ -169,7 +169,7 @@ export async function clearTrainingDraft() {
 // Ersetzt alles in einer Transaktion; bei Fehler wird nichts verändert.
 export async function replaceAll(data) {
   const db = await open();
-  const keepKey = (await getSettings()).geminiKey;
+  const kept = await getSettings(); // Gerätezustand (Key, Online-Sicherung) überlebt das Einspielen einer Sicherung
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORES, 'readwrite');
     tx.oncomplete = () => resolve();
@@ -183,7 +183,7 @@ export async function replaceAll(data) {
       for (const d of data.days ?? []) tx.objectStore('days').put(d);
       for (const x of data.exercises ?? []) tx.objectStore('exercises').put(x);
       for (const w of data.workouts ?? []) tx.objectStore('workouts').put(w);
-      tx.objectStore('settings').put({ calorieGoal: null, ...data.settings, geminiKey: keepKey }, 'main');
+      tx.objectStore('settings').put({ calorieGoal: null, ...data.settings, geminiKey: kept.geminiKey, ...(kept.onlineBackup ? { onlineBackup: kept.onlineBackup } : {}) }, 'main');
     } catch (e) {
       tx.abort();
       reject(e);

@@ -2,7 +2,7 @@ import { localDateKey } from './logic.js';
 
 // Gerätezustand (Key, letzte Sicherung, Snooze) gehört nicht in die Sicherungsdatei.
 export function buildBackup(data, now) {
-  const { geminiKey, lastBackupAt, backupSnoozedUntil, trainingDraft, ...settings } = data.settings ?? {};
+  const { geminiKey, lastBackupAt, backupSnoozedUntil, trainingDraft, onlineBackup, ...settings } = data.settings ?? {};
   return {
     version: 2,
     exportedAt: now.toISOString(),
