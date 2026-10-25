@@ -8,9 +8,11 @@ import { trackingDays, streak, petLevel, nextLevelAt, accessoriesFor, newUnlocks
 import { foxSvg } from './fox.js';
 import { openPetIntro, openPetSheet } from './pet-sheet.js';
 import { shareBackup } from '../backup-share.js';
+import { shouldShowWelcome } from '../welcome.js';
+import { restoreFromText } from '../backup-import.js';
 import { addDays, pickRecent, rollingAverage, fastLossWarning } from '../overview.js';
 import {
-  mealsForDate, deleteMeal, restoreMeal, getSettings, addMeal, listMeals, getProduct, listQueued, deleteQueued, addQueued, listWeights, saveSettings,
+  mealsForDate, deleteMeal, restoreMeal, getSettings, listProducts, replaceAll, addMeal, listMeals, getProduct, listQueued, deleteQueued, addQueued, listWeights, saveSettings,
 } from '../db.js';
 import { showView } from '../nav.js';
 import { viewedDateKey, isViewingToday, setViewedDateKey, dayLabel, longDate, timestampFor } from '../state.js';
@@ -57,12 +59,13 @@ export async function renderToday() {
   queueUrls = [];
   const dateKey = viewedDateKey();
   const isToday = isViewingToday();
-  const [settings, meals, everyMeal, queued, weights] = await Promise.all([
+  const [settings, meals, everyMeal, queued, weights, products] = await Promise.all([
     getSettings(),
     mealsForDate(dateKey),
     listMeals(),
     listQueued(),
     listWeights(),
+    listProducts(),
   ]);
   const todayKey = localDateKey(new Date());
   const t = dayTotals(meals);
@@ -121,6 +124,7 @@ export async function renderToday() {
       el('div', { class: 'daynav' },
         el('button', { 'aria-label': 'Vorheriger Tag', onClick: () => go(addDays(dateKey, -1)) }, '‹'),
         el('button', { 'aria-label': 'Nächster Tag', disabled: isToday, onClick: () => go(addDays(dateKey, 1)) }, '›'))),
+    isToday && shouldShowWelcome({ products, meals: everyMeal, weights, settings }) ? welcomeCard(settings) : null,
     noticeNode,
     petNode,
     el('div', { class: 'card hero2' },
@@ -265,6 +269,27 @@ function suggestionCard(s, settings) {
         });
         renderToday();
       } }, 'Übernehmen')));
+}
+
+function welcomeCard(settings) {
+  const fileInput = el('input', { type: 'file', accept: 'application/json,.json,text/plain', hidden: true });
+  fileInput.addEventListener('change', async () => {
+    const file = fileInput.files?.[0];
+    fileInput.value = '';
+    if (!file) return;
+    const r = await restoreFromText(await file.text(), replaceAll);
+    if (!r.ok) return toast(r.error);
+    toast(`Sicherung wiederhergestellt: ${r.counts.meals} Mahlzeiten, ${r.counts.weights} Gewichtseinträge.`);
+    renderToday();
+  });
+  return el('div', { class: 'card suggest' },
+    el('b', {}, 'Neu hier oder zurück?'),
+    el('div', { class: 'muted', style: 'margin:4px 0 10px' }, 'Wenn du schon eine Sicherung hast, spiel sie hier ein. Sonst starte einfach neu.'),
+    fileInput,
+    el('div', { class: 'actions', style: 'margin:0' },
+      el('button', { class: 'primary', onClick: () => fileInput.click() }, 'Sicherung wiederherstellen'),
+      el('button', { class: 'btn', onClick: () => showView('settings') }, 'Gemini-Key eintragen'),
+      el('button', { class: 'btn', onClick: async () => { await saveSettings({ ...(await getSettings()), welcomeDismissed: true }); renderToday(); } }, 'Neu starten')));
 }
 
 function backupCard(r) {

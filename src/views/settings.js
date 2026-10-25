@@ -3,7 +3,7 @@ import { showView } from '../nav.js';
 import { persistenceStatus } from '../storage-persist.js';
 import { MODELS, DEFAULT_MODEL } from '../gemini.js';
 import { getSettings, saveSettings, exportAll, replaceAll } from '../db.js';
-import { parseBackup } from '../backup.js';
+import { restoreFromText } from '../backup-import.js';
 import { shareBackup, downloadBackup } from '../backup-share.js';
 import { localDateKey } from '../logic.js';
 import { parseIntGoal } from '../goals.js';
@@ -78,17 +78,12 @@ export async function renderSettings() {
     const file = importInput.files?.[0];
     importInput.value = '';
     if (!file) return;
-    const parsed = parseBackup(await file.text());
-    if (!parsed.ok) return say(parsed.error, 'bad');
-    const d = parsed.data;
-    if (!confirm(`Alle aktuellen Daten ersetzen durch ${d.meals.length} Mahlzeiten, ${d.products.length} Produkte und ${d.weights.length} Gewichtseinträge?`)) return;
-    try {
-      await replaceAll(d);
-      say('Sicherung wiederhergestellt.', 'warn');
-      renderSettings();
-    } catch {
-      say('Der Import ist fehlgeschlagen. Deine bisherigen Daten sind unverändert.', 'bad');
-    }
+    const text = await file.text();
+    if (!confirm('Alle aktuellen Daten durch die Sicherung ersetzen?')) return;
+    const r = await restoreFromText(text, replaceAll);
+    if (!r.ok) return say(r.error, 'bad');
+    say(`Sicherung wiederhergestellt: ${r.counts.meals} Mahlzeiten, ${r.counts.products} Produkte, ${r.counts.weights} Gewichtseinträge.`, 'warn');
+    renderSettings();
   });
 
   mount(root,
