@@ -12,7 +12,7 @@ Persönliche Handy-App (PWA): Nährwerttabelle fotografieren, Gemini liest die W
 3. Gemini-API-Key eintragen (https://aistudio.google.com/apikey). Der Key wird nur lokal auf dem Handy gespeichert, nicht im Code und nicht im Repo.
 
 ## Benutzung
-- **Navigation:** Heute, Verlauf, Kamera-Button, Gewicht und **Mehr** (Produkte, Einstellungen, Sicherung).
+- **Navigation:** Heute, **Training**, Kamera-Button, Verlauf und **Mehr** (Gewicht, Produkte, Einstellungen, Sicherung).
 - **Heute:** oben die **Wochenleiste** (Montag bis Sonntag, Punkt = Einträge an dem Tag, blau = Ruhetag, rosa = krank; tippen wechselt den Tag, ‹ › blättert die Woche). Darunter (höchstens ein) Hinweis und die Kalorien-Karte mit Ring und dem Fuchs. Danach fünf **Nährstoff-Ringe** (Eiweiß, Kohlenhydrate, Fett, Ballaststoffe, Zucker, jeweils mit einem Essens-Symbol), die „Zuletzt gegessen“-Schnellauswahl und die Mahlzeiten in vier Abschnitten: **Frühstück, Mittagessen, Abendessen, Snacks** (nach Uhrzeit vorgewählt, im Formular änderbar; „+“ trägt direkt in den Abschnitt ein). Eine Mahlzeit antippen öffnet sie zum Bearbeiten oder **Löschen** (mit „Rückgängig“ statt Rückfrage).
 - **Nährstoff-Ringe:** Die Ringe zeigen, wie weit du auf dem Weg zu einem **Richtwert** bist, und werden nie rot. Standard: Eiweiß = dein Proteinziel oder 20 % der Kalorien, Kohlenhydrate 50 %, Fett 30 %, Ballaststoffe 30 g, Zucker „höchstens“ 10 % der Kalorien. Das sind Orientierungswerte, keine Vorgabe. Unter **Einstellungen → Nährstoff-Richtwerte** kannst du jeden Wert überschreiben (leer = Standard). Ballaststoffe und Zucker liest Gemini aus der Nährwerttabelle ab (koreanisch 식이섬유 und 당류); bei Schätzungen sind sie geschätzt. Ältere Einträge ohne diese Werte zeigen „–“ statt einer falschen 0.
 - **Kamera-Button (unten Mitte):** öffnet die Auswahl **Foto aufnehmen, Aus Galerie, Beschreiben, Aus Produkten, Manuell**. Fotos (bis zu 4 desselben Produkts, z. B. Vorderseite und Nährwerttabelle) und Beschreibung landen im Scan-Dialog, dort **Auswerten**.
@@ -27,8 +27,17 @@ Persönliche Handy-App (PWA): Nährwerttabelle fotografieren, Gemini liest die W
 - **Offline:** Ohne Internet kannst du Fotos „für später speichern“. Sie erscheinen auf „Heute“ unter „Wartet auf Auswertung“ und werden online ausgewertet.
 - **Schätzung nachbessern:** Im Formular „Mit Hinweis neu schätzen“, z. B. „kleine Portion, ohne Öl“.
 - **Ziele (Einstellungen):** Kalorien, optional Protein und Zielgewicht. Beim Zielgewicht zeigt „Gewicht“ eine grobe Prognose aus den letzten 4 Wochen.
-- **Gewicht:** ein Eintrag pro Tag, Diagramm über die Zeit.
+- **Gewicht:** unter **Mehr → Gewicht** (oder per Kurzbefehl): ein Eintrag pro Tag, Diagramm über die Zeit. Der letzte Wert steht auch im Verlauf unter „Fortschritt“.
 - **Verlauf:** Wochenleiste, darunter die Karte des gewählten Tages mit den Schaltern **Ruhetag** und **Krank**. Ein Krankheitstag unterbricht die Fuchs-Serie nicht (zählt aber auch nicht mit), ein Ruhetag betrifft später nur das Training. „Dein Jahr“ zeigt Serie, Rekord und Tage insgesamt und eine **Jahres-Heatmap** (53 Wochen, scrollt seitwärts): Die Farbe zeigt nur, **wie viele Einträge** du an dem Tag hattest (nicht Kalorien), krank = kleiner blauer Punkt, Ruhetag = Haken. Darunter „Letzte 7 Tage“ (Ø kcal, Tage im Ziel, Balken mit Ziellinie).
+
+## Training
+Tab **Training**: **Einheit starten** (oder im Kamera-Menü „Training starten“), **Heute Ruhetag** setzen oder ein früheres Training **nachtragen**. Darunter „Letzte Einheiten“ (antippen für Details und **Löschen** mit Rückgängig) und deine **Übungen**.
+
+- **Übungen:** Beim ersten Mal bietet die App Vorschläge an (Kniebeugen, Bankdrücken, Kreuzheben, Schulterdrücken, Klimmzüge, Rudern, Bizeps-Curls, Plank). Eigene Übungen legst du mit Muskelgruppe an, umbenennen und löschen (mit Rückgängig) geht per Antippen. Alte Einheiten bleiben beim Löschen einer Übung erhalten.
+- **Einheit:** Übungen hinzufügen, pro Satz Gewicht und Wiederholungen eintragen (vorbelegt vom letzten Mal, 0 kg = Körpergewicht) und mit dem Haken abhaken. **Satz hinzufügen** übernimmt die letzten Werte. Der Haken startet den **Pausen-Timer** (Standard 90 s, mit −15/+15 zwischen 30 und 300 s einstellbar, am Ende vibriert das Handy). **Fertig** speichert, Titel und Dauer entstehen automatisch. Die laufende Einheit wird laufend gesichert: Beim Neuladen oder Schließen kannst du sie mit „Offene Einheit fortsetzen“ weitermachen. Sätze ohne Haken oder ohne Wiederholungen werden nicht gespeichert.
+- **Rekorde:** Bei einem neuen Bestwert (geschätztes Maximum nach Epley: Gewicht × (1 + Wiederholungen / 30)) erscheint der Fuchs mit Krone. Der erste Satz einer Übung zählt nie als Rekord.
+- **Fortschritt (im Verlauf):** Gewicht, die drei besten Übungen, Muskelverteilung der letzten 30 Tage (neutral, z. B. „Schultern zuletzt vor 9 Tagen“), Sätze pro Woche (8 Wochen) und die Kraft-Kurve je Übung.
+- Training wird nie bewertet, und der Fuchs reagiert nur darauf, ob du einträgst.
 
 ## Animationen
 Beim Start (nur ein Kaltstart pro Sitzung, höchstens 1,4 s, Tippen überspringt) füllt sich ein Ring, der Fuchs hüpft hinein und drei Essens-Symbole fliegen in die Mitte. Beim Eintragen fliegt das passende Symbol von der Kamera-Taste zum Fuchs, der kaut, und die Zahlen und Ringe zählen sich hoch. Es werden nur Bewegung und Transparenz animiert. Mit der Handy-Einstellung **Bewegung reduzieren** gibt es keinen Start-Splash, keinen Flug und die Zahlen springen sofort. Beim Start über Kurzbefehl oder „Teilen“ gibt es ebenfalls keinen Splash.
@@ -56,7 +65,7 @@ Berechnet ein Tagesziel aus Geschlecht, Alter, Größe, Gewicht, Aktivität und 
 In Google AI Studio / Google Cloud den Key auf die Website-Adresse der App (`nicgeh217-dev.github.io`) beschränken und ein Kostenlimit setzen. Dann richtet ein abgegriffener Key kaum Schaden an.
 
 ## Sicherung
-Unter **Mehr → Sicherung** (oder Einstellungen) → **Sicherung teilen** öffnet sich das Teilen-Menü deines Handys: Schick die Datei an Google Drive, per E-Mail oder an dich selbst. **Als Datei speichern** lädt sie stattdessen herunter. Die Sicherung (Version 2) enthält Mahlzeiten, Produkte, Gewicht, Tagesstatus und Ziele, aber keinen Gemini-Key; ältere Sicherungen (Version 1) lassen sich weiter einspielen. Fotos in der Warteschlange sind nicht dabei.
+Unter **Mehr → Sicherung** (oder Einstellungen) → **Sicherung teilen** öffnet sich das Teilen-Menü deines Handys: Schick die Datei an Google Drive, per E-Mail oder an dich selbst. **Als Datei speichern** lädt sie stattdessen herunter. Die Sicherung (Version 2) enthält Mahlzeiten, Produkte, Gewicht, Tagesstatus, Übungen, Trainingseinheiten und Ziele, aber keinen Gemini-Key; ältere Sicherungen (Version 1) lassen sich weiter einspielen. Fotos in der Warteschlange sind nicht dabei.
 
 - **Erinnerung:** Auf „Heute“ erscheint ein Kasten, wenn du noch nie gesichert hast (ab 3 Tagen mit Daten) oder die letzte Sicherung mindestens 7 Tage alt ist und neue Einträge dazugekommen sind. „In 3 Tagen“ blendet ihn aus.
 - **Wiederherstellen:** **Sicherung importieren** ersetzt alle aktuellen Daten (nach Rückfrage). Bei einer ungültigen Datei bleibt alles unverändert.
