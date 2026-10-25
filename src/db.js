@@ -114,6 +114,51 @@ export async function setDayStatus(dateKey, status) {
 }
 export const listDayStatuses = () => getAll('days');
 
+// ---------- Training ----------
+export async function addExercise(e) {
+  const { id, ...rest } = e;
+  return wrap((await store('exercises', 'readwrite')).add(rest));
+}
+export const listExercises = () => getAll('exercises');
+export async function updateExercise(e) {
+  await wrap((await store('exercises', 'readwrite')).put(e));
+}
+export async function deleteExercise(id) {
+  await wrap((await store('exercises', 'readwrite')).delete(id));
+}
+
+export async function addWorkout(w) {
+  const { id, ...rest } = w;
+  return wrap((await store('workouts', 'readwrite')).add(rest));
+}
+export async function updateWorkout(w) {
+  await wrap((await store('workouts', 'readwrite')).put(w));
+}
+export async function deleteWorkout(id) {
+  await wrap((await store('workouts', 'readwrite')).delete(id));
+}
+// Stellt eine gelöschte Einheit mit derselben ID wieder her ("Rückgängig").
+export async function restoreWorkout(w) {
+  await wrap((await store('workouts', 'readwrite')).put(w));
+}
+export const listWorkouts = () => getAll('workouts');
+export async function workoutsForDate(dateKey) {
+  const list = await wrap((await store('workouts')).index('dateKey').getAll(dateKey));
+  return list.sort((a, b) => (a.startedAt ?? 0) - (b.startedAt ?? 0));
+}
+
+// Laufende Einheit (Entwurf) liegt in den Einstellungen, damit sie ein Neuladen übersteht. Sie ist nicht Teil der Sicherung.
+export async function getTrainingDraft() {
+  return (await getSettings()).trainingDraft ?? null;
+}
+export async function saveTrainingDraft(draft) {
+  await saveSettings({ ...(await getSettings()), trainingDraft: draft });
+}
+export async function clearTrainingDraft() {
+  const { trainingDraft, ...rest } = await getSettings();
+  await saveSettings(rest);
+}
+
 // Ersetzt alles in einer Transaktion; bei Fehler wird nichts verändert.
 export async function replaceAll(data) {
   const db = await open();
