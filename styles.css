@@ -112,14 +112,6 @@ input.missing { background: var(--bad-bg); border-color: var(--red); }
 .split i { display: block; height: 100%; transition: flex-grow .8s cubic-bezier(.22,1,.36,1); }
 
 /* ---------- Heute: Feed ---------- */
-.meal { display: grid; gap: 10px; animation: rise .5s cubic-bezier(.22,1,.36,1) both; animation-delay: calc(var(--i, 0) * 60ms); }
-.meal-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
-.meal-top strong { font-size: 17px; font-weight: 700; display: block; }
-.meal-stats { display: flex; align-items: flex-end; gap: 18px; }
-.meal-stats .kcal { font-size: 44px; color: var(--orange); }
-.meal-stats .kcal small { font-family: var(--font); font-style: normal; font-size: 13px; font-weight: 700; color: var(--muted); margin-left: 3px; }
-.mini b { display: block; font-family: var(--num); font-style: italic; font-weight: 800; font-size: 22px; line-height: 1; }
-.mini span { font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
 .x { width: 32px; height: 32px; min-height: 0; padding: 0; border: 0; border-radius: 50%; background: var(--fill); color: var(--muted); font-size: 18px; line-height: 1; }
 
 /* ---------- Gruppierte Listen (Produkte) ---------- */
@@ -304,20 +296,7 @@ input:focus-visible, textarea:focus-visible { outline: none; }
 .hero-side { display: grid; gap: 12px; min-width: 0; }
 .hs-row { display: flex; gap: 20px; font-size: 12px; font-weight: 600; color: var(--muted); }
 .hs-row b { display: block; font-family: var(--num); font-style: italic; font-weight: 800; font-size: 26px; line-height: 1; color: var(--text); }
-.hs-macros { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-.mm .lbl { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; color: var(--muted); margin-bottom: 2px; white-space: nowrap; }
-.mm .num { font-size: 22px; }
-.mm .num small { font-size: 12px; margin-left: 1px; color: var(--muted); }
-.hero2 .pgoal { margin-top: 0; padding-top: 8px; }
-.hero2 .pgoal .row b { font-size: 16px; }
 
-.pet-strip { display: flex; align-items: center; gap: 10px; width: 100%; margin-bottom: 12px; padding: 8px 14px 8px 8px; border: 0; border-radius: 20px; background: var(--card); box-shadow: var(--shadow); color: var(--text); text-align: left; font-weight: 400; }
-.pet-strip .pet-fox { flex: none; width: 54px; height: 54px; }
-.pet-strip .bubble { flex: 1; min-width: 0; padding: 8px 12px; font-size: 14px; }
-.pet-strip .bubble::before { top: 16px; }
-.pet-strip .streak { flex: none; display: grid; justify-items: center; line-height: 1; color: var(--orange); }
-.pet-strip .streak b { font-family: var(--num); font-style: italic; font-weight: 800; font-size: 24px; }
-.pet-strip .streak span { font-size: 11px; font-weight: 700; color: var(--muted); margin-top: 2px; }
 
 /* ---------- Eintragen-Menü ---------- */
 .menu { display: grid; gap: 8px; margin-top: 4px; }
@@ -327,10 +306,6 @@ input:focus-visible, textarea:focus-visible { outline: none; }
 .menu-item.primary-item { background: linear-gradient(135deg, var(--orange), var(--orange-2)); color: #fff; box-shadow: 0 8px 20px rgba(242, 113, 28, .28); }
 .menu-item.primary-item span { color: rgba(255, 255, 255, .85); }
 
-/* Mahlzeiten-Karte: Inhalt bricht um, statt aus der Karte zu ragen (z. B. mit "Schätzung"-Etikett) */
-.meal { grid-template-columns: minmax(0, 1fr); }
-.meal-stats { flex-wrap: wrap; row-gap: 8px; column-gap: 16px; }
-.meal-stats .tag { order: 3; }
 
 /* Wochenleiste */
 .weekstrip { display: flex; align-items: center; gap: 4px; margin-bottom: 14px; }
@@ -356,3 +331,41 @@ input:focus-visible, textarea:focus-visible { outline: none; }
 .morerow:last-child { border-bottom: 0; }
 .morerow small { display: block; margin-top: 1px; font-size: 13px; font-weight: 400; color: var(--muted); }
 .morerow .chev { flex: none; color: var(--muted); font-size: 22px; }
+
+/* Heute neu: Kalorien-Karte, Nährstoff-Kacheln, Abschnitte */
+.kcalcard { display: grid; gap: 12px; }
+.kcalcard .hero2 { padding: 0; }
+.pet-line { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 0; padding: 0; border: 0; background: transparent; color: var(--text); text-align: left; font-weight: 400; }
+.pet-line .pet-text { flex: 1; min-width: 0; font-size: 14px; color: var(--muted); }
+.pet-line .pet-fox { flex: none; width: 48px; height: 48px; }
+.pet-line .streak { flex: none; display: grid; justify-items: center; line-height: 1; color: var(--orange); }
+.pet-line .streak b { font-family: var(--num); font-style: italic; font-weight: 800; font-size: 22px; }
+.pet-line .streak span { font-size: 11px; font-weight: 700; color: var(--muted); margin-top: 2px; }
+.ntiles { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+.ntile { grid-column: span 2; display: grid; justify-items: center; gap: 1px; padding: 10px 6px 8px; border-radius: 20px; background: var(--card); box-shadow: var(--shadow); text-align: center; }
+.ntile:nth-child(n+4) { grid-column: span 3; }
+.nring { position: relative; width: 52px; height: 52px; }
+.nring > svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.nring .ntrack { fill: none; stroke: var(--track); stroke-width: 6; }
+.nring .nfg { fill: none; stroke-width: 6; stroke-linecap: round; }
+.nicon { position: absolute; inset: 0; display: grid; place-items: center; }
+.nval { font-size: 22px; margin-top: 3px; }
+.nval small { font-family: var(--font); font-style: normal; font-size: 12px; font-weight: 700; margin-left: 2px; color: var(--muted); }
+.nname { font-size: 13px; font-weight: 700; }
+.nhint { font-size: 12px; color: var(--muted); }
+.slot { margin-bottom: 12px; }
+.slothead { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 0 4px; margin: 20px 0 8px; }
+.slothead h2 { margin: 0; flex: 1; }
+.slothead .skcal { font-family: var(--num); font-style: italic; font-weight: 800; font-size: 20px; color: var(--text); }
+.slothead .skcal small { font-family: var(--font); font-style: normal; font-size: 12px; font-weight: 700; color: var(--muted); margin-left: 2px; }
+.slotadd { width: 36px; height: 36px; min-height: 0; padding: 0; border: 0; border-radius: 50%; background: var(--card); color: var(--orange); box-shadow: var(--shadow); font-size: 22px; line-height: 1; }
+.slotlist { padding: 0; overflow: hidden; }
+.mrow { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 60px; padding: 10px 16px; border: 0; border-radius: 0; background: transparent; color: var(--text); text-align: left; font-weight: 400; }
+.mrow + .mrow { border-top: 1px solid var(--line); }
+.mrow:active { background: var(--fill); transform: none; }
+.mrow .mi { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: var(--fill); }
+.mrow .mt { flex: 1; min-width: 0; }
+.mrow .mt strong { display: block; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mrow .mk { flex: none; font-family: var(--num); font-style: italic; font-weight: 800; font-size: 24px; color: var(--orange); }
+.mrow .mk small { font-family: var(--font); font-style: normal; font-size: 12px; font-weight: 700; color: var(--muted); margin-left: 2px; }
+.slotempty { padding: 12px 16px; font-size: 14px; }

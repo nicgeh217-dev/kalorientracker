@@ -8,7 +8,7 @@ const ASSETS = [
   './src/gemini.js', './src/gemini-parse.js', './src/gemini-retry.js', './src/overview.js', './src/state.js', './src/backup.js', './src/backup-share.js', './src/storage-persist.js', './src/welcome.js', './src/backup-import.js', './src/pet.js', './src/views/fox.js', './src/views/pet-sheet.js', './src/weight-input.js',
   './src/calendar.js', './src/amount.js', './src/notices.js', './src/views/history.js', './src/views/add-menu.js', './src/launch.js', './src/share-inbox.js',
   './fonts/barlow-condensed-700i.woff2', './fonts/barlow-condensed-800i.woff2', './fonts/figtree.woff2',
-  './src/views/products.js', './src/views/product-form.js', './src/goals.js', './src/nutrients.js', './src/slots.js', './src/week.js', './src/food-icons.js', './src/views/food-icons.js', './src/views/week-strip.js', './src/views/more.js', './src/calorie.js', './src/views/calculator.js', './src/views/notes.js', './src/views/weight.js', './src/views/settings.js'
+  './src/views/products.js', './src/views/product-form.js', './src/goals.js', './src/nutrients.js', './src/slots.js', './src/week.js', './src/food-icons.js', './src/views/food-icons.js', './src/views/week-strip.js', './src/views/nutrient-rings.js', './src/views/more.js', './src/calorie.js', './src/views/calculator.js', './src/views/notes.js', './src/views/weight.js', './src/views/settings.js'
 ];
 
 const shareUrl = (name) => new URL(`shared/${name}`, self.registration.scope).href;

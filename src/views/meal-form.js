@@ -1,8 +1,8 @@
-import { el, openSheet, closeSheet, parseNum, segmented } from '../dom.js';
+import { el, openSheet, closeSheet, parseNum, segmented, toast } from '../dom.js';
 import { scaleNutrition, checkPlausibility, localDateKey } from '../logic.js';
-import { addProduct, updateProduct, addMeal, updateMeal } from '../db.js';
+import { addProduct, updateProduct, addMeal, updateMeal, deleteMeal, restoreMeal } from '../db.js';
 import { viewedDateKey, dayLabel, longDate, timestampFor } from '../state.js';
-import { showView } from '../nav.js';
+import { showView, refreshCurrent } from '../nav.js';
 import { SLOTS, slotForTime } from '../slots.js';
 import { defaultAmount, quickAmounts, amountForBasisChange } from '../amount.js';
 
@@ -178,6 +178,13 @@ export function openMealForm(prefill, opts = {}) {
     }
   }
 
+  async function onDelete() {
+    await deleteMeal(meal.id);
+    closeSheet();
+    await refreshCurrent();
+    toast(`${meal.name} gelöscht`, 'Rückgängig', async () => { await restoreMeal(meal); refreshCurrent(); });
+  }
+
   // Bezugsgröße gewechselt: Menge folgt mit, solange sie unberührt ist (sonst fehlt evtl. die Portionsgröße).
   basis.addEventListener('input', () => {
     const next = amountForBasisChange({
@@ -220,7 +227,8 @@ export function openMealForm(prefill, opts = {}) {
     amountValue, el('div', { style: 'height:8px' }), segmented(amountUnit),
     preview, notes,
     el('div', { class: 'actions' },
-      el('button', { class: 'btn', onClick: () => { onCancel?.(); closeSheet(); } }, 'Abbrechen'), saveBtn));
+      el('button', { class: 'btn', onClick: () => { onCancel?.(); closeSheet(); } }, 'Abbrechen'), saveBtn,
+      meal ? el('button', { class: 'btn danger wide', onClick: onDelete }, 'Löschen') : null));
   refresh();
 }
 

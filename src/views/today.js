@@ -10,9 +10,16 @@ import { openPetIntro, openPetSheet } from './pet-sheet.js';
 import { shareBackup } from '../backup-share.js';
 import { shouldShowWelcome } from '../welcome.js';
 import { restoreFromText } from '../backup-import.js';
+import { NUTRIENTS, nutrientTargets } from '../nutrients.js';
+import { groupBySlot } from '../slots.js';
+import { shiftWeek } from '../week.js';
+import { weekStrip } from './week-strip.js';
+import { foodIconFor } from '../food-icons.js';
+import { foodIconSvg } from './food-icons.js';
+import { nutrientTile } from './nutrient-rings.js';
 import { addDays, pickRecent, rollingAverage, fastLossWarning } from '../overview.js';
 import {
-  mealsForDate, deleteMeal, restoreMeal, getSettings, listProducts, replaceAll, addMeal, listMeals, getProduct, listQueued, deleteQueued, addQueued, listWeights, saveSettings,
+  mealsForDate, deleteMeal, getSettings, listProducts, replaceAll, listDayStatuses, addMeal, listMeals, getProduct, listQueued, deleteQueued, addQueued, listWeights, saveSettings,
 } from '../db.js';
 import { showView } from '../nav.js';
 import { viewedDateKey, isViewingToday, setViewedDateKey, dayLabel, longDate, timestampFor } from '../state.js';
@@ -59,13 +66,14 @@ export async function renderToday() {
   queueUrls = [];
   const dateKey = viewedDateKey();
   const isToday = isViewingToday();
-  const [settings, meals, everyMeal, queued, weights, products] = await Promise.all([
+  const [settings, meals, everyMeal, queued, weights, products, dayStatuses] = await Promise.all([
     getSettings(),
     mealsForDate(dateKey),
     listMeals(),
     listQueued(),
     listWeights(),
     listProducts(),
+    listDayStatuses(),
   ]);
   const todayKey = localDateKey(new Date());
   const t = dayTotals(meals);
@@ -75,6 +83,13 @@ export async function renderToday() {
   const centerNum = goal ? Math.abs(goal - t.kcal) : t.kcal;
   const centerUnit = goal ? (over ? 'kcal drüber' : 'kcal übrig') : 'kcal';
   const recent = pickRecent(everyMeal, 6);
+  const sickDays = dayStatuses.filter((d) => d.status === 'sick').map((d) => d.dateKey);
+  const statusByDay = Object.fromEntries(dayStatuses.map((d) => [d.dateKey, d.status]));
+  const countByDay = {};
+  for (const m of everyMeal) countByDay[m.dateKey] = (countByDay[m.dateKey] ?? 0) + 1;
+  const targets = nutrientTargets({ kcal: goal, proteinGoal: settings.proteinGoal, overrides: settings.targets });
+  // Ballaststoffe/Zucker: ältere Einträge haben diese Werte nicht, dann lieber "–" als eine falsche 0.
+  const nutrientValue = (id) => ((id === 'fiber' || id === 'sugar') && meals.length && meals.every((m) => m[id] == null) ? null : t[id]);
 
   // Kalorienrechner: Vorschlag (nur mit Bestätigung) und Warnung bei zu schneller Abnahme
   const lastW = weights.at(-1);
@@ -93,7 +108,7 @@ export async function renderToday() {
 
   // Fuchs-Begleiter (alles aus den Einträgen abgeleitet)
   const petDays = trackingDays(everyMeal);
-  const petStreak = streak(petDays, todayKey);
+  const petStreak = streak(petDays, todayKey, sickDays);
   const petTotal = petDays.length;
   const petLvl = petLevel(petTotal);
   const todayCount = everyMeal.filter((m) => m.dateKey === todayKey).length;
@@ -105,7 +120,7 @@ export async function renderToday() {
     introOpen = true;
     openPetIntro(petLvl);
   } else if (isToday && petCfg && petCfg.enabled !== false) {
-    petNode = petStrip({
+    petNode = petLine({
       cfg: petCfg, level: petLvl, total: petTotal, streak: petStreak, todayCount, munch, todayKey,
       daysSinceLast: petDays.length ? daysBetween(petDays.at(-1), todayKey) : null,
       weightToday: weights.some((w) => w.date === todayKey),
@@ -118,48 +133,44 @@ export async function renderToday() {
     }
   }
 
+  const goToWeek = (n) => { const next = shiftWeek(dateKey, n); return go(next > todayKey ? todayKey : next); };
   mount(root,
     el('div', { class: 'dayhead' },
-      el('div', {}, el('div', { class: 'eyebrow' }, longDate(dateKey)), el('h1', {}, dayLabel(dateKey))),
-      el('div', { class: 'daynav' },
-        el('button', { 'aria-label': 'Vorheriger Tag', onClick: () => go(addDays(dateKey, -1)) }, '‹'),
-        el('button', { 'aria-label': 'Nächster Tag', disabled: isToday, onClick: () => go(addDays(dateKey, 1)) }, '›'))),
+      el('div', {}, el('div', { class: 'eyebrow' }, longDate(dateKey)), el('h1', {}, dayLabel(dateKey)))),
+    weekStrip({ selected: dateKey, todayKey, counts: countByDay, statuses: statusByDay, onSelect: go, onShift: goToWeek }),
     isToday && shouldShowWelcome({ products, meals: everyMeal, weights, settings }) ? welcomeCard(settings) : null,
     noticeNode,
-    petNode,
-    el('div', { class: 'card hero2' },
-      el('div', { class: `ring${over ? ' over' : ''}` },
-        ring(progress),
-        el('div', { class: 'center' },
-          el('div', { class: 'num' }, String(centerNum)),
-          el('div', { class: 'unit' }, centerUnit))),
-      el('div', { class: 'hero-side' },
-        goal
-          ? el('div', { class: 'hs-row' },
-              el('div', {}, el('b', {}, String(t.kcal)), 'gegessen'),
-              el('div', {}, el('b', {}, String(goal)), 'Ziel'))
-          : el('div', { class: 'note warn', style: 'margin:0' }, 'Noch kein Ziel. ',
-              el('a', { href: '#', onClick: (e) => { e.preventDefault(); showView('settings'); } }, 'Jetzt festlegen')),
-        el('div', { class: 'hs-macros' },
-          macro('Protein', t.protein, 'var(--p)'),
-          macro('Kohlenh.', t.carbs, 'var(--c)'),
-          macro('Fett', t.fat, 'var(--f)')),
-        settings.proteinGoal ? proteinGoalRow(t.protein, settings.proteinGoal) : null)),
+    el('div', { class: 'card kcalcard' },
+      petNode,
+      el('div', { class: 'hero2' },
+        el('div', { class: `ring${over ? ' over' : ''}` },
+          ring(progress),
+          el('div', { class: 'center' },
+            el('div', { class: 'num' }, String(centerNum)),
+            el('div', { class: 'unit' }, centerUnit))),
+        el('div', { class: 'hero-side' },
+          goal
+            ? el('div', { class: 'hs-row' },
+                el('div', {}, el('b', {}, String(t.kcal)), 'gegessen'),
+                el('div', {}, el('b', {}, String(goal)), 'Ziel'))
+            : el('div', { class: 'note warn', style: 'margin:0' }, 'Noch kein Ziel. ',
+                el('a', { href: '#', onClick: (e) => { e.preventDefault(); showView('settings'); } }, 'Jetzt festlegen'))))),
+    el('div', { class: 'ntiles' }, ...NUTRIENTS.map((n) => nutrientTile({ nutrient: n, value: nutrientValue(n.id), target: targets?.[n.id] ?? null }))),
     queued.length ? el('h2', {}, 'Wartet auf Auswertung') : null,
     ...queued.map(queueCard),
     recent.length ? el('div', { class: 'chips' }, ...recent.map((m) => recentChip(m, dateKey))) : null,
-    el('h2', {}, 'Mahlzeiten'),
-    ...(meals.length
-      ? [...meals].reverse().map(mealCard)
-      : [el('div', { class: 'card muted' }, isToday
-          ? 'Noch nichts eingetragen. Tippe auf den Kamera-Button, um etwas einzutragen.'
-          : 'Für diesen Tag ist nichts eingetragen. Mit dem Kamera-Button kannst du es nachtragen.')]));
+    ...groupBySlot(meals).map((g) => slotSection(g, dateKey)));
 }
 
-function macro(label, grams, color) {
-  return el('div', { class: 'mm' },
-    el('div', { class: 'lbl' }, el('span', { class: 'dot', style: `background:${color}` }), label),
-    el('div', { class: 'num' }, String(grams), el('small', {}, 'g')));
+function slotSection(g, dateKey) {
+  return el('div', { class: 'slot' },
+    el('div', { class: 'slothead' },
+      el('h2', {}, g.label),
+      g.meals.length ? el('span', { class: 'skcal' }, String(g.kcal), el('small', {}, 'kcal')) : null,
+      el('button', { class: 'slotadd', 'aria-label': `${g.label} hinzufügen`, onClick: () => openMealForm(null, { dateKey, slot: g.slot }) }, '+')),
+    g.meals.length
+      ? el('div', { class: 'card slotlist' }, ...[...g.meals].sort((a, b) => a.timestamp.localeCompare(b.timestamp)).map(mealRow))
+      : null);
 }
 
 function recentChip(m, dateKey) {
@@ -184,41 +195,13 @@ async function editMeal(m) {
   openMealForm(prefill, { meal: m });
 }
 
-function mealCard(m, i) {
+function mealRow(m) {
   const time = new Date(m.timestamp).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
   const amt = m.amount ? ` · ${String(m.amount.value).replace('.', ',')} ${m.amount.unit === 'g' ? 'g' : '×'}` : '';
-  return el('div', { class: 'card meal', style: `--i:${i}` },
-    el('div', { class: 'meal-top' },
-      el('div', {}, el('strong', {}, m.name), el('div', { class: 'muted' }, `${time}${amt}`)),
-      el('div', { class: 'xrow' },
-        el('button', { class: 'x', 'aria-label': `${m.name} bearbeiten`, onClick: () => editMeal(m) }, '✎'),
-        el('button', {
-          class: 'x',
-          'aria-label': `${m.name} löschen`,
-          onClick: async () => {
-            await deleteMeal(m.id);
-            renderToday();
-            toast(`${m.name} gelöscht`, 'Rückgängig', async () => { await restoreMeal(m); renderToday(); });
-          },
-        }, '×'))),
-    el('div', { class: 'meal-stats' },
-      el('div', { class: 'num kcal' }, `${m.estimated ? '~' : ''}${m.kcal}`, el('small', {}, 'kcal')),
-      m.estimated ? el('span', { class: 'tag' }, 'Schätzung') : null,
-      mini('Protein', m.protein), mini('KH', m.carbs), mini('Fett', m.fat)));
-}
-
-function mini(label, v) {
-  return el('div', { class: 'mini' }, el('b', {}, v == null ? '–' : String(v)), el('span', {}, label));
-}
-
-function proteinGoalRow(protein, goal) {
-  const pct = Math.min(100, Math.round((protein / goal) * 100));
-  const reached = protein >= goal;
-  return el('div', { class: 'pgoal' },
-    el('div', { class: 'row' },
-      el('span', { class: 'muted' }, reached ? 'Proteinziel erreicht' : 'Proteinziel'),
-      el('b', {}, `${protein} / ${goal} g`)),
-    el('div', { class: 'pbar', role: 'progressbar', 'aria-valuenow': protein, 'aria-valuemax': goal }, el('div', { style: `width:${pct}%` })));
+  return el('button', { class: 'mrow', 'aria-label': `${m.name} bearbeiten`, onClick: () => editMeal(m) },
+    el('div', { class: 'mi' }, foodIconSvg(foodIconFor(m.name), 28)),
+    el('div', { class: 'mt' }, el('strong', {}, m.name), el('div', { class: 'muted' }, `${time}${amt}`)),
+    el('div', { class: 'mk' }, `${m.estimated ? '~' : ''}${m.kcal}`, el('small', {}, 'kcal')));
 }
 
 function queueCard(item) {
@@ -310,21 +293,21 @@ function backupCard(r) {
       } }, 'Jetzt sichern')));
 }
 
-// Schmale Zeile: kleiner Fuchs, Sprechblase, Serie. Details (Stufen, Rekord, Umbenennen) im Dialog.
-function petStrip({ cfg, level, total, streak: stk, todayCount, daysSinceLast, weightToday, munch, todayKey }) {
+// Zeile oben in der Kalorien-Karte: Sprechblase als Text, Serie und Fuchs. Details (Stufen, Rekord, Umbenennen) im Dialog.
+function petLine({ cfg, level, total, streak: stk, todayCount, daysSinceLast, weightToday, munch, todayKey }) {
   const hour = new Date().getHours();
   const mood = munch ? 'happy' : petMood({ todayCount, hour, daysSinceLast, streakCurrent: stk.current, weightToday });
   const text = munch
     ? 'Lecker, danke fürs Eintragen!'
     : petMessage({ mood, hour, name: cfg.name, streak: stk.current, todayCount, totalDays: total, dateKey: todayKey });
   return el('button', {
-    class: 'pet-strip',
+    class: 'pet-line',
     'aria-label': `${cfg.name} öffnen. ${stk.current} Tage in Folge, Rekord ${stk.best}`,
     onClick: () => openPetSheet({ name: cfg.name, level, total, streak: stk, nextAt: nextLevelAt(total) }),
   },
-    el('div', { class: 'pet-fox' }, foxSvg({ mood, accessories: accessoriesFor(level).map((a) => a.id), munch, size: 54 })),
-    el('div', { class: 'bubble' }, text),
+    el('div', { class: 'pet-text' }, text),
     total > 0
       ? el('div', { class: 'streak' }, el('b', {}, String(stk.current)), el('span', {}, stk.current === 1 ? 'Tag' : 'Tage'))
-      : null);
+      : null,
+    el('div', { class: 'pet-fox' }, foxSvg({ mood, accessories: accessoriesFor(level).map((a) => a.id), munch, size: 48 })));
 }
