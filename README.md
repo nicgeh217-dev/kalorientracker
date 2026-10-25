@@ -55,6 +55,7 @@ Unter **Einstellungen → Sicherung teilen** öffnet sich das Teilen-Menü deine
 
 - **Erinnerung:** Auf „Heute“ erscheint ein Kasten, wenn du noch nie gesichert hast (ab 3 Tagen mit Daten) oder die letzte Sicherung mindestens 7 Tage alt ist und neue Einträge dazugekommen sind. „In 3 Tagen“ blendet ihn aus.
 - **Wiederherstellen:** **Sicherung importieren** ersetzt alle aktuellen Daten (nach Rückfrage). Bei einer ungültigen Datei bleibt alles unverändert.
+- **Daten weg?** Ist die App leer, erscheint auf „Heute“ die Karte „Neu hier oder zurück?“ mit **Sicherung wiederherstellen**. Die App fordert außerdem persistenten Speicher an; in den Einstellungen siehst du, ob Chrome ihn gewährt hat. Löschst du in Chrome „Cookies und Websitedaten“ für die Seite, sind die Daten trotzdem weg, deshalb regelmäßig sichern.
 
 ## Updates
 Gibt es eine neue App-Version, zeigt die App oben „Neue Version verfügbar“. Tippe auf **Neu laden**, wenn du gerade nichts bearbeitest.
