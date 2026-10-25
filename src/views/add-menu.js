@@ -2,6 +2,7 @@ import { el, openSheet, closeSheet } from '../dom.js';
 import { startScanWithPicker, startDescribe } from './scan.js';
 import { openMealForm } from './meal-form.js';
 import { showView } from '../nav.js';
+import { openWorkout } from './workout.js';
 
 // Ein Einstiegspunkt für alles: der Kamera-Button in der Leiste öffnet diese Auswahl.
 export function openAddMenu() {
@@ -17,6 +18,7 @@ export function openAddMenu() {
       item('Aus Galerie', 'Ein oder mehrere Fotos', () => startScanWithPicker({ camera: false })),
       item('Beschreiben', 'z. B. „Döner mit Hähnchen“', () => startDescribe()),
       item('Aus Produkten', 'Bereits gespeicherte Produkte', () => showView('products')),
-      item('Manuell', 'Werte selbst eintragen', () => openMealForm(null))),
+      item('Manuell', 'Werte selbst eintragen', () => openMealForm(null)),
+      item('Training starten', 'Einheit mit Sätzen und Pausen-Timer', () => openWorkout({}))),
     el('div', { class: 'actions' }, el('button', { class: 'btn wide', onClick: closeSheet }, 'Abbrechen')));
 }

@@ -9,6 +9,7 @@ import { openAddMenu } from './views/add-menu.js';
 import { renderWeight } from './views/weight.js';
 import { renderSettings } from './views/settings.js';
 import { renderMore } from './views/more.js';
+import { renderTraining } from './views/training.js';
 import { listQueued } from './db.js';
 import { toast, el } from './dom.js';
 import { requestPersistence } from './storage-persist.js';
@@ -19,6 +20,7 @@ registerRenderer('products', renderProducts);
 registerRenderer('history', renderHistory);
 registerRenderer('weight', renderWeight);
 registerRenderer('more', renderMore);
+registerRenderer('training', renderTraining);
 registerRenderer('settings', renderSettings);
 
 document.getElementById('fab').addEventListener('click', () => openAddMenu());

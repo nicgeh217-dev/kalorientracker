@@ -1,0 +1,145 @@
+import { el, mount, openSheet, closeSheet, toast } from '../dom.js';
+import { localDateKey } from '../logic.js';
+import { addDays } from '../overview.js';
+import {
+  listExercises, listWorkouts, addExercise, updateExercise, deleteExercise, deleteWorkout, restoreWorkout,
+  getTrainingDraft, setDayStatus, listDayStatuses,
+} from '../db.js';
+import { MUSCLES, DEFAULT_EXERCISES } from '../training.js';
+import { dayLabel } from '../state.js';
+import { openWorkout } from './workout.js';
+
+const shortDate = (dateKey) => {
+  const [y, m, d] = dateKey.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'short' });
+};
+
+export async function renderTraining() {
+  const root = document.getElementById('view-training');
+  const todayKey = localDateKey(new Date());
+  const [exercises, workouts, draft, statuses] = await Promise.all([listExercises(), listWorkouts(), getTrainingDraft(), listDayStatuses()]);
+  const status = statuses.find((s) => s.dateKey === todayKey)?.status ?? null;
+  const todays = workouts.filter((w) => w.dateKey === todayKey);
+  const recent = [...workouts].sort((a, b) => b.dateKey.localeCompare(a.dateKey) || (b.startedAt ?? 0) - (a.startedAt ?? 0)).slice(0, 10);
+  const names = new Map(exercises.map((e) => [e.id, e]));
+
+  const restToggle = el('button', {
+    type: 'button', class: `chipbtn${status === 'rest' ? ' on' : ''}`, 'aria-pressed': status === 'rest' ? 'true' : 'false',
+    onClick: async () => { await setDayStatus(todayKey, status === 'rest' ? null : 'rest'); renderTraining(); },
+  }, 'Heute Ruhetag');
+
+  mount(root,
+    el('h1', {}, 'Training'),
+    el('button', { class: 'primary', style: 'width:100%', onClick: () => openWorkout({ resume: Boolean(draft) }) }, draft ? 'Offene Einheit fortsetzen' : 'Einheit starten'),
+    el('div', { class: 'quick', style: 'margin-top:10px' }, restToggle,
+      el('button', { type: 'button', class: 'chipbtn', onClick: openBackfill }, 'Nachtragen')),
+    el('div', { class: 'card' },
+      el('b', {}, 'Heute'),
+      todays.length
+        ? el('div', { class: 'muted' }, todays.map((w) => `${w.title} · ${w.durationMin} min · ${w.sets.length} Sätze`).join(' | '))
+        : el('div', { class: 'muted' }, status === 'rest' ? 'Ruhetag. Erholung gehört zum Training.' : status === 'sick' ? 'Du bist als krank markiert. Gute Besserung.' : 'Heute noch kein Training.')),
+    el('h2', {}, 'Letzte Einheiten'),
+    recent.length
+      ? el('div', { class: 'card slotlist' }, ...recent.map((w) => workoutRow(w, names)))
+      : el('div', { class: 'card muted' }, 'Noch keine Einheit. Starte deine erste.'),
+    el('h2', {}, 'Übungen'),
+    exerciseLibrary(exercises));
+}
+
+function workoutRow(w, names) {
+  return el('button', { class: 'mrow', onClick: () => openDetails(w, names) },
+    el('div', { class: 'mt' }, el('strong', {}, w.title), el('div', { class: 'muted' }, `${dayLabel(w.dateKey) === 'Heute' ? 'Heute' : shortDate(w.dateKey)} · ${w.durationMin} min`)),
+    el('div', { class: 'mk' }, String(w.sets.length), el('small', {}, w.sets.length === 1 ? 'Satz' : 'Sätze')));
+}
+
+function openDetails(w, names) {
+  const groups = new Map();
+  for (const s of w.sets) {
+    if (!groups.has(s.exerciseId)) groups.set(s.exerciseId, []);
+    groups.get(s.exerciseId).push(s);
+  }
+  openSheet(
+    el('h1', {}, w.title),
+    el('div', { class: 'muted', style: 'margin:-8px 4px 12px' }, `${shortDate(w.dateKey)} · ${w.durationMin} min`),
+    w.sets.length
+      ? el('div', { class: 'card' }, ...[...groups.entries()].map(([id, sets]) => el('div', { style: 'margin-bottom:8px' },
+          el('b', {}, names.get(id)?.name ?? 'Gelöschte Übung'),
+          el('div', { class: 'muted' }, sets.map((s) => `${s.kg > 0 ? `${String(s.kg).replace('.', ',')} kg` : 'Körpergewicht'} × ${s.reps}`).join(' · ')))))
+      : el('div', { class: 'card muted' }, 'Keine Sätze gespeichert.'),
+    el('div', { class: 'actions' },
+      el('button', { class: 'btn', onClick: closeSheet }, 'Schließen'),
+      el('button', {
+        class: 'btn danger wide',
+        onClick: async () => {
+          await deleteWorkout(w.id);
+          closeSheet();
+          renderTraining();
+          toast('Einheit gelöscht', 'Rückgängig', async () => { await restoreWorkout(w); renderTraining(); });
+        },
+      }, 'Löschen')));
+}
+
+function openBackfill() {
+  const today = localDateKey(new Date());
+  const date = el('input', { type: 'date', value: addDays(today, -1), max: today });
+  openSheet(
+    el('h1', {}, 'Training nachtragen'),
+    el('label', {}, 'Tag'), date,
+    el('div', { class: 'actions' },
+      el('button', { class: 'btn', onClick: closeSheet }, 'Abbrechen'),
+      el('button', { class: 'primary', onClick: () => { if (!date.value || date.value > today) return; closeSheet(); openWorkout({ dateKey: date.value }); } }, 'Weiter')));
+}
+
+function exerciseLibrary(exercises) {
+  const add = () => openExerciseForm(null);
+  if (!exercises.length) {
+    return el('div', { class: 'card' },
+      el('div', { class: 'muted', style: 'margin-bottom:10px' }, 'Deine Übungsliste ist leer. Nimm Vorschläge oder lege eigene an.'),
+      ...DEFAULT_EXERCISES.map((d) => el('div', { class: 'row', style: 'margin-bottom:8px' },
+        el('span', {}, el('b', {}, d.name), el('span', { class: 'muted' }, ` · ${d.muscle}`)),
+        el('button', { class: 'small ghost', onClick: async () => { await addExercise(d); renderTraining(); } }, 'Hinzufügen'))),
+      el('div', { class: 'actions' },
+        el('button', { class: 'btn', onClick: add }, 'Eigene Übung'),
+        el('button', { class: 'primary', onClick: async () => { for (const d of DEFAULT_EXERCISES) await addExercise(d); renderTraining(); } }, 'Alle hinzufügen')));
+  }
+  const groups = MUSCLES.map((m) => [m, exercises.filter((e) => e.muscle === m)]).filter(([, list]) => list.length);
+  return el('div', {},
+    ...groups.map(([muscle, list]) => el('div', { class: 'slot' },
+      el('div', { class: 'muted', style: 'margin:0 4px 6px;font-weight:700' }, muscle),
+      el('div', { class: 'card slotlist' }, ...list.sort((a, b) => a.name.localeCompare(b.name, 'de')).map((e) => el('button', { class: 'mrow', style: 'min-height:48px', onClick: () => openExerciseForm(e) }, el('div', { class: 'mt' }, el('strong', {}, e.name))))))),
+    el('button', { class: 'btn', style: 'width:100%', onClick: add }, '+ Übung anlegen'));
+}
+
+// e = null: neue Übung. Sonst umbenennen, Muskelgruppe ändern oder löschen (Rückgängig stellt sie mit derselben ID wieder her).
+export function openExerciseForm(e, { onSaved = null } = {}) {
+  const name = el('input', { value: e?.name ?? '', placeholder: 'z. B. Beinpresse', 'aria-label': 'Name der Übung' });
+  const muscle = el('select', { 'aria-label': 'Muskelgruppe' }, ...MUSCLES.map((m) => el('option', { value: m, selected: (e?.muscle ?? 'Ganzkörper') === m }, m)));
+  const msg = el('div');
+  openSheet(
+    el('h1', {}, e ? 'Übung bearbeiten' : 'Neue Übung'),
+    el('label', {}, 'Name'), name,
+    el('label', {}, 'Muskelgruppe'), muscle,
+    msg,
+    el('div', { class: 'actions' },
+      el('button', { class: 'btn', onClick: closeSheet }, 'Abbrechen'),
+      el('button', {
+        class: 'primary',
+        onClick: async () => {
+          const n = name.value.trim();
+          if (!n) return msg.replaceChildren(el('div', { class: 'note bad' }, 'Bitte einen Namen eingeben.'));
+          let saved;
+          if (e) { saved = { ...e, name: n, muscle: muscle.value }; await updateExercise(saved); } else { saved = { name: n, muscle: muscle.value }; saved.id = await addExercise(saved); }
+          closeSheet();
+          await (onSaved ? onSaved(saved) : renderTraining());
+        },
+      }, 'Speichern'),
+      e ? el('button', {
+        class: 'btn danger wide',
+        onClick: async () => {
+          await deleteExercise(e.id);
+          closeSheet();
+          renderTraining();
+          toast(`${e.name} gelöscht. Eingetragene Einheiten bleiben erhalten.`, 'Rückgängig', async () => { await updateExercise(e); renderTraining(); });
+        },
+      }, 'Löschen') : null));
+}

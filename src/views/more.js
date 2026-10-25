@@ -8,6 +8,7 @@ export async function renderMore() {
   mount(root,
     el('h1', {}, 'Mehr'),
     el('div', { class: 'card morelist' },
+      row('Gewicht', 'Eintragen und Verlauf', () => showView('weight')),
       row('Gespeicherte Produkte', 'Werte ansehen, ändern oder löschen', () => showView('products')),
       row('Einstellungen', 'Ziele, Gemini-Key, Fuchs', () => showView('settings')),
       row('Sicherung', 'Daten sichern oder wiederherstellen', async () => {

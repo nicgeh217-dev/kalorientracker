@@ -1,6 +1,6 @@
-const VIEWS = ['today', 'history', 'products', 'weight', 'more', 'settings'];
+const VIEWS = ['today', 'training', 'history', 'products', 'weight', 'more', 'settings'];
 // Unterseiten leuchten in der Leiste unter ihrem Eintrag.
-const NAV_ENTRY = { products: 'more', settings: 'more' };
+const NAV_ENTRY = { products: 'more', settings: 'more', weight: 'more' };
 const renderers = {};
 let current = 'today'; // Die Produktseite hat keinen Eintrag in der Leiste, deshalb merken wir uns die Ansicht selbst.
 
