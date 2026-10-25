@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { parseLabelResponse } from '../src/gemini-parse.js';
 
 const wrap = (text) => ({ candidates: [{ content: { parts: [{ text }] } }] });
-const good = { name: '삼각김밥', basis: 'perServing', servingGrams: 110, kcal: 180, protein: 4, carbs: 35, fat: 2 };
+const good = { name: '삼각김밥', basis: 'perServing', servingGrams: 110, kcal: 180, protein: 4, carbs: 35, fat: 2, fiber: 3.2, sugar: 12 };
 
 test('gültiges JSON -> ok', () => {
   const r = parseLabelResponse(wrap(JSON.stringify(good)));
@@ -57,7 +57,7 @@ test('negative Werte -> null', () => {
   assert.equal(r.label.kcal, null);
 });
 
-const est = { name: 'Bibimbap', source: 'estimate', basis: 'perServing', servingGrams: 450, kcal: 620, protein: 24, carbs: 90, fat: 18,
+const est = { name: 'Bibimbap', source: 'estimate', basis: 'perServing', servingGrams: 450, kcal: 620, protein: 24, carbs: 90, fat: 18, fiber: 3.2, sugar: 12,
   confidence: 'medium', note: 'Ca. 450 g mit Reis, Gemüse, Ei.', kcalMin: 500, kcalMax: 750 };
 
 test('Schätzung: alle Zusatzfelder werden übernommen', () => {
@@ -101,4 +101,12 @@ test('Name: übersetzt mit Original in Klammern bleibt erhalten, sehr lange Name
   assert.equal(r.label.name, 'Thunfisch-Kimbap (삼각김밥 참치마요)');
   const long = parseLabelResponse(wrap(JSON.stringify({ ...good, name: 'x'.repeat(200) })));
   assert.equal(long.label.name.length, 80);
+});
+
+test('Zucker als Komma-String wird Zahl, fehlende Felder und negative Werte werden null', () => {
+  assert.equal(parseLabelResponse(wrap(JSON.stringify({ ...good, sugar: '12,5' }))).label.sugar, 12.5);
+  const r = parseLabelResponse(wrap('{"kcal": 100}'));
+  assert.equal(r.label.fiber, null);
+  assert.equal(r.label.sugar, null);
+  assert.equal(parseLabelResponse(wrap(JSON.stringify({ ...good, fiber: -1 }))).label.fiber, null);
 });

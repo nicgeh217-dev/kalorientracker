@@ -167,7 +167,7 @@ function recentChip(m, dateKey) {
     onClick: async () => {
       const id = await addMeal({
         timestamp: timestampFor(dateKey), dateKey, productId: m.productId, name: m.name, amount: m.amount,
-        kcal: m.kcal, protein: m.protein, carbs: m.carbs, fat: m.fat,
+        kcal: m.kcal, protein: m.protein, carbs: m.carbs, fat: m.fat, fiber: m.fiber ?? null, sugar: m.sugar ?? null,
         ...(m.estimated ? { estimated: true } : {}),
       });
       toast(`${m.name} eingetragen`, 'Rückgängig', async () => { await deleteMeal(id); renderToday(); });
@@ -180,7 +180,7 @@ async function editMeal(m) {
   const product = m.productId != null ? await getProduct(m.productId) : null;
   const prefill = product
     ? { ...product, productId: product.id, amount: m.amount }
-    : { name: m.name, basis: 'perServing', servingGrams: null, kcal: m.kcal, protein: m.protein, carbs: m.carbs, fat: m.fat, amount: { unit: 'servings', value: 1 } };
+    : { name: m.name, basis: 'perServing', servingGrams: null, kcal: m.kcal, protein: m.protein, carbs: m.carbs, fat: m.fat, fiber: m.fiber ?? null, sugar: m.sugar ?? null, amount: { unit: 'servings', value: 1 } };
   openMealForm(prefill, { meal: m });
 }
 

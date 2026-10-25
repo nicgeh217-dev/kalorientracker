@@ -49,6 +49,8 @@ export function parseLabelResponse(apiJson) {
       protein: num(obj.protein),
       carbs: num(obj.carbs),
       fat: num(obj.fat),
+      fiber: num(obj.fiber),
+      sugar: num(obj.sugar),
       confidence: CONFIDENCES.includes(obj.confidence) ? obj.confidence : null,
       note,
       kcalMin,

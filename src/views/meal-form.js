@@ -6,9 +6,10 @@ import { showView } from '../nav.js';
 import { defaultAmount, quickAmounts, amountForBasisChange } from '../amount.js';
 
 const FIELDS = [['kcal', 'Kalorien (kcal)'], ['protein', 'Protein (g)'], ['carbs', 'Kohlenhydrate (g)'], ['fat', 'Fett (g)']];
+const EXTRA_FIELDS = [['fiber', 'Ballaststoffe (g)'], ['sugar', 'Zucker (g)']];
 const de = (n) => String(n).replace('.', ',');
 
-// prefill: {name, basis, servingGrams, kcal, protein, carbs, fat, productId?, amount?} oder null (manuell)
+// prefill: {name, basis, servingGrams, kcal, protein, carbs, fat, fiber?, sugar?, productId?, amount?} oder null (manuell)
 // opts: {info?, meal? (Bearbeiten), dateKey?, estimate?, onSaved?, onCancel?, onRefine?}
 // Mit Vorgabe (Scan, Produkt, Bearbeiten) zeigt das Formular nur Name, Zusammenfassung und Menge. "Werte bearbeiten" klappt den Rest auf.
 export function openMealForm(prefill, opts = {}) {
@@ -34,7 +35,7 @@ export function openMealForm(prefill, opts = {}) {
     el('option', { value: 'perServing', selected: p.basis !== 'per100g', 'data-short': 'Pro Portion' }, 'Werte gelten pro Portion / Packung'),
     el('option', { value: 'per100g', selected: p.basis === 'per100g', 'data-short': 'Pro 100 g' }, 'Werte gelten pro 100 g'));
   const serving = el('input', { inputMode: 'decimal', value: val(p.servingGrams), placeholder: 'Gramm pro Portion (falls bekannt)' });
-  for (const [k, label] of FIELDS) inputs[k] = el('input', { inputMode: 'decimal', value: val(p[k]), 'aria-label': label });
+  for (const [k, label] of [...FIELDS, ...EXTRA_FIELDS]) inputs[k] = el('input', { inputMode: 'decimal', value: val(p[k]), 'aria-label': label });
 
   const start = p.amount ?? defaultAmount({ basis: p.basis });
   const amountValue = el('input', { inputMode: 'decimal', value: de(start.value), 'aria-label': 'Menge' });
@@ -52,7 +53,7 @@ export function openMealForm(prefill, opts = {}) {
   const editBox = el('div', {},
     el('label', {}, 'Nährwerte gelten'), segmented(basis),
     el('label', {}, 'Gramm pro Portion (optional)'), serving,
-    el('div', { class: 'grid2' }, ...FIELDS.map(([k, label]) => el('div', {}, el('label', {}, label), inputs[k]))));
+    el('div', { class: 'grid2' }, ...[...FIELDS, ...EXTRA_FIELDS].map(([k, label]) => el('div', {}, el('label', {}, label), inputs[k]))));
   editBox.hidden = compact && !hasGaps;
   const editBtn = el('button', { class: 'small ghost', type: 'button', style: 'margin-top:10px' }, '');
   const syncEditBtn = () => { editBtn.textContent = editBox.hidden ? 'Werte bearbeiten' : 'Werte ausblenden'; };
@@ -68,6 +69,8 @@ export function openMealForm(prefill, opts = {}) {
       protein: parseNum(inputs.protein.value),
       carbs: parseNum(inputs.carbs.value),
       fat: parseNum(inputs.fat.value),
+      fiber: parseNum(inputs.fiber.value),
+      sugar: parseNum(inputs.sugar.value),
     };
     const amount = { unit: amountUnit.value, value: parseNum(amountValue.value) };
     return { product, amount };
@@ -114,14 +117,14 @@ export function openMealForm(prefill, opts = {}) {
 
     const pr = v.product;
     const basisText = pr.basis === 'per100g' ? 'pro 100 g' : 'pro Portion';
-    summary.textContent = pr.kcal == null ? '' : `Nährwerte ${basisText}: ${pr.kcal} kcal · P ${pr.protein ?? '–'} · KH ${pr.carbs ?? '–'} · F ${pr.fat ?? '–'}`;
+    summary.textContent = pr.kcal == null ? '' : `Nährwerte ${basisText}: ${pr.kcal} kcal · P ${pr.protein ?? '–'} · KH ${pr.carbs ?? '–'} · F ${pr.fat ?? '–'}${pr.fiber != null ? ` · Ballast. ${pr.fiber}` : ''}${pr.sugar != null ? ` · Zucker ${pr.sugar}` : ''}`;
     summary.hidden = !compact;
 
     if (v.scaled) {
       const s = v.scaled;
       preview.replaceChildren(
         el('div', { class: 'num kcalbig' }, `${isEstimate ? '~' : ''}${s.kcal}`, el('small', {}, ' kcal')),
-        el('div', { class: 'muted' }, `Protein ${s.protein ?? '–'} g · Kohlenhydrate ${s.carbs ?? '–'} g · Fett ${s.fat ?? '–'} g`));
+        el('div', { class: 'muted' }, `Protein ${s.protein ?? '–'} g · Kohlenhydrate ${s.carbs ?? '–'} g · Fett ${s.fat ?? '–'} g${s.fiber != null ? ` · Ballaststoffe ${s.fiber} g` : ''}${s.sugar != null ? ` · Zucker ${s.sugar} g` : ''}`));
     } else {
       preview.replaceChildren(el('div', { class: 'muted' }, 'Hier erscheint, was gespeichert wird.'));
     }

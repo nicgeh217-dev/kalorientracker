@@ -12,18 +12,18 @@ const endpoint = (model) => `https://generativelanguage.googleapis.com/v1beta/mo
 
 const PROMPT = `Du bekommst ein oder mehrere Fotos und/oder eine kurze Beschreibung von Essen. Alle Fotos gehören zum selben Produkt bzw. Gericht (z. B. Vorderseite und Nährwerttabelle). Gib ausschließlich JSON zurück.
 
-Fall A – in mindestens einem Foto ist eine Nährwerttabelle lesbar (oft koreanisch: 영양정보, 열량=kcal, 탄수화물=Kohlenhydrate, 단백질=Protein, 지방=Fett):
+Fall A – in mindestens einem Foto ist eine Nährwerttabelle lesbar (oft koreanisch: 영양정보, 열량=kcal, 탄수화물=Kohlenhydrate, 단백질=Protein, 지방=Fett, 식이섬유=Ballaststoffe, 당류=Zucker):
 - source = "label". Lies die Werte exakt ab, schätze nichts und rechne nichts um.
 - basis = "per100g", wenn die Werte für 100 g bzw. 100 ml gelten, "perServing", wenn sie für eine Portion/Packung gelten, sonst null.
 - servingGrams = Gramm (oder ml) einer Portion, falls angegeben, sonst null.
-- kcal, protein, carbs, fat = Zahlen für diese Bezugsgröße. Nicht lesbare Werte = null.
+- kcal, protein, carbs, fat, fiber, sugar = Zahlen für diese Bezugsgröße (fiber = Ballaststoffe, sugar = Zucker bzw. davon Zucker). Nicht lesbare oder nicht angegebene Werte = null.
 - name = Produktname von der Verpackung, falls sichtbar, sonst null. Ist der Name nicht deutsch (z. B. Koreanisch/Hangul), gib ihn als kurze deutsche Übersetzung mit dem Originalnamen in Klammern an, z. B. "Thunfisch-Kimbap (삼각김밥 참치마요)". Höchstens 60 Zeichen.
 - confidence, note, kcalMin, kcalMax = null.
 
 Fall B – keine lesbare Nährwerttabelle (Restaurantgericht, Bäckerware, Obst, Verpackung ohne Tabelle) oder nur eine Textbeschreibung:
 - source = "estimate". Schätze das GANZE gezeigte Gericht bzw. die beschriebene Portion.
 - basis = "perServing". servingGrams = geschätztes Gesamtgewicht in Gramm.
-- kcal, protein, carbs, fat = Werte für die gesamte Portion. kcalMin und kcalMax = realistische Spanne der Kalorien.
+- kcal, protein, carbs, fat, fiber, sugar = geschätzte Werte für die gesamte Portion. kcalMin und kcalMax = realistische Spanne der Kalorien.
 - name = kurzer deutscher Name des Gerichts.
 - confidence = "high" nur bei klar erkennbarem, standardisiertem Essen; "medium" bei üblichen Gerichten mit unklarer Portion; "low" bei unscharfem Foto, verdeckten Zutaten, viel Soße oder Öl.
 - note = höchstens zwei kurze deutsche Sätze: was du siehst und welche Annahmen du getroffen hast (Menge, Zutaten, Öl/Soße).
@@ -41,6 +41,8 @@ const SCHEMA = {
     protein: NUM,
     carbs: NUM,
     fat: NUM,
+    fiber: NUM,
+    sugar: NUM,
     confidence: { type: 'STRING', nullable: true, enum: ['low', 'medium', 'high'] },
     note: { type: 'STRING', nullable: true },
     kcalMin: NUM,
