@@ -32,3 +32,12 @@ export function timestampFor(dateKey) {
   const [y, m, d] = dateKey.split('-').map(Number);
   return new Date(y, m - 1, d, now.getHours(), now.getMinutes()).toISOString();
 }
+
+// Name der gerade eingetragenen Mahlzeit, damit "Heute" die Eintragen-Animation einmal abspielt.
+let justLogged = null;
+export const setJustLogged = (name) => { justLogged = name; };
+export function takeJustLogged() {
+  const name = justLogged;
+  justLogged = null;
+  return name;
+}

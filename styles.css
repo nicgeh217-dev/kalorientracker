@@ -380,3 +380,4 @@ input:focus-visible, textarea:focus-visible { outline: none; }
 #splash .sp-ring { width: 200px; height: 200px; }
 #splash .sp-fox { width: 96px; height: 96px; }
 #splash .sp-food { width: 56px; height: 56px; opacity: 0; }
+.nring .nfg.grow { transition: stroke-dashoffset 1.1s cubic-bezier(.22,1,.36,1); }

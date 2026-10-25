@@ -17,6 +17,8 @@ import { weekStrip } from './week-strip.js';
 import { foodIconFor } from '../food-icons.js';
 import { foodIconSvg } from './food-icons.js';
 import { nutrientTile } from './nutrient-rings.js';
+import { takeJustLogged, setJustLogged } from '../state.js';
+import { countUp, flyIcon } from './motion.js';
 import { addDays, pickRecent, rollingAverage, fastLossWarning } from '../overview.js';
 import {
   mealsForDate, deleteMeal, getSettings, listProducts, replaceAll, listDayStatuses, addMeal, listMeals, getProduct, listQueued, deleteQueued, addQueued, listWeights, saveSettings,
@@ -56,6 +58,8 @@ function go(dateKey) {
 }
 
 let queueUrls = [];
+let renderSeq = 0; // nur der neueste Aufruf zeichnet, damit schnell aufeinanderfolgende Aufrufe sich nicht überholen
+let lastShown = null; // zuletzt gezeigte Zahlen, Startwerte für die Zähl-Animation
 let prevTodayCount = null; // für die Kau-Animation, wenn gerade ein Eintrag dazukam
 let introOpen = false;
 let celebratedLevel = null;
@@ -64,6 +68,7 @@ export async function renderToday() {
   const root = document.getElementById('view-today');
   for (const u of queueUrls) URL.revokeObjectURL(u);
   queueUrls = [];
+  const seq = ++renderSeq;
   const dateKey = viewedDateKey();
   const isToday = isViewingToday();
   const [settings, meals, everyMeal, queued, weights, products, dayStatuses] = await Promise.all([
@@ -75,6 +80,7 @@ export async function renderToday() {
     listProducts(),
     listDayStatuses(),
   ]);
+  if (seq !== renderSeq) return;
   const todayKey = localDateKey(new Date());
   const t = dayTotals(meals);
   const goal = settings.calorieGoal;
@@ -115,13 +121,15 @@ export async function renderToday() {
   const munch = isToday && prevTodayCount != null && todayCount > prevTodayCount;
   if (isToday) prevTodayCount = todayCount;
   const petCfg = settings.pet;
+  const logged = takeJustLogged(); // Name der eben eingetragenen Mahlzeit oder null
+  const before = logged && lastShown?.dateKey === dateKey ? lastShown : { center: 0, eaten: 0, nutrients: {} };
   let petNode = null;
   if (isToday && !petCfg && !introOpen && !document.querySelector('.sheet')) {
     introOpen = true;
     openPetIntro(petLvl);
   } else if (isToday && petCfg && petCfg.enabled !== false) {
     petNode = petLine({
-      cfg: petCfg, level: petLvl, total: petTotal, streak: petStreak, todayCount, munch, todayKey,
+      cfg: petCfg, chew: munch && !logged, level: petLvl, total: petTotal, streak: petStreak, todayCount, munch, todayKey,
       daysSinceLast: petDays.length ? daysBetween(petDays.at(-1), todayKey) : null,
       weightToday: weights.some((w) => w.date === todayKey),
     });
@@ -156,11 +164,37 @@ export async function renderToday() {
                 el('div', {}, el('b', {}, String(goal)), 'Ziel'))
             : el('div', { class: 'note warn', style: 'margin:0' }, 'Noch kein Ziel. ',
                 el('a', { href: '#', onClick: (e) => { e.preventDefault(); showView('settings'); } }, 'Jetzt festlegen'))))),
-    el('div', { class: 'ntiles' }, ...NUTRIENTS.map((n) => nutrientTile({ nutrient: n, value: nutrientValue(n.id), target: targets?.[n.id] ?? null }))),
+    el('div', { class: 'ntiles' }, ...NUTRIENTS.map((n) => nutrientTile({ nutrient: n, value: nutrientValue(n.id), target: targets?.[n.id] ?? null, from: logged ? (before.nutrients[n.id] ?? 0) : undefined }))),
     queued.length ? el('h2', {}, 'Wartet auf Auswertung') : null,
     ...queued.map(queueCard),
     recent.length ? el('div', { class: 'chips' }, ...recent.map((m) => recentChip(m, dateKey))) : null,
     ...groupBySlot(meals).map((g) => slotSection(g, dateKey)));
+
+  lastShown = { dateKey, center: centerNum, eaten: t.kcal, nutrients: Object.fromEntries(NUTRIENTS.map((n) => [n.id, nutrientValue(n.id) ?? 0])) };
+  if (logged) playLogged({ root, logged, before, centerNum, eaten: t.kcal, nutrientValue });
+}
+
+// Eintragen-Animation: Symbol fliegt von der Kamera-Taste zum Fuchs, der kaut, Zahlen zählen hoch.
+function playLogged({ root, logged, before, centerNum, eaten, nutrientValue }) {
+  countUp(root.querySelector('.ring .center .num'), centerNum, { from: before.center });
+  countUp(root.querySelector('.hs-row b'), eaten, { from: before.eaten });
+  root.querySelectorAll('.ntile .nv').forEach((node, i) => {
+    const id = NUTRIENTS[i].id;
+    const to = nutrientValue(id);
+    if (to == null) return;
+    const from = before.nutrients[id] ?? 0;
+    countUp(node, to, { from, decimals: Number.isInteger(to) && Number.isInteger(from) ? 0 : 1 });
+  });
+  const fab = document.getElementById('fab');
+  const foxNode = root.querySelector('.pet-fox');
+  const goal = foxNode ?? root.querySelector('.ring');
+  if (!fab || !goal) return;
+  flyIcon(foodIconSvg(foodIconFor(logged), 44), fab.getBoundingClientRect(), goal.getBoundingClientRect()).then(() => {
+    const fox = root.querySelector('.pet-fox .fox');
+    if (!fox) return;
+    fox.classList.add('munch');
+    setTimeout(() => fox.classList.remove('munch'), 1900);
+  });
 }
 
 function slotSection(g, dateKey) {
@@ -183,6 +217,7 @@ function recentChip(m, dateKey) {
         ...(m.estimated ? { estimated: true } : {}),
       });
       toast(`${m.name} eingetragen`, 'Rückgängig', async () => { await deleteMeal(id); renderToday(); });
+      setJustLogged(m.name);
       renderToday();
     },
   }, el('b', {}, m.name), el('span', {}, `${m.kcal} kcal`));
@@ -295,7 +330,7 @@ function backupCard(r) {
 }
 
 // Zeile oben in der Kalorien-Karte: Sprechblase als Text, Serie und Fuchs. Details (Stufen, Rekord, Umbenennen) im Dialog.
-function petLine({ cfg, level, total, streak: stk, todayCount, daysSinceLast, weightToday, munch, todayKey }) {
+function petLine({ cfg, chew, level, total, streak: stk, todayCount, daysSinceLast, weightToday, munch, todayKey }) {
   const hour = new Date().getHours();
   const mood = munch ? 'happy' : petMood({ todayCount, hour, daysSinceLast, streakCurrent: stk.current, weightToday });
   const text = munch
@@ -310,5 +345,5 @@ function petLine({ cfg, level, total, streak: stk, todayCount, daysSinceLast, we
     total > 0
       ? el('div', { class: 'streak' }, el('b', {}, String(stk.current)), el('span', {}, stk.current === 1 ? 'Tag' : 'Tage'))
       : null,
-    el('div', { class: 'pet-fox' }, foxSvg({ mood, accessories: accessoriesFor(level).map((a) => a.id), munch, size: 48 })));
+    el('div', { class: 'pet-fox' }, foxSvg({ mood, accessories: accessoriesFor(level).map((a) => a.id), munch: chew, size: 48 })));
 }

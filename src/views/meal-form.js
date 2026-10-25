@@ -3,6 +3,7 @@ import { scaleNutrition, checkPlausibility, localDateKey } from '../logic.js';
 import { addProduct, updateProduct, addMeal, updateMeal, deleteMeal, restoreMeal } from '../db.js';
 import { viewedDateKey, dayLabel, longDate, timestampFor } from '../state.js';
 import { showView, refreshCurrent } from '../nav.js';
+import { setJustLogged } from '../state.js';
 import { SLOTS, slotForTime } from '../slots.js';
 import { defaultAmount, quickAmounts, amountForBasisChange } from '../amount.js';
 
@@ -170,6 +171,7 @@ export function openMealForm(prefill, opts = {}) {
         await addMeal({ timestamp: timestampFor(dateKey), dateKey, ...data });
       }
       closeSheet();
+      if (!meal) setJustLogged(v.product.name); // spielt auf "Heute" die Eintragen-Animation
       showView('today'); // nach dem Speichern immer zu "Heute", dort liegt der neue Eintrag
       await onSaved?.();
     } catch {
