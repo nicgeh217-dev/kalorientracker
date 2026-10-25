@@ -7,6 +7,7 @@ import { restoreFromText } from '../backup-import.js';
 import { shareBackup, downloadBackup } from '../backup-share.js';
 import { localDateKey } from '../logic.js';
 import { parseIntGoal } from '../goals.js';
+import { NUTRIENTS, nutrientTargets } from '../nutrients.js';
 import { parseWeight } from '../weight-input.js';
 import { minHealthyWeight } from '../calorie.js';
 import { openCalculator } from './calculator.js';
@@ -23,6 +24,11 @@ export async function renderSettings() {
   petOn.style.cssText = 'width:22px;min-height:22px;height:22px;flex:none';
   const proteinGoal = el('input', { inputMode: 'numeric', placeholder: 'optional, z. B. 120', value: s.proteinGoal ?? '' });
   const targetWeight = el('input', { inputMode: 'decimal', placeholder: 'optional, z. B. 68,5', value: s.targetWeight == null ? '' : String(s.targetWeight).replace('.', ',') });
+  const defaults = nutrientTargets({ kcal: s.calorieGoal, proteinGoal: s.proteinGoal });
+  const targetInputs = Object.fromEntries(NUTRIENTS.map((n) => [n.id, el('input', {
+    inputMode: 'numeric', 'aria-label': `${n.label} (g)`, value: s.targets?.[n.id] ?? '',
+    placeholder: defaults ? String(defaults[n.id]) : 'Standard',
+  })]));
   const key = el('input', { type: 'password', placeholder: 'AIza …', value: s.geminiKey ?? '', autocomplete: 'off' });
   const known = MODELS.some((m) => m.id === s.geminiModel);
   const model = el('select', {},
@@ -52,6 +58,12 @@ export async function renderSettings() {
       if (targetWeight.value.trim() !== '' && tw == null) return say('Das Zielgewicht muss zwischen 20 und 400 kg liegen, z. B. 68,5 (oder leer).', 'bad');
       const minW = s.calcProfile?.heightCm ? minHealthyWeight(s.calcProfile.heightCm) : null;
       if (tw != null && minW != null && tw < minW) return say(`Ein Zielgewicht unter ${String(minW).replace('.', ',')} kg entspräche einem BMI unter 18,5 (Untergewicht). Bitte wähle ein höheres Ziel.`, 'bad');
+      const targets = {};
+      for (const n of NUTRIENTS) {
+        const r = parseIntGoal(targetInputs[n.id].value, { max: 999 });
+        if (!r.ok) return say(`${n.label}: bitte eine ganze Zahl zwischen 1 und 999 g eintragen (oder leer lassen).`, 'bad');
+        if (r.value != null) targets[n.id] = r.value;
+      }
       const chosen = model.value === '__custom' ? custom.value.trim() : model.value;
       if (model.value === '__custom' && !/^[A-Za-z0-9._-]+$/.test(chosen)) {
         return say('Bitte eine gültige Modell-ID eintragen (nur Buchstaben, Zahlen, Punkt, Bindestrich).', 'bad');
@@ -59,7 +71,7 @@ export async function renderSettings() {
       const fresh = await getSettings();
       const manualChange = fresh.calcProfile && g.value !== fresh.calorieGoal; // eigenes Ziel eingetippt: keine Rechner-Vorschläge mehr
       const petPatch = fresh.pet || !petOn.checked ? { pet: { name: 'Foxi', seenLevel: 0, ...(fresh.pet ?? {}), enabled: petOn.checked } } : {};
-      await saveSettings({ ...fresh, ...petPatch, autoGoal: manualChange ? false : fresh.autoGoal, calorieGoal: g.value, proteinGoal: pg.value, targetWeight: tw, geminiKey: key.value.trim() || null, geminiModel: chosen || null });
+      await saveSettings({ ...fresh, ...petPatch, autoGoal: manualChange ? false : fresh.autoGoal, calorieGoal: g.value, proteinGoal: pg.value, targetWeight: tw, targets: Object.keys(targets).length ? targets : undefined, geminiKey: key.value.trim() || null, geminiModel: chosen || null });
       say('Gespeichert.', 'warn');
     },
   }, 'Speichern');
@@ -95,6 +107,9 @@ export async function renderSettings() {
       calcInfo(s),
       el('label', {}, 'Tägliches Proteinziel (g, optional)'), proteinGoal,
       el('label', {}, 'Zielgewicht (kg, optional)'), targetWeight,
+      el('label', {}, 'Nährstoff-Richtwerte in g (optional)'),
+      el('div', { class: 'grid2' }, ...NUTRIENTS.map((n) => el('div', {}, el('label', {}, n.label), targetInputs[n.id]))),
+      el('div', { class: 'muted', style: 'margin:6px 4px 0' }, 'Nur Orientierungswerte, keine Vorgabe. Leer lassen = Standard (grob aus deinem Kalorienziel berechnet).'),
       el('label', {}, 'Gemini-API-Key (nur auf diesem Handy gespeichert)'),
       el('div', { class: 'row' }, key, toggle),
       el('label', {}, 'Gemini-Modell'), model, custom,
