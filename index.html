@@ -20,7 +20,7 @@
         var skip = sessionStorage.getItem('splashShown') === '1' || /[?&]action=/.test(location.search)
           || (nav && nav.type === 'reload') || matchMedia('(prefers-reduced-motion: reduce)').matches;
         if (skip) document.getElementById('splash').remove();
-        else setTimeout(function () { var s = document.getElementById('splash'); if (s) s.remove(); }, 3000); // Sicherheitsnetz
+        else setTimeout(function () { var s = document.getElementById('splash'); if (s) s.remove(); }, 3500); // Sicherheitsnetz
       } catch (e) { /* Splash darf laufen */ }
     })();
   </script>

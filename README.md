@@ -40,7 +40,7 @@ Tab **Training**: **Einheit starten** (oder im Kamera-Menü „Training starten�
 - Training wird nie bewertet, und der Fuchs reagiert nur darauf, ob du einträgst.
 
 ## Animationen
-Beim Start (nur ein Kaltstart pro Sitzung, höchstens 1,4 s, Tippen überspringt) füllt sich ein Ring, der Fuchs hüpft hinein und drei Essens-Symbole fliegen in die Mitte. Beim Eintragen fliegt das passende Symbol von der Kamera-Taste zum Fuchs, der kaut, und die Zahlen und Ringe zählen sich hoch. Es werden nur Bewegung und Transparenz animiert. Mit der Handy-Einstellung **Bewegung reduzieren** gibt es keinen Start-Splash, keinen Flug und die Zahlen springen sofort. Beim Start über Kurzbefehl oder „Teilen“ gibt es ebenfalls keinen Splash.
+Beim Start (nur ein Kaltstart pro Sitzung, etwa 2,4 s, Tippen überspringt) dreht sich ein Ring weich ein, der Fuchs hüpft hinein und drei Essens-Symbole schweben nacheinander zu ihm, bevor alles nach oben wegblendet. Beim Eintragen fliegt das passende Symbol von der Kamera-Taste zum Fuchs, der kaut, und die Zahlen und Ringe zählen sich hoch. Es werden nur Bewegung und Transparenz animiert. Mit der Handy-Einstellung **Bewegung reduzieren** gibt es keinen Start-Splash, keinen Flug und die Zahlen springen sofort. Beim Start über Kurzbefehl oder „Teilen“ gibt es ebenfalls keinen Splash.
 
 ## Fuchs-Begleiter
 Ein kleiner Fuchs oben in der Kalorien-Karte auf „Heute“ erinnert dich in der App ans Tracken und freut sich über Einträge. Beim ersten Start kannst du ihn benennen oder ablehnen.
