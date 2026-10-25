@@ -136,3 +136,35 @@ test('Jede Stimmung und jede Tageszeit liefert einen Text', () => {
     }
   }
 });
+
+// Krank-Tage überbrücken Lücken
+const d = (n) => `2026-10-${String(9 + n).padStart(2, '0')}`; // d(1) = 10.10.
+test('streak: Krank-Tag ohne Eintrag überbrückt die Lücke, zählt aber nicht mit', () => {
+  const s = streak([d(1), d(2), d(4)], d(4), [d(3)]);
+  assert.deepEqual(s, { current: 3, best: 3 });
+});
+
+test('streak: zwei Krank-Tage hintereinander überbrücken', () => {
+  assert.deepEqual(streak([d(1), d(2), d(5)], d(5), [d(3), d(4)]), { current: 3, best: 3 });
+});
+
+test('streak: Krank-Tag plus normaler Fehltag bricht die Serie', () => {
+  assert.deepEqual(streak([d(1), d(2), d(5)], d(5), [d(3)]), { current: 1, best: 2 });
+});
+
+test('streak: heute krank ohne Eintrag, gestern Eintrag -> Serie lebt', () => {
+  assert.equal(streak([d(1), d(2), d(3)], d(4), [d(4)]).current, 3);
+});
+
+test('streak: heute und gestern krank ohne Eintrag, davor Einträge -> Serie lebt', () => {
+  assert.equal(streak([d(1), d(2)], d(4), [d(3), d(4)]).current, 2);
+});
+
+test('streak: Krank-Tage ohne jeden Eintrag erzeugen keine Serie', () => {
+  assert.deepEqual(streak([], d(4), [d(3), d(4)]), { current: 0, best: 0 });
+  assert.equal(streak([d(5)], d(5), [d(1), d(2), d(3)]).current, 1);
+});
+
+test('streak: Tag mit Eintrag und Krank-Markierung zählt nur einmal', () => {
+  assert.deepEqual(streak([d(1), d(2)], d(2), [d(2)]), { current: 2, best: 2 });
+});

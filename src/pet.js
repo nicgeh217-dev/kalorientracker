@@ -25,20 +25,29 @@ export function trackingDays(meals) {
 
 // current: Tage in Folge bis heute. Ist heute noch nichts eingetragen, lebt die Serie bis zum Ende des Tages weiter.
 // best: längste Serie überhaupt.
-export function streak(days, todayKey) {
+// sickDays: Ein Krank-Tag ohne Eintrag überbrückt eine Lücke, zählt aber nicht mit.
+export function streak(days, todayKey, sickDays = []) {
   if (!days.length) return { current: 0, best: 0 };
   const set = new Set(days);
+  const sick = new Set(sickDays);
+  const sorted = [...set].sort();
+  const first = sorted[0];
   let cursor = set.has(todayKey) ? todayKey : addDays(todayKey, -1);
   let current = 0;
-  while (set.has(cursor)) {
-    current += 1;
+  while (cursor >= first) {
+    if (set.has(cursor)) current += 1;
+    else if (!sick.has(cursor)) break;
     cursor = addDays(cursor, -1);
   }
+  const bridged = (a, b) => {
+    for (let c = addDays(a, 1); c < b; c = addDays(c, 1)) if (!sick.has(c)) return false;
+    return true;
+  };
   let best = 0;
   let run = 0;
   let prev = null;
-  for (const d of days) {
-    run = prev && addDays(prev, 1) === d ? run + 1 : 1;
+  for (const d of sorted) {
+    run = prev && bridged(prev, d) ? run + 1 : 1;
     best = Math.max(best, run);
     prev = d;
   }
