@@ -14,6 +14,8 @@ import { listQueued } from './db.js';
 import { toast, el } from './dom.js';
 import { requestPersistence } from './storage-persist.js';
 import { shouldShowSplash, splashAlreadyShown, runSplash } from './splash.js';
+import { maybeAutoBackup } from './online-backup.js';
+import { liveDeps } from './views/online-backup-ui.js';
 
 registerRenderer('today', renderToday);
 registerRenderer('products', renderProducts);
@@ -97,3 +99,13 @@ if (splash) {
 showView('today');
 handleLaunch();
 requestPersistence(); // Ergebnis steht in den Einstellungen, Chrome entscheidet selbst
+
+// Online-Sicherung: beim Öffnen und bei der Rückkehr in die App, still und nur wenn fällig.
+let backingUp = false;
+const autoBackup = () => {
+  if (backingUp) return;
+  backingUp = true;
+  maybeAutoBackup(liveDeps).finally(() => { backingUp = false; });
+};
+setTimeout(autoBackup, 4000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(autoBackup, 1500); });

@@ -71,6 +71,17 @@ Unter **Mehr → Sicherung** (oder Einstellungen) → **Sicherung teilen** öffn
 - **Wiederherstellen:** **Sicherung importieren** ersetzt alle aktuellen Daten (nach Rückfrage). Bei einer ungültigen Datei bleibt alles unverändert.
 - **Daten weg?** Ist die App leer, erscheint auf „Heute“ die Karte „Neu hier oder zurück?“ mit **Sicherung wiederherstellen**. Die App fordert außerdem persistenten Speicher an; in den Einstellungen siehst du, ob Chrome ihn gewährt hat. Löschst du in Chrome „Cookies und Websitedaten“ für die Seite, sind die Daten trotzdem weg, deshalb regelmäßig sichern.
 
+## Online-Sicherung (automatisch, verschlüsselt)
+Unter **Mehr → Einstellungen → Online-Sicherung** sicherst du deine Daten automatisch in ein **privates GitHub-Gist**. Das schützt auch vor gelöschten Browserdaten oder einem neuen Handy.
+
+- **Einrichten (einmalig):** Bei GitHub ein Token erzeugen (der Link steht in der App; klassisches Token, nur der Haken **gist**). Token und ein **eigenes Passwort** (mindestens 8 Zeichen) in die App eintragen, dann „Einrichten und jetzt sichern“.
+- **Verschlüsselung:** Die Daten werden auf dem Handy mit deinem Passwort verschlüsselt (PBKDF2 und AES-256-GCM, direkt im Browser). GitHub sieht nur Zufallstext. **Ohne das Passwort ist die Sicherung nicht lesbar, es gibt keine Rettung.** Der Gemini-Key wird nie gesichert.
+- **Wann gesichert wird:** automatisch beim Öffnen der App (und beim Zurückkehren in die App), höchstens einmal am Tag und nur, wenn sich etwas geändert hat. Eine App im Hintergrund oder nachts gibt es nicht. „Jetzt sichern“ geht jederzeit. Das Gist behält den Versionsverlauf.
+- **Fehler:** Ist die App offline oder das Token abgelaufen, merkt sie sich den Fehler und zeigt ihn in den Einstellungen. Beim Start erscheint nichts.
+- **Wichtig:** Token, Gist-Nummer und Passwort liegen auf dem Handy in derselben Datenbank wie deine Daten. Löscht Chrome alles, sind sie mit weg. Notiere sie dir deshalb **außerhalb des Handys** (Passwort-Manager). „Zugangsdaten anzeigen“ zeigt sie dir.
+- **Wiederherstellen:** Auf einer leeren App erscheint auf „Heute“ der Knopf **Aus Online-Sicherung** (sonst in den Einstellungen). Token, Gist-Nummer und Passwort eingeben. Bei falschem Passwort bleibt alles unverändert. Danach ist die Online-Sicherung wieder eingeschaltet.
+- **Ausschalten:** entfernt die Zugangsdaten vom Handy, das Gist bei GitHub bleibt bestehen.
+
 ## Updates
 Gibt es eine neue App-Version, zeigt die App oben „Neue Version verfügbar“. Tippe auf **Neu laden**, wenn du gerade nichts bearbeitest.
 
