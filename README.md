@@ -6,6 +6,9 @@ Persönliche Handy-App (PWA): Nährwerttabelle fotografieren, Gemini liest die W
 1. Die veröffentlichte Adresse in Chrome auf dem Pixel öffnen.
 2. Menü (⋮) → „Zum Startbildschirm hinzufügen“ → „Installieren“.
 
+## Für Freunde: eigenen Gemini-Schlüssel einrichten
+Jede Person braucht ihren **eigenen, kostenlosen Gemini-Schlüssel**, sonst liefe alles über das Konto und das Limit einer anderen Person. Auf einer leeren App führt der Knopf **Foto-Erkennung einrichten** (auf „Heute“) durch drei Schritte: Google AI Studio öffnen und anmelden, „Create API key“ tippen und kopieren, in der App einfügen. Dieselbe Einrichtung öffnet sich, wenn du ohne Schlüssel ein Foto scannen willst. Der Schlüssel bleibt nur auf dem Handy und kommt in keine Sicherung. Auf dem iPhone fehlen die Kurzbefehle auf dem Icon und „Teilen in die App“ (Einschränkung von Safari).
+
 ## Erste Einrichtung
 1. Tab **Mehr** → **Einstellungen** öffnen.
 2. Dein Tageskalorienziel eintragen (berechnest du selbst).
@@ -35,6 +38,8 @@ Tab **Training**: **Einheit starten** (oder im Kamera-Menü „Training starten�
 
 - **Übungen:** Beim ersten Mal bietet die App Vorschläge an (Kniebeugen, Bankdrücken, Kreuzheben, Schulterdrücken, Klimmzüge, Rudern, Bizeps-Curls, Plank). Eigene Übungen legst du mit Muskelgruppe an, umbenennen und löschen (mit Rückgängig) geht per Antippen. Alte Einheiten bleiben beim Löschen einer Übung erhalten.
 - **Einheit:** Übungen hinzufügen, pro Satz Gewicht und Wiederholungen eintragen (vorbelegt vom letzten Mal, 0 kg = Körpergewicht) und mit dem Haken abhaken. **Satz hinzufügen** übernimmt die letzten Werte. Der Haken startet den **Pausen-Timer** (Standard 90 s, mit −15/+15 zwischen 30 und 300 s einstellbar, am Ende vibriert das Handy). **Fertig** speichert, Titel und Dauer entstehen automatisch. Die laufende Einheit wird laufend gesichert: Beim Neuladen oder Schließen kannst du sie mit „Offene Einheit fortsetzen“ weitermachen. Sätze ohne Haken oder ohne Wiederholungen werden nicht gespeichert.
+- **Vorlage:** „Letzte Einheit wiederholen“ (Training-Tab) oder in den Details einer Einheit „Diese Einheit wiederholen“ übernimmt Übungen und Sätze als neue, noch nicht abgehakte Einheit. Gelöschte Übungen entfallen.
+- **Wochenziel:** Die Karte „Diese Woche“ zählt deine Trainingstage (Montag bis Sonntag, mehrere Einheiten an einem Tag zählen einmal). Mit einem Tipp setzt du optional ein Ziel von 1 bis 7 Tagen. Es zählt nur mit: Die App bewertet nie, auch nicht, wenn du darüber oder darunter liegst.
 - **Rekorde:** Bei einem neuen Bestwert (geschätztes Maximum nach Epley: Gewicht × (1 + Wiederholungen / 30)) erscheint der Fuchs mit Krone. Der erste Satz einer Übung zählt nie als Rekord.
 - **Fortschritt (im Verlauf):** Gewicht, die drei besten Übungen, Muskelverteilung der letzten 30 Tage (neutral, z. B. „Schultern zuletzt vor 9 Tagen“), Sätze pro Woche (8 Wochen) und die Kraft-Kurve je Übung.
 - Training wird nie bewertet, und der Fuchs reagiert nur darauf, ob du einträgst.

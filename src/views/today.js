@@ -20,6 +20,7 @@ import { nutrientTile } from './nutrient-rings.js';
 import { takeJustLogged, setJustLogged } from '../state.js';
 import { countUp, flyIcon } from './motion.js';
 import { openOnlineRestore } from './online-backup-ui.js';
+import { openKeySetup } from './key-setup.js';
 import { addDays, pickRecent, rollingAverage, fastLossWarning } from '../overview.js';
 import {
   mealsForDate, deleteMeal, getSettings, listProducts, replaceAll, listDayStatuses, addMeal, listMeals, getProduct, listQueued, deleteQueued, addQueued, listWeights, saveSettings,
@@ -306,12 +307,12 @@ function welcomeCard(settings) {
   });
   return el('div', { class: 'card suggest' },
     el('b', {}, 'Neu hier oder zurück?'),
-    el('div', { class: 'muted', style: 'margin:4px 0 10px' }, 'Wenn du schon eine Sicherung hast, spiel sie hier ein. Sonst starte einfach neu.'),
+    el('div', { class: 'muted', style: 'margin:4px 0 10px' }, 'Wenn du schon eine Sicherung hast, spiel sie hier ein. Sonst richte zuerst die Foto-Erkennung ein (kostenloser Gemini-Schlüssel) und starte neu.'),
     fileInput,
     el('div', { class: 'actions', style: 'margin:0' },
       el('button', { class: 'primary', onClick: () => fileInput.click() }, 'Sicherung wiederherstellen'),
       el('button', { class: 'btn', onClick: () => openOnlineRestore({ onDone: renderToday }) }, 'Aus Online-Sicherung'),
-      el('button', { class: 'btn', onClick: () => showView('settings') }, 'Gemini-Key eintragen'),
+      el('button', { class: 'btn', onClick: () => openKeySetup({ onDone: renderToday }) }, 'Foto-Erkennung einrichten'),
       el('button', { class: 'btn', onClick: async () => { await saveSettings({ ...(await getSettings()), welcomeDismissed: true }); renderToday(); } }, 'Neu starten')));
 }
 

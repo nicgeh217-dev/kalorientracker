@@ -150,3 +150,28 @@ export function draftToWorkout(draft, finishedAtMs, exercises) {
     sets: entries.flatMap((e) => e.sets.map((s) => ({ exerciseId: e.exerciseId, kg: s.kg ?? 0, reps: s.reps }))),
   };
 }
+
+// Neue Einheit mit den Übungen und Sätzen einer früheren (alle Sätze noch nicht abgehakt). Gelöschte Übungen entfallen.
+// opts.today: heutiges Datum; liegt dateKey davor, ist es ein Nachtrag ohne Dauer.
+export function repeatDraft(workout, exercises, dateKey, startedAt, { today = dateKey } = {}) {
+  const known = new Set(exercises.map((e) => e.id));
+  const entries = [];
+  for (const s of workout.sets) {
+    if (!known.has(s.exerciseId)) continue;
+    let entry = entries.find((e) => e.exerciseId === s.exerciseId);
+    if (!entry) { entry = { exerciseId: s.exerciseId, sets: [] }; entries.push(entry); }
+    entry.sets.push({ kg: s.kg, reps: s.reps, done: false });
+  }
+  return { dateKey, startedAt, restSec: 90, manual: dateKey !== today, entries };
+}
+
+// Trainingstage der laufenden Woche (Montag bis heute). Mehrere Einheiten am Tag zählen einmal, Einheiten ohne Sätze gar nicht.
+export function trainingDaysThisWeek(workouts, todayKey) {
+  const week = weekOf(todayKey);
+  const days = new Set();
+  for (const w of workouts) {
+    if (w.sets.length && w.dateKey >= week[0] && w.dateKey <= todayKey) days.add(w.dateKey);
+  }
+  const list = [...days].sort();
+  return { count: list.length, days: list };
+}

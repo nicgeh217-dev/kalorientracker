@@ -4,7 +4,7 @@ import { refreshCurrent } from '../nav.js';
 import {
   listExercises, listWorkouts, addWorkout, getTrainingDraft, saveTrainingDraft, clearTrainingDraft,
 } from '../db.js';
-import { lastSetsFor, isNewRecord, restRemaining, draftToWorkout, epley1RM } from '../training.js';
+import { lastSetsFor, isNewRecord, restRemaining, draftToWorkout, epley1RM, repeatDraft } from '../training.js';
 import { dayHeading } from '../state.js';
 import { foxSvg } from './fox.js';
 import { prefersReducedMotion } from './motion.js';
@@ -18,12 +18,14 @@ const clock = (sec) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '
 // Vollbild-Dialog für eine Trainingseinheit. Ein offener Entwurf wird immer fortgesetzt, damit nichts verloren geht.
 let opening = false;
 
-export async function openWorkout({ dateKey = null } = {}) {
+export async function openWorkout({ dateKey = null, template = null } = {}) {
   if (opening || document.getElementById('workout-root')) return;
   opening = true;
   const [exercises, workouts, saved] = await Promise.all([listExercises(), listWorkouts(), getTrainingDraft()]);
   const today = localDateKey(new Date());
-  const draft = saved ?? { dateKey: dateKey ?? today, startedAt: Date.now(), restSec: 90, manual: (dateKey ?? today) !== today, entries: [] };
+  const draft = saved ?? (template
+    ? repeatDraft(template, exercises, dateKey ?? today, Date.now(), { today })
+    : { dateKey: dateKey ?? today, startedAt: Date.now(), restSec: 90, manual: (dateKey ?? today) !== today, entries: [] });
   draft.restSec ??= 90;
   if (saved && dateKey && dateKey !== saved.dateKey) toast('Eine offene Einheit wurde fortgesetzt.');
 

@@ -421,3 +421,12 @@ input:focus-visible, textarea:focus-visible { outline: none; }
 .chips button.on { box-shadow: 0 0 0 2px var(--orange); }
 .wset.done .wcheck { animation: checkpop .3s cubic-bezier(.22,1,.36,1); }
 @keyframes checkpop { 0% { transform: scale(.8); } 60% { transform: scale(1.12); } 100% { transform: none; } }
+
+/* Wochenziel Training */
+.weekgoal { display: block; width: 100%; border: 0; text-align: left; color: var(--text); font-weight: 400; }
+.wgdots { display: flex; gap: 5px; }
+.wgd { display: grid; justify-items: center; gap: 3px; }
+.wgd i { width: 12px; height: 12px; border-radius: 50%; background: var(--track); }
+.wgd.on i { background: var(--orange); }
+.wgd.future { opacity: .45; }
+.wgd span { font-size: 10px; color: var(--muted); }

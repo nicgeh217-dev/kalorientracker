@@ -155,3 +155,40 @@ test('Körpergewichts-Übungen (0 kg) erzeugen keine Rekorde und keine Kurve mit
   assert.deepEqual(personalRecords(ws, EX), []);
   assert.deepEqual(strengthCurve(ws, 1), []);
 });
+
+import { repeatDraft, trainingDaysThisWeek } from '../src/training.js';
+
+test('repeatDraft: Übungen in Reihenfolge, Sätze mit denselben Werten und noch nicht abgehakt', () => {
+  const w = W('2026-10-20', [
+    { exerciseId: 1, kg: 80, reps: 5 }, { exerciseId: 3, kg: 100, reps: 5 }, { exerciseId: 1, kg: 82.5, reps: 4 },
+  ], { startedAt: 5 });
+  const d = repeatDraft(w, EX, '2026-10-25', 99);
+  assert.equal(d.dateKey, '2026-10-25');
+  assert.equal(d.startedAt, 99);
+  assert.deepEqual(d.entries.map((e) => e.exerciseId), [1, 3]);
+  assert.deepEqual(d.entries[0].sets, [{ kg: 80, reps: 5, done: false }, { kg: 82.5, reps: 4, done: false }]);
+  assert.equal(d.restSec, 90);
+  assert.equal(d.manual, false);
+});
+
+test('repeatDraft: gelöschte Übungen entfallen, ohne Rest ein leerer Entwurf, Nachtragen für früheren Tag ist manuell', () => {
+  const w = W('2026-10-20', [{ exerciseId: 99, kg: 1, reps: 1 }, { exerciseId: 2, kg: 40, reps: 8 }]);
+  assert.deepEqual(repeatDraft(w, EX, '2026-10-25', 1).entries.map((e) => e.exerciseId), [2]);
+  assert.deepEqual(repeatDraft(W('2026-10-20', [{ exerciseId: 99, kg: 1, reps: 1 }]), EX, '2026-10-25', 1).entries, []);
+  assert.equal(repeatDraft(w, EX, '2026-10-24', 1, { today: '2026-10-25' }).manual, true);
+});
+
+test('trainingDaysThisWeek: verschiedene Tage der laufenden Woche (Mo bis So), nichts anderes', () => {
+  const ws = [
+    W('2026-10-19', [{ exerciseId: 1, kg: 1, reps: 1 }]),
+    W('2026-10-19', [{ exerciseId: 2, kg: 1, reps: 1 }]), // zweite Einheit am selben Tag zählt nicht doppelt
+    W('2026-10-23', [{ exerciseId: 1, kg: 1, reps: 1 }]),
+    W('2026-10-18', [{ exerciseId: 1, kg: 1, reps: 1 }]), // Vorwoche
+    W('2026-10-26', [{ exerciseId: 1, kg: 1, reps: 1 }]), // Zukunft
+  ];
+  const r = trainingDaysThisWeek(ws, '2026-10-25');
+  assert.equal(r.count, 2);
+  assert.deepEqual(r.days, ['2026-10-19', '2026-10-23']);
+  assert.deepEqual(trainingDaysThisWeek([], '2026-10-25'), { count: 0, days: [] });
+  assert.equal(trainingDaysThisWeek([W('2026-10-20', [])], '2026-10-25').count, 0); // Einheit ohne Sätze zählt nicht
+});

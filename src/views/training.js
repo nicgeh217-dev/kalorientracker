@@ -1,11 +1,13 @@
 import { el, mount, openSheet, closeSheet, toast } from '../dom.js';
 import { localDateKey } from '../logic.js';
 import { addDays } from '../overview.js';
+import { weekOf } from '../week.js';
 import {
   listExercises, listWorkouts, addExercise, updateExercise, deleteExercise, deleteWorkout, restoreWorkout,
   getTrainingDraft, setDayStatus, listDayStatuses,
 } from '../db.js';
-import { MUSCLES, DEFAULT_EXERCISES } from '../training.js';
+import { MUSCLES, DEFAULT_EXERCISES, trainingDaysThisWeek } from '../training.js';
+import { getSettings, saveSettings } from '../db.js';
 import { dayLabel } from '../state.js';
 import { openWorkout } from './workout.js';
 
@@ -17,7 +19,8 @@ const shortDate = (dateKey) => {
 export async function renderTraining() {
   const root = document.getElementById('view-training');
   const todayKey = localDateKey(new Date());
-  const [exercises, workouts, draft, statuses] = await Promise.all([listExercises(), listWorkouts(), getTrainingDraft(), listDayStatuses()]);
+  const [exercises, workouts, draft, statuses, settings] = await Promise.all([listExercises(), listWorkouts(), getTrainingDraft(), listDayStatuses(), getSettings()]);
+  const lastWorkout = [...workouts].filter((w) => w.sets.length).sort((a, b) => b.dateKey.localeCompare(a.dateKey) || (b.startedAt ?? 0) - (a.startedAt ?? 0))[0] ?? null;
   const status = statuses.find((s) => s.dateKey === todayKey)?.status ?? null;
   const todays = workouts.filter((w) => w.dateKey === todayKey);
   const recent = [...workouts].sort((a, b) => b.dateKey.localeCompare(a.dateKey) || (b.startedAt ?? 0) - (a.startedAt ?? 0)).slice(0, 10);
@@ -35,8 +38,10 @@ export async function renderTraining() {
   mount(root,
     el('h1', {}, 'Training'),
     el('button', { class: 'primary', style: 'width:100%', onClick: () => openWorkout({ resume: Boolean(draft) }) }, draft ? 'Offene Einheit fortsetzen' : 'Einheit starten'),
+    !draft && lastWorkout ? el('button', { class: 'btn', style: 'width:100%;margin-top:8px', onClick: () => openWorkout({ template: lastWorkout }) }, `Letzte Einheit wiederholen (${lastWorkout.title})`) : null,
     el('div', { class: 'quick', style: 'margin-top:10px' }, restToggle,
       el('button', { type: 'button', class: 'chipbtn', onClick: openBackfill }, 'Nachtragen')),
+    weekCard(workouts, settings, todayKey),
     el('div', { class: 'card' },
       el('b', {}, 'Heute'),
       todays.length
@@ -72,6 +77,7 @@ function openDetails(w, names) {
       : el('div', { class: 'card muted' }, 'Keine Sätze gespeichert.'),
     el('div', { class: 'actions' },
       el('button', { class: 'btn', onClick: closeSheet }, 'Schließen'),
+      el('button', { class: 'btn wide', onClick: () => { closeSheet(); openWorkout({ template: w }); } }, 'Diese Einheit wiederholen'),
       el('button', {
         class: 'btn danger wide',
         onClick: async () => {
@@ -152,4 +158,36 @@ export function openExerciseForm(e, { onSaved = null } = {}) {
           toast(`${e.name} gelöscht. Eingetragene Einheiten bleiben erhalten.`, 'Rückgängig', async () => { await updateExercise(e); renderTraining(); });
         },
       }, 'Löschen') : null));
+}
+
+const DAY_LETTERS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+
+// Trainingstage dieser Woche. Das Ziel ist nur eine Zahl zum Mitzählen: nie Rot, nie ein Urteil, auch wenn man darüber oder darunter liegt.
+function weekCard(workouts, settings, todayKey) {
+  const { count, days } = trainingDaysThisWeek(workouts, todayKey);
+  const goal = settings.trainingGoalDays ?? null;
+  const monday = weekOf(todayKey);
+  return el('button', { class: 'card weekgoal', 'aria-label': 'Wochenziel ändern', onClick: () => openGoalSheet(goal) },
+    el('div', { class: 'row' },
+      el('div', {},
+        el('div', { class: 'muted' }, 'Diese Woche'),
+        el('div', {}, el('span', { class: 'num', style: 'font-size:34px' }, String(count)),
+          el('span', { class: 'muted' }, goal ? ` von ${goal} Trainingstagen` : count === 1 ? ' Trainingstag' : ' Trainingstage'))),
+      el('div', { class: 'wgdots', 'aria-hidden': 'true' }, ...monday.map((d, i) => el('div', { class: `wgd${days.includes(d) ? ' on' : ''}${d > todayKey ? ' future' : ''}` }, el('i', {}), el('span', {}, DAY_LETTERS[i]))))),
+    goal ? null : el('div', { class: 'muted', style: 'margin-top:6px' }, 'Tippen, um ein Wochenziel zu setzen (optional).'));
+}
+
+function openGoalSheet(current) {
+  const choose = async (n) => {
+    await saveSettings({ ...(await getSettings()), trainingGoalDays: n });
+    closeSheet();
+    renderTraining();
+  };
+  openSheet(
+    el('h1', {}, 'Wochenziel'),
+    el('div', { class: 'muted', style: 'margin:-8px 4px 12px' }, 'Wie viele Tage pro Woche möchtest du trainieren? Die App zählt nur mit, sie bewertet nichts.'),
+    el('div', { class: 'quick', style: 'flex-wrap:wrap' }, ...[1, 2, 3, 4, 5, 6, 7].map((n) => el('button', { type: 'button', class: `chipbtn${current === n ? ' on' : ''}`, style: 'flex:1 0 20%', onClick: () => choose(n) }, String(n)))),
+    el('div', { class: 'actions' },
+      el('button', { class: 'btn', onClick: closeSheet }, 'Schließen'),
+      el('button', { class: 'btn', onClick: () => choose(null) }, 'Kein Ziel')));
 }

@@ -4,6 +4,7 @@ import { getSettings, addQueued, deleteQueued } from '../db.js';
 import { showView, refreshCurrent } from '../nav.js';
 import { viewedDateKey } from '../state.js';
 import { openMealForm } from './meal-form.js';
+import { openKeySetup } from './key-setup.js';
 
 // state: { photos: [{file, url}], hint, queuedId?, dateKey? }
 // Fotos und Text bleiben bei Fehlern und beim "Neu schätzen" erhalten.
@@ -135,12 +136,7 @@ export function runQueued(item) {
 }
 
 function showKeyMissing() {
-  openSheet(
-    el('h1', {}, 'Gemini-Key fehlt'),
-    el('div', { class: 'note warn' }, 'Für den Foto-Scan brauchst du einen Gemini-API-Key. Du trägst ihn einmal in den Einstellungen ein.'),
-    el('div', { class: 'actions' },
-      el('button', { class: 'btn', onClick: closeSheet }, 'Abbrechen'),
-      el('button', { class: 'primary', onClick: () => { closeSheet(); showView('settings'); } }, 'Zu den Einstellungen')));
+  openKeySetup();
 }
 
 export async function startScan(initial = null) {
