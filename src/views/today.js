@@ -137,6 +137,7 @@ export async function renderToday() {
   mount(root,
     el('div', { class: 'dayhead' },
       el('div', {}, el('div', { class: 'eyebrow' }, longDate(dateKey)), el('h1', {}, dayLabel(dateKey)))),
+    statusByDay[dateKey] ? el('div', { class: 'daystatus' }, statusByDay[dateKey] === 'sick' ? 'Krank' : 'Ruhetag') : null,
     weekStrip({ selected: dateKey, todayKey, counts: countByDay, statuses: statusByDay, onSelect: go, onShift: goToWeek }),
     isToday && shouldShowWelcome({ products, meals: everyMeal, weights, settings }) ? welcomeCard(settings) : null,
     noticeNode,

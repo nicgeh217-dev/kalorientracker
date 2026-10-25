@@ -1,15 +1,17 @@
 import { el, mount } from '../dom.js';
 import { dayTotals, localDateKey } from '../logic.js';
 import { addDays, weekSummary } from '../overview.js';
-import { monthGrid, shiftMonth } from '../calendar.js';
-import { mealsForDate, getSettings, listMeals, listWeights } from '../db.js';
+import { yearGrid } from '../calendar.js';
+import { shiftWeek } from '../week.js';
+import { trackingDays, streak } from '../pet.js';
+import { mealsForDate, getSettings, listMeals, listDayStatuses, setDayStatus } from '../db.js';
 import { showView } from '../nav.js';
-import { setViewedDateKey, viewedDateKey, dayLabel } from '../state.js';
+import { setViewedDateKey, dayLabel, longDate } from '../state.js';
+import { weekStrip } from './week-strip.js';
 
 const BAR_AREA = 80; // px Höhe für Balken in der Wochenansicht
-const WEEKDAYS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
 
-let calMonth = null; // angezeigter Kalendermonat {year, month}; null = aktueller Monat
+let selected = null; // im Verlauf gewählter Tag; null = heute
 
 // Springt zu einem Tag auf "Heute".
 function openDay(dateKey) {
@@ -22,23 +24,69 @@ export async function renderHistory() {
   const root = document.getElementById('view-history');
   const todayKey = localDateKey(new Date());
   const weekKeys = Array.from({ length: 7 }, (_, i) => addDays(todayKey, i - 6));
-  const [settings, weekMeals, everyMeal, weights] = await Promise.all([
+  const [settings, weekMeals, everyMeal, dayStatuses] = await Promise.all([
     getSettings(),
     Promise.all(weekKeys.map((k) => mealsForDate(k))),
     listMeals(),
-    listWeights(),
+    listDayStatuses(),
   ]);
   const days = weekKeys.map((k, i) => ({ dateKey: k, kcal: dayTotals(weekMeals[i]).kcal, meals: weekMeals[i].length }));
+  const counts = {};
+  for (const m of everyMeal) counts[m.dateKey] = (counts[m.dateKey] ?? 0) + 1;
+  const statuses = Object.fromEntries(dayStatuses.map((d) => [d.dateKey, d.status]));
+  const sickDays = dayStatuses.filter((d) => d.status === 'sick').map((d) => d.dateKey);
+  const day = selected && selected <= todayKey ? selected : todayKey;
+  const dayMeals = everyMeal.filter((m) => m.dateKey === day);
+  const trackedDays = trackingDays(everyMeal);
+
+  const pick = (key) => { selected = key; renderHistory(); };
+  const shift = (n) => { const next = shiftWeek(day, n); pick(next > todayKey ? todayKey : next); };
 
   mount(root,
     el('h1', {}, 'Verlauf'),
+    weekStrip({ selected: day, todayKey, counts, statuses, onSelect: pick, onShift: shift }),
+    dayCard({ day, meals: dayMeals, status: statuses[day] ?? null }),
+    yearCard({ counts, statuses, todayKey, stk: streak(trackedDays, todayKey, sickDays), total: trackedDays.length }),
     el('h2', {}, 'Letzte 7 Tage'),
-    weekCard(days, settings.calorieGoal, viewedDateKey()),
-    el('h2', {}, 'Kalender'),
-    calendarCard({ everyMeal, weights, todayKey, selected: viewedDateKey() }));
+    weekCard(days, settings.calorieGoal, day));
+  const heat = root.querySelector('.heat-scroll');
+  if (heat) heat.scrollLeft = heat.scrollWidth; // neueste Wochen rechts sichtbar
 }
 
-function weekCard(days, goal, selected) {
+function dayCard({ day, meals, status }) {
+  const kcal = dayTotals(meals).kcal;
+  const toggle = (value, label) => el('button', {
+    type: 'button', class: `chipbtn${status === value ? ' on' : ''}`, 'aria-pressed': status === value ? 'true' : 'false',
+    onClick: async () => { await setDayStatus(day, status === value ? null : value); renderHistory(); },
+  }, label);
+  return el('div', { class: 'card' },
+    el('div', { class: 'row' },
+      el('div', {},
+        el('b', {}, `${dayLabel(day)}, ${longDate(day)}`),
+        el('div', { class: 'muted' }, meals.length ? `${meals.length} ${meals.length === 1 ? 'Eintrag' : 'Einträge'} · ${kcal} kcal` : 'Keine Einträge')),
+      el('button', { class: 'small ghost', onClick: () => openDay(day) }, 'Ansehen')),
+    el('div', { class: 'quick', style: 'margin-top:12px' }, toggle('rest', 'Ruhetag'), toggle('sick', 'Krank')),
+    el('div', { class: 'muted', style: 'margin-top:8px' }, 'Ein Krankheitstag unterbricht deine Serie nicht. Ruhetage betreffen nur das Training.'));
+}
+
+// Heatmap: welche Tage hast du eingetragen? Die Farbe zeigt nur die Anzahl der Einträge, nicht Kalorien.
+function yearCard({ counts, statuses, todayKey, stk, total }) {
+  const g = yearGrid({ counts, statuses, todayKey });
+  const cell = (c) => el('i', {
+    class: `hcell lv${c.level}${c.status ? ` ${c.status}` : ''}${c.isFuture ? ' future' : ''}${c.isToday ? ' today' : ''}`,
+  });
+  const stat = (n, label) => el('div', {}, el('div', { class: 'num' }, String(n)), el('div', { class: 'muted' }, label));
+  return el('div', { class: 'card' },
+    el('h2', { style: 'margin:0 0 10px' }, 'Dein Jahr'),
+    el('div', { class: 'week-stats' }, stat(stk.current, stk.current === 1 ? 'Tag in Folge' : 'Tage in Folge'), stat(stk.best, 'Rekord'), stat(total, 'Tage insgesamt')),
+    el('div', { class: 'heat-scroll', role: 'img', 'aria-label': `Jahresübersicht: ${g.tracked} Tage mit Einträgen` },
+      el('div', { class: 'heat' }, ...g.weeks.map((w) => el('div', { class: 'hweek' }, ...w.map(cell))))),
+    el('div', { class: 'legend' },
+      el('span', {}, 'Je kräftiger die Farbe, desto mehr Einträge.'),
+      el('span', {}, '● krank'), el('span', {}, '✓ Ruhetag')));
+}
+
+function weekCard(days, goal, selectedDay) {
   const s = weekSummary(days, goal);
   const maxVal = Math.max(goal || 0, ...days.map((d) => d.kcal), 1);
   const bars = el('div', { class: 'bars' },
@@ -46,7 +94,7 @@ function weekCard(days, goal, selected) {
     ...days.map((d) => {
       const [y, m, dd] = d.dateKey.split('-').map(Number);
       const wd = new Date(y, m - 1, dd).toLocaleDateString('de-DE', { weekday: 'short' }).replace('.', '');
-      const cls = [d.meals ? 'has' : '', goal && d.kcal > goal ? 'over' : '', d.dateKey === selected ? 'sel' : ''].join(' ').trim();
+      const cls = [d.meals ? 'has' : '', goal && d.kcal > goal ? 'over' : '', d.dateKey === selectedDay ? 'sel' : ''].join(' ').trim();
       return el('button', { class: cls, 'aria-label': `${dayLabel(d.dateKey)}: ${d.kcal} kcal`, onClick: () => openDay(d.dateKey) },
         el('i', { style: `height:${Math.max(4, (d.kcal / maxVal) * BAR_AREA)}px` }), wd);
     }));
@@ -58,33 +106,4 @@ function weekCard(days, goal, selected) {
     el('div', { class: 'legend' },
       el('span', {}, 'Der Schnitt zählt nur Tage mit Einträgen.'),
       goal ? el('span', {}, '- - Ziel') : null));
-}
-
-// Heatmap: welche Tage hast du eingetragen? Die Farbe zeigt nur die Anzahl der Einträge, nicht Kalorien.
-function calendarCard({ everyMeal, weights, todayKey, selected }) {
-  const counts = {};
-  for (const m of everyMeal) counts[m.dateKey] = (counts[m.dateKey] ?? 0) + 1;
-  const todayMonth = { year: Number(todayKey.slice(0, 4)), month: Number(todayKey.slice(5, 7)) };
-  const cal = calMonth ?? todayMonth;
-  const g = monthGrid({ year: cal.year, month: cal.month, counts, weightDays: new Set(weights.map((w) => w.date)), todayKey });
-  const label = new Date(cal.year, cal.month - 1, 1).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
-  const isCurrent = cal.year === todayMonth.year && cal.month === todayMonth.month;
-  const move = (delta) => { calMonth = shiftMonth(cal, delta); renderHistory(); };
-
-  const cell = (c) => el('button', {
-    class: `cal-day lv${c.level}${c.isToday ? ' today' : ''}${c.dateKey === selected ? ' sel' : ''}${c.isFuture ? ' future' : ''}`,
-    disabled: c.isFuture,
-    'aria-label': `${c.day}. ${label}: ${c.count} ${c.count === 1 ? 'Eintrag' : 'Einträge'}${c.weight ? ', Gewicht eingetragen' : ''}`,
-    onClick: () => openDay(c.dateKey),
-  }, String(c.day), c.weight ? el('span', { class: 'wdot' }) : null);
-
-  return el('div', { class: 'card cal' },
-    el('div', { class: 'row' },
-      el('b', {}, label),
-      el('div', { class: 'xrow' },
-        el('button', { class: 'x', 'aria-label': 'Vorheriger Monat', onClick: () => move(-1) }, '‹'),
-        el('button', { class: 'x', 'aria-label': 'Nächster Monat', disabled: isCurrent, onClick: () => move(1) }, '›'))),
-    el('div', { class: 'cal-grid cal-head' }, ...WEEKDAYS.map((d) => el('span', {}, d))),
-    ...g.weeks.map((week) => el('div', { class: 'cal-grid' }, ...week.map((c) => (c ? cell(c) : el('span', { class: 'cal-empty' }))))),
-    el('div', { class: 'muted', style: 'margin-top:10px' }, `${g.tracked} von ${g.elapsed} Tagen mit Einträgen. Je kräftiger die Farbe, desto mehr Einträge. Blauer Punkt: Gewicht eingetragen.`));
 }
