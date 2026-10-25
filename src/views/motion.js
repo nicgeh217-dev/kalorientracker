@@ -9,6 +9,7 @@ export const prefersReducedMotion = () => globalThis.matchMedia?.('(prefers-redu
 
 // Zählt den Text eines Elements von `from` nach `to`. Dezimalstellen mit Komma.
 export function countUp(node, to, { from = 0, ms = 650, decimals = 0 } = {}) {
+  if (!node) return;
   const fmt = (v) => (decimals ? v.toFixed(decimals) : String(Math.round(v))).replace('.', ',');
   if (prefersReducedMotion() || from === to) {
     node.textContent = fmt(to);

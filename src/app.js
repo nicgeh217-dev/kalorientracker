@@ -87,7 +87,11 @@ if (splash) {
     reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
     shownThisSession: splashAlreadyShown(),
   });
-  if (show) runSplash(splash); else splash.remove();
+  try {
+    if (show) runSplash(splash); else splash.remove();
+  } catch {
+    splash.remove(); // ein Fehler in der Animation darf die App nie verdecken
+  }
 }
 
 showView('today');

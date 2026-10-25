@@ -31,3 +31,9 @@ test('NUTRIENTS: fünf Einträge mit deutschen Namen und Farben', () => {
   assert.deepEqual(NUTRIENTS.map((n) => n.label), ['Eiweiß', 'Kohlenhydrate', 'Fett', 'Ballaststoffe', 'Zucker']);
   assert.equal(NUTRIENTS[0].color, '#ff6b57');
 });
+
+test('eigene Werte und Proteinziel gelten auch ohne Kalorienziel, abgeleitete fehlen', () => {
+  const t = nutrientTargets({ kcal: null, proteinGoal: 120, overrides: { fiber: 25 } });
+  assert.deepEqual(t, { protein: 120, fiber: 25 });
+  assert.equal(nutrientTargets({ kcal: null, overrides: {} }), null);
+});

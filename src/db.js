@@ -26,8 +26,14 @@ function open() {
         db.createObjectStore('workouts', { keyPath: 'id', autoIncrement: true }).createIndex('dateKey', 'dateKey');
       }
     };
-    req.onsuccess = () => resolve(req.result);
+    req.onsuccess = () => {
+      req.result.onversionchange = () => req.result.close(); // ein späteres Upgrade soll nie an dieser Verbindung hängen
+      resolve(req.result);
+    };
     req.onerror = () => reject(req.error);
+    req.onblocked = () => {
+      document.body?.append(Object.assign(document.createElement('div'), { id: 'update-banner', role: 'status', textContent: 'Bitte schließe andere Fenster oder Tabs der App, damit das Update fertig werden kann.' }));
+    };
   });
   return dbPromise;
 }

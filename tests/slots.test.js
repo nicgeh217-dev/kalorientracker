@@ -33,3 +33,9 @@ test('groupBySlot ordnet nach Uhrzeit, slot überstimmt, kcal wird summiert', ()
   assert.equal(g.lunch.kcal, 0);
   assert.equal(g.snack.kcal, 50);
 });
+
+test('unbekannter slot-Wert fällt auf die Uhrzeit zurück statt die Mahlzeit zu verlieren', () => {
+  const g = groupBySlot([{ id: 1, timestamp: at(8), kcal: 100, slot: 'brunch' }]);
+  assert.equal(g.find((x) => x.slot === 'breakfast').meals.length, 1);
+  assert.equal(g.reduce((s, x) => s + x.meals.length, 0), 1);
+});

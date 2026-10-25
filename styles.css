@@ -308,8 +308,8 @@ input:focus-visible, textarea:focus-visible { outline: none; }
 .wd.sel .wl, .wd.sel .wn { color: #fff; }
 .wsdot { width: 6px; height: 6px; border-radius: 50%; background: transparent; }
 .wsdot.has { background: var(--orange); }
-.wsdot.rest { background: #4da3ff; }
-.wsdot.sick { background: #ff7ac0; }
+.wsdot.rest { background: var(--muted); }
+.wsdot.sick { background: #4da3ff; }
 .wd.sel .wsdot.has { background: #fff; }
 .wnav { width: 32px; min-height: 44px; padding: 0; border: 0; background: transparent; color: var(--text); font-size: 22px; }
 .wnav:disabled { opacity: .3; }

@@ -22,3 +22,8 @@ test('easeOutCubic steigt über elf Stützstellen monoton', () => {
 test('prefersReducedMotion ist ohne Browser falsch statt zu werfen', () => {
   assert.equal(prefersReducedMotion(), false);
 });
+
+test('countUp ohne Zielelement wirft nicht (z. B. ohne Kalorienziel fehlt .hs-row)', async () => {
+  const { countUp } = await import('../src/views/motion.js');
+  assert.doesNotThrow(() => countUp(null, 5, { from: 1 }));
+});

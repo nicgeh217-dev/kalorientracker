@@ -15,8 +15,10 @@ export function slotForTime(isoTimestamp) {
 }
 
 export function groupBySlot(meals) {
+  const known = new Set(SLOTS.map((s) => s.id));
+  const slotOf = (m) => (known.has(m.slot) ? m.slot : slotForTime(m.timestamp)); // unbekannter Wert (z. B. aus fremder Datei) fällt auf die Uhrzeit zurück
   return SLOTS.map(({ id, label }) => {
-    const list = meals.filter((m) => (m.slot ?? slotForTime(m.timestamp)) === id);
+    const list = meals.filter((m) => slotOf(m) === id);
     return { slot: id, label, meals: list, kcal: Math.round(list.reduce((sum, m) => sum + (m.kcal ?? 0), 0)) };
   });
 }

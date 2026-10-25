@@ -10,7 +10,13 @@ export const NUTRIENTS = [
 const valid = (n) => Number.isFinite(n) && n > 0;
 
 export function nutrientTargets({ kcal, proteinGoal = null, overrides = {} }) {
-  if (!valid(kcal)) return null;
+  if (!valid(kcal)) {
+    // Ohne Kalorienziel gibt es nur, was du selbst festgelegt hast.
+    const own = {};
+    if (valid(proteinGoal)) own.protein = proteinGoal;
+    for (const id of ['protein', 'carbs', 'fat', 'fiber', 'sugar']) if (valid(overrides?.[id])) own[id] = overrides[id];
+    return Object.keys(own).length ? own : null;
+  }
   const base = {
     protein: valid(proteinGoal) ? proteinGoal : Math.round((kcal * 0.2) / 4),
     carbs: Math.round((kcal * 0.5) / 4),

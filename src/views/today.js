@@ -122,7 +122,7 @@ export async function renderToday() {
   if (isToday) prevTodayCount = todayCount;
   const petCfg = settings.pet;
   const logged = takeJustLogged(); // Name der eben eingetragenen Mahlzeit oder null
-  const before = logged && lastShown?.dateKey === dateKey ? lastShown : { center: 0, eaten: 0, nutrients: {} };
+  const before = logged && lastShown?.dateKey === dateKey ? lastShown : { center: 0, eaten: 0, over: false, nutrients: {} };
   let petNode = null;
   if (isToday && !petCfg && !introOpen && !document.querySelector('.sheet')) {
     introOpen = true;
@@ -130,7 +130,8 @@ export async function renderToday() {
   } else if (isToday && petCfg && petCfg.enabled !== false) {
     petNode = petLine({
       cfg: petCfg, chew: munch && !logged, level: petLvl, total: petTotal, streak: petStreak, todayCount, munch, todayKey,
-      daysSinceLast: petDays.length ? daysBetween(petDays.at(-1), todayKey) : null,
+      // Krank-Tage zählen nicht als Pause (die Serie bleibt ja auch bestehen)
+      daysSinceLast: petDays.length ? Math.max(0, daysBetween(petDays.at(-1), todayKey) - sickDays.filter((d) => d > petDays.at(-1) && d <= todayKey).length) : null,
       weightToday: weights.some((w) => w.date === todayKey),
     });
     const fresh = newUnlocks(petLvl, petCfg.seenLevel ?? petLvl);
@@ -170,20 +171,21 @@ export async function renderToday() {
     recent.length ? el('div', { class: 'chips' }, ...recent.map((m) => recentChip(m, dateKey))) : null,
     ...groupBySlot(meals).map((g) => slotSection(g, dateKey)));
 
-  lastShown = { dateKey, center: centerNum, eaten: t.kcal, nutrients: Object.fromEntries(NUTRIENTS.map((n) => [n.id, nutrientValue(n.id) ?? 0])) };
-  if (logged) playLogged({ root, logged, before, centerNum, eaten: t.kcal, nutrientValue });
+  lastShown = { dateKey, over: Boolean(over), center: centerNum, eaten: t.kcal, nutrients: Object.fromEntries(NUTRIENTS.map((n) => [n.id, nutrientValue(n.id) ?? 0])) };
+  if (logged) playLogged({ root, logged, before, over: Boolean(over), centerNum, eaten: t.kcal, nutrientValue });
 }
 
 // Eintragen-Animation: Symbol fliegt von der Kamera-Taste zum Fuchs, der kaut, Zahlen zählen hoch.
-function playLogged({ root, logged, before, centerNum, eaten, nutrientValue }) {
-  countUp(root.querySelector('.ring .center .num'), centerNum, { from: before.center });
+function playLogged({ root, logged, before, over, centerNum, eaten, nutrientValue }) {
+  // Wechselt die Einheit (übrig <-> drüber), springt die Zahl direkt, damit nie ein falscher Zwischenwert zur neuen Einheit steht.
+  countUp(root.querySelector('.ring .center .num'), centerNum, { from: before.over === over ? before.center : centerNum });
   countUp(root.querySelector('.hs-row b'), eaten, { from: before.eaten });
   root.querySelectorAll('.ntile .nv').forEach((node, i) => {
     const id = NUTRIENTS[i].id;
     const to = nutrientValue(id);
     if (to == null) return;
     const from = before.nutrients[id] ?? 0;
-    countUp(node, to, { from, decimals: Number.isInteger(to) && Number.isInteger(from) ? 0 : 1 });
+    countUp(node, to, { from, decimals: Number.isInteger(to) ? 0 : 1 });
   });
   const fab = document.getElementById('fab');
   const foxNode = root.querySelector('.pet-fox');
