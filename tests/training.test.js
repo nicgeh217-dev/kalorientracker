@@ -142,3 +142,16 @@ test('draftToWorkout: verwirft nicht abgehakte und leere Sätze, mindestens 1 Mi
   assert.deepEqual(empty.sets, []);
   assert.equal(empty.title, 'Training');
 });
+
+test('Dauer: Nachtragen hat keine Dauer, Fortsetzen am nächsten Tag wird gedeckelt, letzte Aktivität zählt', () => {
+  const base = { dateKey: TODAY, startedAt: 0, entries: [{ exerciseId: 1, sets: [{ kg: 50, reps: 5, done: true }] }] };
+  assert.equal(draftToWorkout({ ...base, manual: true }, 99 * 60000, EX).durationMin, null);
+  assert.equal(draftToWorkout(base, 1440 * 60000, EX).durationMin, 240);
+  assert.equal(draftToWorkout({ ...base, lastActivityAt: 40 * 60000 }, 500 * 60000, EX).durationMin, 40);
+});
+
+test('Körpergewichts-Übungen (0 kg) erzeugen keine Rekorde und keine Kurve mit Nullen', () => {
+  const ws = [W('2026-10-01', [{ exerciseId: 1, kg: 0, reps: 60 }])];
+  assert.deepEqual(personalRecords(ws, EX), []);
+  assert.deepEqual(strengthCurve(ws, 1), []);
+});

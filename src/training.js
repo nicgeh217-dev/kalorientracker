@@ -2,6 +2,9 @@ import { addDays } from './overview.js';
 import { weekOf } from './week.js';
 import { daysBetween } from './pet.js';
 
+// Eine Einheit dauert höchstens vier Stunden: Wer abends pausiert und morgens weitermacht, hat nicht 1440 Minuten trainiert.
+const MAX_DURATION_MIN = 240;
+
 export const MUSCLES = ['Brust', 'Rücken', 'Beine', 'Schultern', 'Arme', 'Core', 'Ganzkörper'];
 
 export const DEFAULT_EXERCISES = [
@@ -31,7 +34,7 @@ export function personalRecords(workouts, exercises) {
   const best = new Map();
   for (const s of allSets(workouts)) {
     const e1 = epley1RM(s.kg, s.reps);
-    if (e1 == null) continue;
+    if (!e1) continue; // null (ungültig) und 0 (Körpergewicht) zählen nicht
     const cur = best.get(s.exerciseId);
     if (!cur || e1 > cur.best1RM) best.set(s.exerciseId, { exerciseId: s.exerciseId, name: names.get(s.exerciseId)?.name ?? 'Übung', best1RM: e1, bestKg: s.kg, bestReps: s.reps });
   }
@@ -92,7 +95,7 @@ export function strengthCurve(workouts, exerciseId) {
   for (const s of allSets(workouts)) {
     if (s.exerciseId !== exerciseId) continue;
     const e1 = epley1RM(s.kg, s.reps);
-    if (e1 == null) continue;
+    if (!e1) continue;
     if (!perDay.has(s.dateKey) || e1 > perDay.get(s.dateKey)) perDay.set(s.dateKey, e1);
   }
   return [...perDay.entries()].map(([dateKey, best1RM]) => ({ dateKey, best1RM })).sort((a, b) => a.dateKey.localeCompare(b.dateKey));
@@ -142,7 +145,7 @@ export function draftToWorkout(draft, finishedAtMs, exercises) {
   return {
     dateKey: draft.dateKey,
     startedAt: draft.startedAt,
-    durationMin: Math.max(1, Math.round((finishedAtMs - draft.startedAt) / 60000)),
+    durationMin: draft.manual ? null : Math.min(MAX_DURATION_MIN, Math.max(1, Math.round(((draft.lastActivityAt ?? finishedAtMs) - draft.startedAt) / 60000))),
     title: workoutTitle(entries, exercises),
     sets: entries.flatMap((e) => e.sets.map((s) => ({ exerciseId: e.exerciseId, kg: s.kg ?? 0, reps: s.reps }))),
   };

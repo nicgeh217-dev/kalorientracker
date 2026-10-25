@@ -16,16 +16,20 @@ const de = (n) => (n == null ? '' : String(n).replace('.', ','));
 const clock = (sec) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
 
 // Vollbild-Dialog für eine Trainingseinheit. Ein offener Entwurf wird immer fortgesetzt, damit nichts verloren geht.
+let opening = false;
+
 export async function openWorkout({ dateKey = null } = {}) {
-  if (document.getElementById('workout-root')) return;
+  if (opening || document.getElementById('workout-root')) return;
+  opening = true;
   const [exercises, workouts, saved] = await Promise.all([listExercises(), listWorkouts(), getTrainingDraft()]);
   const today = localDateKey(new Date());
-  const draft = saved ?? { dateKey: dateKey ?? today, startedAt: Date.now(), restSec: 90, entries: [] };
+  const draft = saved ?? { dateKey: dateKey ?? today, startedAt: Date.now(), restSec: 90, manual: (dateKey ?? today) !== today, entries: [] };
   draft.restSec ??= 90;
   if (saved && dateKey && dateKey !== saved.dateKey) toast('Eine offene Einheit wurde fortgesetzt.');
 
-  const root = el('div', { id: 'workout-root', role: 'dialog', 'aria-label': 'Einheit' });
+  const root = el('div', { id: 'workout-root', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Einheit' });
   document.body.append(root);
+  opening = false;
   let rest = null; // { startedAt }
   let tickTimer = null;
   let saveTimer = null;
@@ -40,6 +44,9 @@ export async function openWorkout({ dateKey = null } = {}) {
     await saveTrainingDraft(draft);
   };
   const schedule = () => { if (!saveTimer) saveTimer = setTimeout(flush, 500); };
+  const flushHidden = () => { if (document.hidden && saveTimer) flush(); };
+  document.addEventListener('visibilitychange', flushHidden);
+  window.addEventListener('pagehide', flush);
 
   // ---------- Pausen-Timer ----------
   const timerText = el('span', { class: 'rt-time' });
@@ -85,14 +92,19 @@ export async function openWorkout({ dateKey = null } = {}) {
   };
 
   function toggleDone(entry, set) {
+    if (!set.done && !(set.reps >= 1)) { toast('Trag erst die Wiederholungen ein.'); return; }
     set.done = !set.done;
     if (set.done) {
+      draft.lastActivityAt = Date.now();
       navigator.vibrate?.(30);
       rest = { startedAt: Date.now() };
       const kg = set.kg ?? 0;
-      if (isNewRecord(priorWorkouts(entry.exerciseId, set), entry.exerciseId, { kg, reps: set.reps })) {
+      if (!set.celebrated && isNewRecord(priorWorkouts(entry.exerciseId, set), entry.exerciseId, { kg, reps: set.reps })) {
+        set.celebrated = true;
         showRecord(names().get(entry.exerciseId)?.name ?? 'Übung', epley1RM(kg, set.reps));
       }
+    } else {
+      rest = null;
     }
     schedule();
     draw();
@@ -153,6 +165,8 @@ export async function openWorkout({ dateKey = null } = {}) {
   }
 
   async function close(clear) {
+    document.removeEventListener('visibilitychange', flushHidden);
+    window.removeEventListener('pagehide', flush);
     clearInterval(tickTimer);
     clearTimeout(saveTimer);
     if (clear) await clearTrainingDraft(); else await saveTrainingDraft(draft);
@@ -180,13 +194,13 @@ export async function openWorkout({ dateKey = null } = {}) {
       el('div', { class: 'row' }, el('b', {}, ex?.name ?? 'Gelöschte Übung'), el('span', { class: 'muted' }, ex?.muscle ?? '')),
       last.length ? el('div', { class: 'muted', style: 'margin:2px 0 8px' }, `Letztes Mal: ${last.map((s) => `${s.kg > 0 ? de(s.kg) : 'KG'} × ${s.reps}`).join(', ')}`) : el('div', { style: 'height:8px' }),
       ...entry.sets.map((set, i) => {
-        const kg = el('input', { inputMode: 'decimal', value: de(set.kg), placeholder: 'kg', 'aria-label': `Satz ${i + 1} Gewicht in kg` });
+        const kg = el('input', { inputMode: 'decimal', value: de(set.kg), placeholder: 'kg', title: 'Leer = Körpergewicht', 'aria-label': `Satz ${i + 1} Gewicht in kg` });
         const reps = el('input', { inputMode: 'numeric', value: set.reps == null ? '' : String(set.reps), placeholder: 'Wdh.', 'aria-label': `Satz ${i + 1} Wiederholungen` });
         kg.addEventListener('input', () => { set.kg = parseNum(kg.value); schedule(); });
         reps.addEventListener('input', () => { const n = parseNum(reps.value); set.reps = n == null ? null : Math.round(n); schedule(); });
         return el('div', { class: `wset${set.done ? ' done' : ''}` },
           el('span', { class: 'wn' }, String(i + 1)), kg, reps,
-          el('button', { type: 'button', class: 'wcheck', 'aria-pressed': set.done ? 'true' : 'false', 'aria-label': `Satz ${i + 1} ${set.done ? 'zurücknehmen' : 'abhaken'}`, onClick: () => toggleDone(entry, set) }, '✓'));
+          el('button', { type: 'button', class: 'wcheck', 'aria-pressed': set.done ? 'true' : 'false', 'aria-label': `Satz ${i + 1} erledigt`, onClick: () => toggleDone(entry, set) }, '✓'));
       }),
       el('button', { type: 'button', class: 'small ghost', style: 'margin-top:8px', onClick: () => addSet(entry) }, 'Satz hinzufügen'));
   }

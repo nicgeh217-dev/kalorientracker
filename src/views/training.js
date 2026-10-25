@@ -25,7 +25,11 @@ export async function renderTraining() {
 
   const restToggle = el('button', {
     type: 'button', class: `chipbtn${status === 'rest' ? ' on' : ''}`, 'aria-pressed': status === 'rest' ? 'true' : 'false',
-    onClick: async () => { await setDayStatus(todayKey, status === 'rest' ? null : 'rest'); renderTraining(); },
+    onClick: async () => {
+      if (status === 'sick') { toast('Du bist als krank markiert. Das kannst du im Verlauf ändern.'); return; }
+      await setDayStatus(todayKey, status === 'rest' ? null : 'rest');
+      renderTraining();
+    },
   }, 'Heute Ruhetag');
 
   mount(root,
@@ -36,7 +40,7 @@ export async function renderTraining() {
     el('div', { class: 'card' },
       el('b', {}, 'Heute'),
       todays.length
-        ? el('div', { class: 'muted' }, todays.map((w) => `${w.title} · ${w.durationMin} min · ${w.sets.length} Sätze`).join(' | '))
+        ? el('div', { class: 'muted' }, todays.map((w) => `${w.title}${w.durationMin ? ` · ${w.durationMin} min` : ''} · ${w.sets.length} Sätze`).join(' | '))
         : el('div', { class: 'muted' }, status === 'rest' ? 'Ruhetag. Erholung gehört zum Training.' : status === 'sick' ? 'Du bist als krank markiert. Gute Besserung.' : 'Heute noch kein Training.')),
     el('h2', {}, 'Letzte Einheiten'),
     recent.length
@@ -48,7 +52,7 @@ export async function renderTraining() {
 
 function workoutRow(w, names) {
   return el('button', { class: 'mrow', onClick: () => openDetails(w, names) },
-    el('div', { class: 'mt' }, el('strong', {}, w.title), el('div', { class: 'muted' }, `${dayLabel(w.dateKey) === 'Heute' ? 'Heute' : shortDate(w.dateKey)} · ${w.durationMin} min`)),
+    el('div', { class: 'mt' }, el('strong', {}, w.title), el('div', { class: 'muted' }, `${dayLabel(w.dateKey) === 'Heute' ? 'Heute' : shortDate(w.dateKey)}${w.durationMin ? ` · ${w.durationMin} min` : ''}`)),
     el('div', { class: 'mk' }, String(w.sets.length), el('small', {}, w.sets.length === 1 ? 'Satz' : 'Sätze')));
 }
 
@@ -60,7 +64,7 @@ function openDetails(w, names) {
   }
   openSheet(
     el('h1', {}, w.title),
-    el('div', { class: 'muted', style: 'margin:-8px 4px 12px' }, `${shortDate(w.dateKey)} · ${w.durationMin} min`),
+    el('div', { class: 'muted', style: 'margin:-8px 4px 12px' }, `${shortDate(w.dateKey)}${w.durationMin ? ` · ${w.durationMin} min` : ''}`),
     w.sets.length
       ? el('div', { class: 'card' }, ...[...groups.entries()].map(([id, sets]) => el('div', { style: 'margin-bottom:8px' },
           el('b', {}, names.get(id)?.name ?? 'Gelöschte Übung'),
@@ -81,10 +85,10 @@ function openDetails(w, names) {
 
 function openBackfill() {
   const today = localDateKey(new Date());
-  const date = el('input', { type: 'date', value: addDays(today, -1), max: today });
+  const date = el('input', { id: 'backfill-date', type: 'date', value: addDays(today, -1), max: today });
   openSheet(
     el('h1', {}, 'Training nachtragen'),
-    el('label', {}, 'Tag'), date,
+    el('label', { for: 'backfill-date' }, 'Tag'), date,
     el('div', { class: 'actions' },
       el('button', { class: 'btn', onClick: closeSheet }, 'Abbrechen'),
       el('button', { class: 'primary', onClick: () => { if (!date.value || date.value > today) return; closeSheet(); openWorkout({ dateKey: date.value }); } }, 'Weiter')));
@@ -92,22 +96,28 @@ function openBackfill() {
 
 function exerciseLibrary(exercises) {
   const add = () => openExerciseForm(null);
-  if (!exercises.length) {
-    return el('div', { class: 'card' },
-      el('div', { class: 'muted', style: 'margin-bottom:10px' }, 'Deine Übungsliste ist leer. Nimm Vorschläge oder lege eigene an.'),
-      ...DEFAULT_EXERCISES.map((d) => el('div', { class: 'row', style: 'margin-bottom:8px' },
+  const missing = DEFAULT_EXERCISES.filter((d) => !exercises.some((e) => e.name === d.name));
+  if (exercises.length < 3 && missing.length) {
+    return el('div', {},
+      exercises.length ? exerciseGroups(exercises) : null,
+      el('div', { class: 'card' },
+      el('div', { class: 'muted', style: 'margin-bottom:10px' }, exercises.length ? 'Weitere Vorschläge:' : 'Deine Übungsliste ist leer. Nimm Vorschläge oder lege eigene an.'),
+      ...missing.map((d) => el('div', { class: 'row', style: 'margin-bottom:8px' },
         el('span', {}, el('b', {}, d.name), el('span', { class: 'muted' }, ` · ${d.muscle}`)),
-        el('button', { class: 'small ghost', onClick: async () => { await addExercise(d); renderTraining(); } }, 'Hinzufügen'))),
+        el('button', { class: 'small ghost', onClick: async (ev) => { ev.currentTarget.disabled = true; await addExercise(d); renderTraining(); } }, 'Hinzufügen'))),
       el('div', { class: 'actions' },
         el('button', { class: 'btn', onClick: add }, 'Eigene Übung'),
-        el('button', { class: 'primary', onClick: async () => { for (const d of DEFAULT_EXERCISES) await addExercise(d); renderTraining(); } }, 'Alle hinzufügen')));
+        el('button', { class: 'primary', onClick: async (ev) => { ev.currentTarget.disabled = true; for (const d of missing) await addExercise(d); renderTraining(); } }, 'Alle hinzufügen'))));
   }
+  return el('div', {}, exerciseGroups(exercises), el('button', { class: 'btn', style: 'width:100%', onClick: add }, '+ Übung anlegen'));
+}
+
+function exerciseGroups(exercises) {
   const groups = MUSCLES.map((m) => [m, exercises.filter((e) => e.muscle === m)]).filter(([, list]) => list.length);
   return el('div', {},
     ...groups.map(([muscle, list]) => el('div', { class: 'slot' },
       el('div', { class: 'muted', style: 'margin:0 4px 6px;font-weight:700' }, muscle),
-      el('div', { class: 'card slotlist' }, ...list.sort((a, b) => a.name.localeCompare(b.name, 'de')).map((e) => el('button', { class: 'mrow', style: 'min-height:48px', onClick: () => openExerciseForm(e) }, el('div', { class: 'mt' }, el('strong', {}, e.name))))))),
-    el('button', { class: 'btn', style: 'width:100%', onClick: add }, '+ Übung anlegen'));
+      el('div', { class: 'card slotlist' }, ...list.sort((a, b) => a.name.localeCompare(b.name, 'de')).map((e) => el('button', { class: 'mrow', style: 'min-height:48px', onClick: () => openExerciseForm(e) }, el('div', { class: 'mt' }, el('strong', {}, e.name))))))));
 }
 
 // e = null: neue Übung. Sonst umbenennen, Muskelgruppe ändern oder löschen (Rückgängig stellt sie mit derselben ID wieder her).

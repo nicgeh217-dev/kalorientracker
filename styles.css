@@ -226,7 +226,7 @@ label.checkrow { display: flex; align-items: flex-start; gap: 12px; margin: 16px
 .calc-target .num small { font-family: var(--font); font-style: normal; font-size: 15px; color: var(--muted); }
 .suggest { border: 2px solid var(--orange); }
 
-#update-banner { position: fixed; top: calc(env(safe-area-inset-top) + 8px); left: 16px; right: 16px; z-index: 40; max-width: 528px; margin: 0 auto;
+#update-banner, #db-blocked-banner { position: fixed; top: calc(env(safe-area-inset-top) + 8px); left: 16px; right: 16px; z-index: 40; max-width: 528px; margin: 0 auto;
   display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; border-radius: 16px;
   background: var(--text); color: var(--bg); font-weight: 600; font-size: 14px; animation: rise .3s cubic-bezier(.22,1,.36,1) both; }
 #update-banner button { flex: none; min-height: 36px; padding: 0 14px; border: 0; border-radius: 12px; background: var(--orange); color: var(--on-orange); font-weight: 700; }
@@ -416,3 +416,5 @@ input:focus-visible, textarea:focus-visible { outline: none; }
 .curve { width: 100%; height: auto; }
 .curve .ct { font-size: 10px; fill: var(--muted); font-family: var(--font); }
 .chips button.on { box-shadow: 0 0 0 2px var(--orange); }
+.wset.done .wcheck { animation: checkpop .3s cubic-bezier(.22,1,.36,1); }
+@keyframes checkpop { 0% { transform: scale(.8); } 60% { transform: scale(1.12); } 100% { transform: none; } }

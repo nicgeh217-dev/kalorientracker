@@ -73,7 +73,7 @@ function dayCard({ day, meals, status, workouts }) {
         el('b', {}, dayHeading(day)),
         el('div', { class: 'muted' }, meals.length ? `${meals.length} ${meals.length === 1 ? 'Eintrag' : 'Einträge'} · ${kcal} kcal` : 'Keine Einträge')),
       el('button', { class: 'small ghost', onClick: () => openDay(day) }, 'Ansehen')),
-    workouts.length ? el('div', { style: 'margin-top:10px' }, ...workouts.map((w) => el('div', {}, el('b', {}, w.title), el('span', { class: 'muted' }, ` · ${w.durationMin} min · ${w.sets.length} ${w.sets.length === 1 ? 'Satz' : 'Sätze'}`)))) : null,
+    workouts.length ? el('div', { style: 'margin-top:10px' }, ...workouts.map((w) => el('div', {}, el('b', {}, w.title), el('span', { class: 'muted' }, `${w.durationMin ? ` · ${w.durationMin} min` : ''} · ${w.sets.length} ${w.sets.length === 1 ? 'Satz' : 'Sätze'}`)))) : null,
     el('div', { class: 'quick', style: 'margin-top:12px' }, toggle('rest', 'Ruhetag'), toggle('sick', 'Krank')),
     el('button', { class: 'btn', style: 'width:100%;margin-top:8px', onClick: () => openWorkout({ dateKey: day }) }, 'Training nachtragen'),
     el('div', { class: 'muted', style: 'margin-top:8px' }, 'Ein Krankheitstag unterbricht deine Serie nicht. Ruhetage betreffen nur das Training.'));
@@ -166,7 +166,7 @@ function progressCards({ workouts, exercises, weights, todayKey }) {
       chosen
         ? el('div', {},
             el('div', { class: 'chips', style: 'margin:8px -16px 8px' }, ...withCurve.map((x) => el('button', {
-              class: x.e.id === chosen.e.id ? 'on' : '', onClick: () => { curveExercise = x.e.id; renderHistory(); },
+              class: x.e.id === chosen.e.id ? 'on' : '', 'aria-pressed': x.e.id === chosen.e.id ? 'true' : 'false', onClick: () => { curveExercise = x.e.id; renderHistory(); },
             }, el('b', {}, x.e.name)))),
             curveChart(chosen.points),
             el('div', { class: 'muted' }, 'Geschätztes Maximum für eine Wiederholung.'))
