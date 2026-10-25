@@ -77,7 +77,7 @@ Fortschritt: Gewicht · (Stufe 2) Rekorde · Muskelverteilung · Sätze pro Woch
 
 ## Stufe 0: Datensicherheit
 - `navigator.storage.persist()` anfordern, Status in den Einstellungen ("Speicher geschützt: ja / nein / unbekannt"). Chrome entscheidet selbst, es schützt vor automatischem Entfernen, nicht sicher vor bewusstem Löschen.
-- **Willkommen zurück:** Startet die App völlig leer und noch nie dismisst, zeigt "Heute" eine Karte mit "Sicherung wiederherstellen", "Gemini-Key eintragen" und "Neu starten".
+- **Willkommen zurück:** Startet die App völlig leer (keine Einträge, keine Produkte, keine Einstellungen), zeigt "Heute" eine Karte mit "Sicherung wiederherstellen", "Gemini-Key eintragen" und "Neu starten".
 - Hinweis in "Mehr → Sicherung": nicht "Cookies und Websitedaten" für diese Seite löschen.
 - Offen für später: verschlüsselte automatische Sicherung außerhalb des Geräts (GitHub-Gist), eigene Entscheidung des Nutzers.
 
