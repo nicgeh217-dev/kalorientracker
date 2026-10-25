@@ -330,3 +330,21 @@ input:focus-visible, textarea:focus-visible { outline: none; }
 .meal { grid-template-columns: minmax(0, 1fr); }
 .meal-stats { flex-wrap: wrap; row-gap: 8px; column-gap: 16px; }
 .meal-stats .tag { order: 3; }
+
+/* Wochenleiste */
+.weekstrip { display: flex; align-items: center; gap: 4px; margin-bottom: 14px; }
+.wdays { flex: 1; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.wd { display: grid; justify-items: center; gap: 3px; padding: 8px 0 6px; min-height: 0; border: 0; border-radius: 14px; background: var(--card); color: var(--text); box-shadow: var(--shadow); }
+.wd:disabled { opacity: .35; }
+.wd .wl { font-size: 11px; color: var(--muted); }
+.wd .wn { font-family: var(--num); font-style: italic; font-weight: 800; font-size: 18px; line-height: 1; }
+.wd.today .wn { color: var(--orange); }
+.wd.sel { background: var(--orange); color: #fff; }
+.wd.sel .wl, .wd.sel .wn { color: #fff; }
+.wdot { width: 6px; height: 6px; border-radius: 50%; background: transparent; }
+.wdot.has { background: var(--orange); }
+.wdot.rest { background: #4da3ff; }
+.wdot.sick { background: #ff7ac0; }
+.wd.sel .wdot.has { background: #fff; }
+.wnav { width: 32px; min-height: 44px; padding: 0; border: 0; background: transparent; color: var(--text); font-size: 22px; }
+.wnav:disabled { opacity: .3; }
