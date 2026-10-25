@@ -5,7 +5,7 @@ import {
   listExercises, listWorkouts, addWorkout, getTrainingDraft, saveTrainingDraft, clearTrainingDraft,
 } from '../db.js';
 import { lastSetsFor, isNewRecord, restRemaining, draftToWorkout, epley1RM } from '../training.js';
-import { dayLabel, longDate } from '../state.js';
+import { dayHeading } from '../state.js';
 import { foxSvg } from './fox.js';
 import { prefersReducedMotion } from './motion.js';
 import { openExerciseForm } from './training.js';
@@ -200,7 +200,7 @@ export async function openWorkout({ dateKey = null } = {}) {
   root.append(
     el('div', { class: 'whead' },
       el('button', { class: 'small ghost', onClick: askCancel }, 'Abbrechen'),
-      el('div', { class: 'wtitle' }, el('b', {}, 'Einheit'), el('div', { class: 'muted' }, draft.dateKey === today ? 'Heute' : `${dayLabel(draft.dateKey)}, ${longDate(draft.dateKey)}`)),
+      el('div', { class: 'wtitle' }, el('b', {}, 'Einheit'), el('div', { class: 'muted' }, draft.dateKey === today ? 'Heute' : dayHeading(draft.dateKey))),
       el('button', { class: 'small primary', onClick: finish }, 'Fertig')),
     timerBar, body);
   draw();

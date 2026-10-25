@@ -401,3 +401,17 @@ input:focus-visible, textarea:focus-visible { outline: none; }
 .recordfox .spark { position: absolute; color: #facc15; font-size: 22px; animation: twinkle .8s ease-in-out infinite; }
 .recordfox .s0 { left: -14px; top: 6px; } .recordfox .s1 { right: -14px; top: 0; } .recordfox .s2 { left: 0; bottom: 0; } .recordfox .s3 { right: 4px; bottom: 6px; }
 @keyframes recordpop { 0% { opacity: 0; transform: translateY(24px) scale(.6); } 20% { opacity: 1; transform: translateY(-8px) scale(1.1); } 35% { transform: translateY(0) scale(1); } 85% { opacity: 1; } 100% { opacity: 0; transform: translateY(-20px) scale(1); } }
+
+/* Fortschritt */
+.mdist { display: grid; grid-template-columns: 96px 1fr 44px; gap: 8px; align-items: center; margin-bottom: 6px; font-size: 14px; }
+.mdist b { text-align: right; font-weight: 700; }
+.mbar { height: 10px; border-radius: 6px; background: var(--track); overflow: hidden; }
+.mbar i { display: block; height: 100%; border-radius: 6px; background: linear-gradient(90deg, var(--orange), var(--orange-2)); }
+.sbars { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; align-items: end; height: 118px; margin-top: 8px; }
+.sbar { display: grid; justify-items: center; align-content: end; gap: 3px; height: 100%; }
+.sbar span { font-family: var(--num); font-style: italic; font-weight: 800; font-size: 16px; }
+.sbar i { display: block; width: 100%; border-radius: 6px; background: var(--orange); }
+.sbar small { font-size: 10px; color: var(--muted); }
+.curve { width: 100%; height: auto; }
+.curve .ct { font-size: 10px; fill: var(--muted); font-family: var(--font); }
+.chips button.on { box-shadow: 0 0 0 2px var(--orange); }

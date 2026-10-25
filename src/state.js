@@ -41,3 +41,9 @@ export function takeJustLogged() {
   justLogged = null;
   return name;
 }
+
+// "Gestern, Samstag, 24. Oktober" bzw. nur "Dienstag, 20. Oktober" (der Wochentag steht schon im langen Datum).
+export function dayHeading(dateKey) {
+  const label = dayLabel(dateKey);
+  return ['Heute', 'Gestern', 'Vorgestern'].includes(label) ? `${label}, ${longDate(dateKey)}` : longDate(dateKey);
+}
