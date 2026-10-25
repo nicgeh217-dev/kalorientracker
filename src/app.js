@@ -12,6 +12,7 @@ import { renderMore } from './views/more.js';
 import { listQueued } from './db.js';
 import { toast, el } from './dom.js';
 import { requestPersistence } from './storage-persist.js';
+import { shouldShowSplash, splashAlreadyShown, runSplash } from './splash.js';
 
 registerRenderer('today', renderToday);
 registerRenderer('products', renderProducts);
@@ -74,6 +75,17 @@ async function handleLaunch() {
   if (files.length || text) return startScanWithFiles(files, text);
   toast('Es sind keine Fotos angekommen.');
   return undefined;
+}
+
+const splash = document.getElementById('splash');
+if (splash) {
+  const show = shouldShowSplash({
+    navigationType: performance.getEntriesByType('navigation')[0]?.type ?? 'navigate',
+    launchAction: parseLaunchAction(location.search),
+    reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
+    shownThisSession: splashAlreadyShown(),
+  });
+  if (show) runSplash(splash); else splash.remove();
 }
 
 showView('today');

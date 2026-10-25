@@ -11,6 +11,18 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <div id="splash" aria-hidden="true" style="position:fixed;inset:0;z-index:100;background:#0e0e10"></div>
+  <script>
+    // Spart den Splash sofort, wenn er nicht laufen soll (kein Aufblitzen). Die endgültige Entscheidung trifft src/app.js.
+    (function () {
+      try {
+        var nav = performance.getEntriesByType('navigation')[0];
+        var skip = sessionStorage.getItem('splashShown') === '1' || /[?&]action=/.test(location.search)
+          || (nav && nav.type === 'reload') || matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (skip) document.getElementById('splash').remove();
+      } catch (e) { /* Splash darf laufen */ }
+    })();
+  </script>
   <main>
     <section id="view-today"></section>
     <section id="view-history" hidden></section>

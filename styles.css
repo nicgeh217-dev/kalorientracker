@@ -373,3 +373,10 @@ input:focus-visible, textarea:focus-visible { outline: none; }
 .hcell.sick::after { content: ''; position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px 0 0 -2px; border-radius: 50%; background: #4da3ff; box-shadow: 0 0 0 1px var(--card); }
 .hcell.rest::after { content: '✓'; position: absolute; inset: 0; display: grid; place-items: center; font-size: 8px; font-weight: 800; line-height: 1; color: var(--text); }
 .daystatus { display: inline-block; margin: 0 4px 12px; padding: 3px 10px; border-radius: 999px; background: var(--fill); font-size: 13px; font-weight: 700; color: var(--muted); }
+
+/* App-Start: Ring, Fuchs und Essen (nur transform/opacity, siehe src/splash.js) */
+#splash { display: grid; place-items: center; overflow: hidden; }
+#splash > * { grid-area: 1 / 1; }
+#splash .sp-ring { width: 200px; height: 200px; }
+#splash .sp-fox { width: 96px; height: 96px; }
+#splash .sp-food { width: 56px; height: 56px; opacity: 0; }
