@@ -11,7 +11,8 @@ import { shareBackup } from '../backup-share.js';
 import { shouldShowWelcome } from '../welcome.js';
 import { restoreFromText } from '../backup-import.js';
 import { NUTRIENTS, nutrientTargets } from '../nutrients.js';
-import { groupBySlot } from '../slots.js';
+import { groupBySlot, SLOTS } from '../slots.js';
+import { enableMealDrag } from './meal-drag.js';
 import { shiftWeek } from '../week.js';
 import { weekStrip } from './week-strip.js';
 import { foodIconFor } from '../food-icons.js';
@@ -23,7 +24,7 @@ import { openOnlineRestore } from './online-backup-ui.js';
 import { openKeySetup } from './key-setup.js';
 import { addDays, pickRecent, rollingAverage, fastLossWarning } from '../overview.js';
 import {
-  mealsForDate, deleteMeal, getSettings, listProducts, replaceAll, listDayStatuses, addMeal, listMeals, getProduct, listQueued, deleteQueued, addQueued, listWeights, saveSettings,
+  mealsForDate, deleteMeal, updateMeal, getSettings, listProducts, replaceAll, listDayStatuses, addMeal, listMeals, getProduct, listQueued, deleteQueued, addQueued, listWeights, saveSettings,
 } from '../db.js';
 import { showView } from '../nav.js';
 import { viewedDateKey, isViewingToday, setViewedDateKey, dayLabel, longDate, timestampFor } from '../state.js';
@@ -202,13 +203,13 @@ function playLogged({ root, logged, before, over, centerNum, eaten, nutrientValu
 }
 
 function slotSection(g, dateKey) {
-  return el('div', { class: 'slot' },
+  return el('div', { class: 'slot', 'data-slot': g.slot },
     el('div', { class: 'slothead' },
       el('h2', {}, g.label),
       g.meals.length ? el('span', { class: 'skcal' }, String(g.kcal), el('small', {}, 'kcal')) : null,
       el('button', { class: 'slotadd', 'aria-label': `${g.label} hinzufügen`, onClick: () => openMealForm(null, { dateKey, slot: g.slot }) }, '+')),
     g.meals.length
-      ? el('div', { class: 'card slotlist' }, ...[...g.meals].sort((a, b) => a.timestamp.localeCompare(b.timestamp)).map(mealRow))
+      ? el('div', { class: 'card slotlist' }, ...[...g.meals].sort((a, b) => a.timestamp.localeCompare(b.timestamp)).map((m) => mealRow(m, g.slot)))
       : null);
 }
 
@@ -235,13 +236,23 @@ async function editMeal(m) {
   openMealForm(prefill, { meal: m });
 }
 
-function mealRow(m) {
+// Zieht man eine Mahlzeit in einen anderen Abschnitt, wird nur ihr Abschnitt geändert (Zeit und Werte bleiben), mit Rückgängig.
+async function moveMealToSlot(m, slot) {
+  await updateMeal({ ...m, slot });
+  renderToday();
+  const label = SLOTS.find((s) => s.id === slot)?.label ?? slot;
+  toast(`${m.name} nach ${label} verschoben`, 'Rückgängig', async () => { await updateMeal(m); renderToday(); });
+}
+
+function mealRow(m, slot) {
   const time = new Date(m.timestamp).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
   const amt = m.amount ? ` · ${String(m.amount.value).replace('.', ',')} ${m.amount.unit === 'g' ? 'g' : '×'}` : '';
-  return el('button', { class: 'mrow', 'aria-label': `${m.name} bearbeiten`, onClick: () => editMeal(m) },
+  const row = el('button', { class: 'mrow', 'data-slot': slot, 'aria-label': `${m.name} bearbeiten`, onClick: () => editMeal(m) },
     el('div', { class: 'mi' }, foodIconSvg(foodIconFor(m.name), 28)),
     el('div', { class: 'mt' }, el('strong', {}, m.name), el('div', { class: 'muted' }, `${time}${amt}`)),
     el('div', { class: 'mk' }, `${m.estimated ? '~' : ''}${m.kcal}`, el('small', {}, 'kcal')));
+  enableMealDrag(row, { onDrop: (target) => moveMealToSlot(m, target) });
+  return row;
 }
 
 function queueCard(item) {

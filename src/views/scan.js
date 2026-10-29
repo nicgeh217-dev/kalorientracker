@@ -146,10 +146,9 @@ export async function startScan(initial = null) {
 }
 
 // Kamera oder Galerie sofort öffnen, danach landen die Fotos im Scan-Dialog.
-export async function startScanWithPicker({ camera }) {
-  const { geminiKey } = await getSettings();
-  if (!geminiKey) return showKeyMissing();
-  return pickFiles({ camera }, (files) => startScanWithFiles(files));
+// Wichtig für iPhone/Safari: pickFiles muss synchron im Tipp laufen, vor jedem await. Den Schlüssel prüft startScan danach.
+export function startScanWithPicker({ camera }) {
+  pickFiles({ camera }, (files) => startScanWithFiles(files));
 }
 
 // Ohne Foto: nur beschreiben. Das Textfeld ist sofort aktiv.

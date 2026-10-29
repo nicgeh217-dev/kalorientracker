@@ -430,3 +430,11 @@ input:focus-visible, textarea:focus-visible { outline: none; }
 .wgd.on i { background: var(--orange); }
 .wgd.future { opacity: .45; }
 .wgd span { font-size: 10px; color: var(--muted); }
+
+/* Mahlzeiten verschieben (Drag and Drop) */
+.mrow.draggable { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.mrow.dragging { opacity: .3; }
+.drag-ghost { border-radius: 16px; background: var(--card); box-shadow: 0 14px 34px rgba(0, 0, 0, .35); opacity: .96; transition: none; }
+.drag-ghost .mrow, .drag-ghost.mrow { min-height: 60px; padding: 10px 16px; }
+.slot.drop-target { outline: 2px dashed var(--orange); outline-offset: 4px; border-radius: 20px; }
+body.meal-dragging { cursor: grabbing; }
