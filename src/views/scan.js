@@ -5,6 +5,7 @@ import { showView, refreshCurrent } from '../nav.js';
 import { viewedDateKey } from '../state.js';
 import { openMealForm } from './meal-form.js';
 import { openKeySetup } from './key-setup.js';
+import { isNativeApp, takePhoto, pickPhotos } from '../native-camera.js';
 
 // state: { photos: [{file, url}], hint, queuedId?, dateKey? }
 // Fotos und Text bleiben bei Fehlern und beim "Neu schätzen" erhalten.
@@ -15,7 +16,25 @@ function releasePhotos(state) {
 
 const RETRYABLE = new Set(['offline', 'network', 'overloaded']);
 
+// Android-App: native Kamera bzw. Galerie. Bei einem Fehler (z. B. Berechtigung verweigert) fällt es auf den normalen Datei-Dialog zurück.
+async function pickNative({ camera }, onFiles) {
+  try {
+    const files = camera ? [await takePhoto()].filter(Boolean) : await pickPhotos({ limit: MAX_PHOTOS });
+    if (files.length) onFiles(files);
+  } catch (e) {
+    toast(String(e?.message ?? '').toLowerCase().includes('denied')
+      ? 'Die Kamera-Berechtigung fehlt. Erlaube sie in den Android-Einstellungen unter Apps → Kalorientracker → Berechtigungen.'
+      : 'Die Kamera konnte nicht geöffnet werden. Es öffnet sich stattdessen die Dateiauswahl.');
+    pickWithInput({ camera }, onFiles);
+  }
+}
+
 function pickFiles({ camera }, onFiles) {
+  if (isNativeApp()) { pickNative({ camera }, onFiles); return; }
+  pickWithInput({ camera }, onFiles);
+}
+
+function pickWithInput({ camera }, onFiles) {
   const input = el('input', { type: 'file', accept: 'image/*', hidden: true, multiple: !camera });
   if (camera) input.setAttribute('capture', 'environment');
   input.addEventListener('change', () => {
