@@ -94,3 +94,23 @@ test('lookupOpenFoodFacts: ungültiger Code ruft das Netz nicht', async () => {
   assert.equal(r.ok, false);
   assert.equal(called, false);
 });
+
+test('parseOpenFoodFacts: Portionsgröße aus serving_quantity (auch als Text), sonst Packungsgröße', () => {
+  assert.equal(parseOpenFoodFacts(off({ serving_quantity: '40' })).servingGrams, 40);
+  assert.equal(parseOpenFoodFacts(off({ serving_quantity: 35 })).servingGrams, 35);
+  assert.equal(parseOpenFoodFacts(off({ product_quantity: '45' })).servingGrams, 45);
+  assert.equal(parseOpenFoodFacts(off({ serving_quantity: 30, product_quantity: 500 })).servingGrams, 30);
+});
+
+test('parseOpenFoodFacts: unsinnige oder fehlende Größen ergeben null', () => {
+  assert.equal(parseOpenFoodFacts(off({ serving_quantity: 'eine Tüte' })).servingGrams, null);
+  assert.equal(parseOpenFoodFacts(off({ serving_quantity: 0, product_quantity: -5 })).servingGrams, null);
+  assert.equal(parseOpenFoodFacts(off()).servingGrams, null);
+});
+
+test('lookupOpenFoodFacts fragt die Größenfelder mit ab', async () => {
+  let url;
+  await lookupOpenFoodFacts('4006381333931', async (u) => { url = u; return { ok: true, status: 200, json: async () => off() }; });
+  assert.match(url, /serving_quantity/);
+  assert.match(url, /product_quantity/);
+});

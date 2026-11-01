@@ -33,6 +33,8 @@ export function findProductByBarcode(products, code) {
 }
 
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : null);
+// Menge in Gramm aus einer Zahl oder einem Text wie '40' (Open Food Facts liefert beides).
+const grams = (v) => { const n = typeof v === 'string' ? Number(v.replace(',', '.')) : v; return typeof n === 'number' && Number.isFinite(n) && n > 0 ? n : null; };
 const round1 = (n) => (n == null ? null : Math.round(n * 10) / 10);
 
 // Open Food Facts -> Werte pro 100 g im Format der App. null, wenn nichts Brauchbares (Name und Kalorien) da ist.
@@ -47,7 +49,7 @@ export function parseOpenFoodFacts(json) {
   return {
     name,
     basis: 'per100g',
-    servingGrams: null,
+    servingGrams: grams(p.serving_quantity) ?? grams(p.product_quantity), // Portion, sonst Packungsgröße (z. B. ein 40-g-Riegel)
     kcal: Math.round(kcal),
     protein: round1(num(n.proteins_100g)),
     carbs: round1(num(n.carbohydrates_100g)),
@@ -61,7 +63,7 @@ export async function lookupOpenFoodFacts(code, fetchFn = (...a) => fetch(...a))
   const barcode = normalizeBarcode(code);
   if (!barcode) return { ok: false, error: 'Das ist kein gültiger Strichcode.' };
   try {
-    const res = await fetchFn(`https://world.openfoodfacts.org/api/v2/product/${barcode}.json?fields=product_name,product_name_de,nutriments`);
+    const res = await fetchFn(`https://world.openfoodfacts.org/api/v2/product/${barcode}.json?fields=product_name,product_name_de,nutriments,serving_quantity,product_quantity`);
     if (res.status === 404) return { ok: false, notFound: true };
     if (!res.ok) return { ok: false, error: `Open Food Facts hat mit Fehler ${res.status} geantwortet.` };
     const label = parseOpenFoodFacts(await res.json());
