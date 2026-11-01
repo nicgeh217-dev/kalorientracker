@@ -38,9 +38,28 @@ export function mount(root, ...children) {
   root.replaceChildren(...children.flat().filter((c) => c != null && c !== false));
 }
 
+// Hintergrund festsetzen: Safari scrollt sonst die Seite hinter dem Dialog mit. body wird fixiert und die Position gemerkt.
+let lockedAt = null;
+function lockPage() {
+  if (lockedAt != null) return;
+  lockedAt = window.scrollY;
+  document.body.style.top = `-${lockedAt}px`;
+  document.body.classList.add('sheet-open');
+}
+function unlockPage() {
+  if (lockedAt == null) return;
+  const y = lockedAt;
+  lockedAt = null;
+  document.body.classList.remove('sheet-open');
+  document.body.style.top = '';
+  window.scrollTo(0, y);
+}
+
 export function openSheet(...content) {
   const root = document.getElementById('dialog-root');
+  lockPage();
   root.replaceChildren(el('div', { class: 'overlay' }, el('div', { class: 'sheet' }, ...content)));
+  root.firstChild.scrollTop = 0;
 }
 
 // Kurze Einblendung unten mit optionaler Aktion (z. B. "Rückgängig").
@@ -55,6 +74,7 @@ export function toast(text, actionLabel, onAction, ms = 5000) {
 
 export function closeSheet() {
   document.getElementById('dialog-root').replaceChildren();
+  unlockPage();
 }
 
 // "72,5" und "72.5" -> 72.5; leer/ungültig/negativ -> null

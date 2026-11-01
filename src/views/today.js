@@ -29,7 +29,7 @@ import {
 import { showView } from '../nav.js';
 import { viewedDateKey, isViewingToday, setViewedDateKey, dayLabel, longDate, timestampFor } from '../state.js';
 import { openMealForm } from './meal-form.js';
-import { runQueued } from './scan.js';
+import { runQueued, startDescribe } from './scan.js';
 
 const NS = 'http://www.w3.org/2000/svg';
 const svg = (tag, attrs = {}) => {
@@ -207,7 +207,7 @@ function slotSection(g, dateKey) {
     el('div', { class: 'slothead' },
       el('h2', {}, g.label),
       g.meals.length ? el('span', { class: 'skcal' }, String(g.kcal), el('small', {}, 'kcal')) : null,
-      el('button', { class: 'slotadd', 'aria-label': `${g.label} hinzufügen`, onClick: () => openMealForm(null, { dateKey, slot: g.slot }) }, '+')),
+      el('button', { class: 'slotadd', 'aria-label': `${g.label} hinzufügen`, onClick: () => startDescribe({ dateKey, slot: g.slot }) }, '+')),
     g.meals.length
       ? el('div', { class: 'card slotlist' }, ...[...g.meals].sort((a, b) => a.timestamp.localeCompare(b.timestamp)).map((m) => mealRow(m, g.slot)))
       : null);

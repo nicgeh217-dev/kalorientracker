@@ -48,7 +48,7 @@ function showError(message, state, reason) {
     el('h1', {}, 'Auswertung nicht möglich'),
     el('div', { class: 'note bad' }, message),
     el('div', { class: 'actions' },
-      el('button', { class: 'btn', onClick: () => { releasePhotos(state); closeSheet(); openMealForm(null, { dateKey: state.dateKey }); } }, 'Manuell eintragen'),
+      el('button', { class: 'btn', onClick: () => { releasePhotos(state); closeSheet(); openMealForm(null, { dateKey: state.dateKey, slot: state.slot }); } }, 'Manuell eintragen'),
       el('button', { class: 'primary', onClick: () => run(state) }, 'Nochmal'),
       canQueue ? el('button', { class: 'btn wide', onClick: () => saveForLater(state) }, 'Für später speichern (offline-fähig)') : null,
       el('button', { class: 'btn wide', onClick: () => { releasePhotos(state); closeSheet(); } }, 'Abbrechen')));
@@ -118,6 +118,7 @@ async function run(state) {
     info: `Ausgewertet mit ${result.model} in ${result.seconds.toFixed(1).replace('.', ',')} s`,
     estimate: isEstimate ? { confidence: l.confidence, note: l.note, kcalMin: l.kcalMin, kcalMax: l.kcalMax } : null,
     dateKey: state.dateKey,
+    slot: state.slot,
     // Fotos bleiben im Speicher, solange das Formular offen ist, damit "Neu schätzen" sie wiederverwenden kann.
     onRefine: isEstimate ? () => openScanSheet(state) : null,
     onSaved: async () => {
@@ -142,7 +143,7 @@ function showKeyMissing() {
 export async function startScan(initial = null) {
   const { geminiKey } = await getSettings();
   if (!geminiKey) return showKeyMissing();
-  return openScanSheet({ photos: initial?.photos ?? [], hint: initial?.hint ?? '', focusHint: Boolean(initial?.focusHint) });
+  return openScanSheet({ photos: initial?.photos ?? [], hint: initial?.hint ?? '', focusHint: Boolean(initial?.focusHint), dateKey: initial?.dateKey ?? undefined, slot: initial?.slot ?? undefined });
 }
 
 // Kamera oder Galerie sofort öffnen, danach landen die Fotos im Scan-Dialog.
@@ -152,8 +153,8 @@ export function startScanWithPicker({ camera }) {
 }
 
 // Ohne Foto: nur beschreiben. Das Textfeld ist sofort aktiv.
-export function startDescribe() {
-  return startScan({ photos: [], hint: '', focusHint: true });
+export function startDescribe({ dateKey = null, slot = null } = {}) {
+  return startScan({ photos: [], hint: '', focusHint: true, dateKey, slot });
 }
 
 // Fotos, die per "Teilen in die App" kamen (oder Text), direkt im Scan-Dialog öffnen.
