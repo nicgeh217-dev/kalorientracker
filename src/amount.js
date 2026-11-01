@@ -4,8 +4,11 @@ const PORTION = { unit: 'servings', value: 1 };
 const HUNDRED_GRAMS = { unit: 'g', value: 100 };
 
 // Bei "pro 100 g" ist Gramm die natürliche Einheit (sonst fehlt die Portionsgröße), sonst eine Portion.
-export function defaultAmount({ basis }) {
-  return basis === 'per100g' ? { ...HUNDRED_GRAMS } : { ...PORTION };
+// Ist die Portion bekannt und klein (höchstens 100 g, z. B. ein 40-g-Riegel), ist eine Portion die richtige Voreinstellung.
+// Große Packungen bleiben bei 100 g, damit nicht versehentlich eine ganze Tüte eingetragen wird.
+export function defaultAmount({ basis, servingGrams = null }) {
+  if (basis === 'per100g') return servingGrams > 0 && servingGrams <= 100 ? { ...PORTION } : { ...HUNDRED_GRAMS };
+  return { ...PORTION };
 }
 
 export const quickAmounts = (unit) => (unit === 'g' ? [50, 100, 150, 200] : [0.5, 1, 1.5, 2]);

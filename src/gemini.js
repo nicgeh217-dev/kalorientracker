@@ -15,7 +15,7 @@ const PROMPT = `Du bekommst ein oder mehrere Fotos und/oder eine kurze Beschreib
 Fall A – in mindestens einem Foto ist eine Nährwerttabelle lesbar (oft koreanisch: 영양정보, 열량=kcal, 탄수화물=Kohlenhydrate, 단백질=Protein, 지방=Fett, 식이섬유=Ballaststoffe, 당류=Zucker):
 - source = "label". Lies die Werte exakt ab, schätze nichts und rechne nichts um.
 - basis = "per100g", wenn die Werte für 100 g bzw. 100 ml gelten, "perServing", wenn sie für eine Portion/Packung gelten, sonst null.
-- servingGrams = Gramm (oder ml) einer Portion, falls angegeben, sonst null.
+- servingGrams = Gramm (oder ml) einer Portion bzw. Packung, falls angegeben. Steht keine Portion, aber der Gesamtinhalt der Packung auf dem Etikett (z. B. 총 내용량, Nettofüllmenge), nimm diesen. Sonst null.
 - kcal, protein, carbs, fat, fiber, sugar = Zahlen für diese Bezugsgröße (fiber = Ballaststoffe, sugar = Zucker bzw. davon Zucker). Nicht lesbare oder nicht angegebene Werte = null.
 - name = Produktname von der Verpackung, falls sichtbar, sonst null. Ist der Name nicht deutsch (z. B. Koreanisch/Hangul), gib ihn als kurze deutsche Übersetzung mit dem Originalnamen in Klammern an, z. B. "Thunfisch-Kimbap (삼각김밥 참치마요)". Höchstens 60 Zeichen.
 - confidence, note, kcalMin, kcalMax = null.

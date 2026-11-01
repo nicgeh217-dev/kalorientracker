@@ -39,7 +39,7 @@ export function openMealForm(prefill, opts = {}) {
   const serving = el('input', { inputMode: 'decimal', value: val(p.servingGrams), placeholder: 'Gramm pro Portion (falls bekannt)' });
   for (const [k, label] of [...FIELDS, ...EXTRA_FIELDS]) inputs[k] = el('input', { inputMode: 'decimal', value: val(p[k]), 'aria-label': label });
 
-  const start = p.amount ?? defaultAmount({ basis: p.basis });
+  const start = p.amount ?? defaultAmount({ basis: p.basis, servingGrams: p.servingGrams });
   const amountValue = el('input', { inputMode: 'decimal', value: de(start.value), 'aria-label': 'Menge' });
   const amountUnit = el('select', {},
     el('option', { value: 'servings', 'data-short': 'Portion' }, 'Portion(en) / Packung(en)'),
@@ -50,6 +50,7 @@ export function openMealForm(prefill, opts = {}) {
   const slot = el('select', {}, ...SLOTS.map((s) => el('option', { value: s.id, 'data-short': shortSlot[s.id] }, s.label)));
   slot.value = opts.slot ?? meal?.slot ?? slotForTime(meal?.timestamp ?? timestampFor(dateKey));
 
+  const amountHint = el('div', { class: 'note warn', style: 'margin:8px 0 0' });
   const notes = el('div');
   const summary = el('div', { class: 'fsum' });
   const preview = el('div', { class: 'fpreview' });
@@ -134,6 +135,10 @@ export function openMealForm(prefill, opts = {}) {
     } else {
       preview.replaceChildren(el('div', { class: 'muted' }, 'Hier erscheint, was gespeichert wird.'));
     }
+    // Werte pro 100 g und die Menge noch auf der Voreinstellung: Erinnerung, damit nicht versehentlich 100 g statt der echten Menge eingetragen werden.
+    const showHint = pr.basis === 'per100g' && amountUnit.value === 'g' && !amountTouched;
+    amountHint.hidden = !showHint;
+    if (showHint) amountHint.textContent = `Die Nährwerte gelten pro 100 g. Eingetragen sind ${amountValue.value} g. Passe die Menge an, wenn du weniger oder mehr gegessen hast (z. B. 40 g für einen Riegel).`;
     drawQuick();
   }
 
@@ -227,6 +232,7 @@ export function openMealForm(prefill, opts = {}) {
     el('label', {}, 'Gegessene Menge'),
     quick,
     amountValue, el('div', { style: 'height:8px' }), segmented(amountUnit),
+    amountHint,
     preview, notes,
     el('div', { class: 'actions' },
       el('button', { class: 'btn', onClick: () => { onCancel?.(); closeSheet(); } }, 'Abbrechen'), saveBtn,
