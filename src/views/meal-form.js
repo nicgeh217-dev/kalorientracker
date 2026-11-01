@@ -17,6 +17,7 @@ const de = (n) => String(n).replace('.', ',');
 export function openMealForm(prefill, opts = {}) {
   const p = prefill ?? {};
   const { info = null, meal = null, estimate = null, onSaved = null, onCancel = null, onRefine = null } = opts;
+  const barcode = opts.barcode ?? p.barcode ?? null; // wird mit dem Produkt gespeichert
   const isEstimate = Boolean(estimate || p.estimated || meal?.estimated);
   const dateKey = opts.dateKey ?? meal?.dateKey ?? viewedDateKey();
   const today = localDateKey(new Date());
@@ -68,6 +69,7 @@ export function openMealForm(prefill, opts = {}) {
 
   function read() {
     const product = {
+      ...(barcode ? { barcode } : {}),
       name: name.value.trim(),
       basis: basis.value,
       servingGrams: parseNum(serving.value),

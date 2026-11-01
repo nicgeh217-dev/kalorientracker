@@ -20,7 +20,8 @@ Die App hat einen eigenen Speicher, getrennt von der PWA in Chrome. Weg: Online-
 | Kurzbefehle auf dem Icon | ja | **nicht übernommen** |
 | „Teilen in die App“ | ja | **nicht übernommen** |
 | Backup als Datei | Download / Teilen-Menü | **ungeprüft**, in der WebView können Datei-Downloads fehlen (Online-Sicherung geht) |
-| Strichcode, feste Erinnerungen | nein | Phase 2 |
+| Strichcode scannen | nein | ja (Eintragen-Menü und Produkt bearbeiten) |
+| Feste Erinnerungen | nein | Phase 2 |
 | Koreanische Datenbank ohne CORS | nein | Phase 3 (nur nach positivem Test) |
 | iPhone | PWA | nicht gebaut (kein Mac, kein Apple-Konto) |
 
@@ -32,3 +33,9 @@ Die App hat einen eigenen Speicher, getrennt von der PWA in Chrome. Weg: Online-
 - Online-Sicherung: einrichten, „Jetzt sichern“, Wiederherstellen.
 - Sicherung als Datei: funktioniert „Als Datei speichern“ und „Sicherung teilen“?
 - Zurück-Taste, App im Hintergrund und wieder öffnen.
+
+## Strichcode (nur Android-App)
+- **Eintragen-Menü → Strichcode scannen:** 1. eigene Produkte (sofort, offline), 2. Open Food Facts (Werte pro 100 g, Name deutsch wenn vorhanden), 3. unbekannt: Nährwerttabelle fotografieren, Beschreiben oder Manuell, der Code wird mit dem Produkt gespeichert.
+- **Mehr → Gespeicherte Produkte → ✎ → Strichcode:** scannen oder per Hand eintippen. Ungültige Codes (Prüfziffer) und doppelte Zuordnung werden abgelehnt.
+- Beim ersten Scan lädt Android ein kleines Google-Modul nach (einmalig, braucht Internet).
+- Prüfliste: Eigenes Produkt zuordnen und erneut scannen. Ein Markenprodukt aus Deutschland scannen (Open Food Facts). Ein koreanisches Produkt scannen (vermutlich unbekannt, dann Foto).

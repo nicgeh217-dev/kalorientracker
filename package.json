@@ -8,6 +8,7 @@
     "serve": "npx serve ."
   },
   "dependencies": {
+    "@capacitor-mlkit/barcode-scanning": "^8.2.2",
     "@capacitor/android": "^8.6.0",
     "@capacitor/camera": "^8.2.6",
     "@capacitor/core": "^8.6.0"

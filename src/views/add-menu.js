@@ -3,6 +3,8 @@ import { startScanWithPicker, startDescribe } from './scan.js';
 import { openMealForm } from './meal-form.js';
 import { showView } from '../nav.js';
 import { openWorkout } from './workout.js';
+import { isNativeApp } from '../native-camera.js';
+import { startBarcodeScan } from './barcode-flow.js';
 
 // Ein Einstiegspunkt für alles: der Kamera-Button in der Leiste öffnet diese Auswahl.
 export function openAddMenu() {
@@ -15,6 +17,7 @@ export function openAddMenu() {
     el('h1', {}, 'Eintragen'),
     el('div', { class: 'menu' },
       item('Foto aufnehmen', 'Nährwerttabelle oder Essen', () => startScanWithPicker({ camera: true }), true),
+      isNativeApp() ? item('Strichcode scannen', 'Gespeicherte Produkte sofort finden', () => startBarcodeScan()) : null,
       item('Aus Galerie', 'Ein oder mehrere Fotos', () => startScanWithPicker({ camera: false })),
       item('Beschreiben', 'z. B. „Döner mit Hähnchen“', () => startDescribe()),
       item('Aus Produkten', 'Bereits gespeicherte Produkte', () => showView('products')),

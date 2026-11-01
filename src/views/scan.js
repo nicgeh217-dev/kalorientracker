@@ -67,7 +67,7 @@ function showError(message, state, reason) {
     el('h1', {}, 'Auswertung nicht möglich'),
     el('div', { class: 'note bad' }, message),
     el('div', { class: 'actions' },
-      el('button', { class: 'btn', onClick: () => { releasePhotos(state); closeSheet(); openMealForm(null, { dateKey: state.dateKey, slot: state.slot }); } }, 'Manuell eintragen'),
+      el('button', { class: 'btn', onClick: () => { releasePhotos(state); closeSheet(); openMealForm(null, { dateKey: state.dateKey, slot: state.slot, barcode: state.barcode }); } }, 'Manuell eintragen'),
       el('button', { class: 'primary', onClick: () => run(state) }, 'Nochmal'),
       canQueue ? el('button', { class: 'btn wide', onClick: () => saveForLater(state) }, 'Für später speichern (offline-fähig)') : null,
       el('button', { class: 'btn wide', onClick: () => { releasePhotos(state); closeSheet(); } }, 'Abbrechen')));
@@ -138,6 +138,7 @@ async function run(state) {
     estimate: isEstimate ? { confidence: l.confidence, note: l.note, kcalMin: l.kcalMin, kcalMax: l.kcalMax } : null,
     dateKey: state.dateKey,
     slot: state.slot,
+    barcode: state.barcode,
     // Fotos bleiben im Speicher, solange das Formular offen ist, damit "Neu schätzen" sie wiederverwenden kann.
     onRefine: isEstimate ? () => openScanSheet(state) : null,
     onSaved: async () => {
@@ -162,23 +163,23 @@ function showKeyMissing() {
 export async function startScan(initial = null) {
   const { geminiKey } = await getSettings();
   if (!geminiKey) return showKeyMissing();
-  return openScanSheet({ photos: initial?.photos ?? [], hint: initial?.hint ?? '', focusHint: Boolean(initial?.focusHint), dateKey: initial?.dateKey ?? undefined, slot: initial?.slot ?? undefined });
+  return openScanSheet({ photos: initial?.photos ?? [], hint: initial?.hint ?? '', focusHint: Boolean(initial?.focusHint), dateKey: initial?.dateKey ?? undefined, slot: initial?.slot ?? undefined, barcode: initial?.barcode ?? undefined });
 }
 
 // Kamera oder Galerie sofort öffnen, danach landen die Fotos im Scan-Dialog.
 // Wichtig für iPhone/Safari: pickFiles muss synchron im Tipp laufen, vor jedem await. Den Schlüssel prüft startScan danach.
-export function startScanWithPicker({ camera }) {
-  pickFiles({ camera }, (files) => startScanWithFiles(files));
+export function startScanWithPicker({ camera, barcode = null }) {
+  pickFiles({ camera }, (files) => startScanWithFiles(files, '', { barcode }));
 }
 
 // Ohne Foto: nur beschreiben. Das Textfeld ist sofort aktiv.
-export function startDescribe({ dateKey = null, slot = null } = {}) {
-  return startScan({ photos: [], hint: '', focusHint: true, dateKey, slot });
+export function startDescribe({ dateKey = null, slot = null, barcode = null } = {}) {
+  return startScan({ photos: [], hint: '', focusHint: true, dateKey, slot, barcode });
 }
 
 // Fotos, die per "Teilen in die App" kamen (oder Text), direkt im Scan-Dialog öffnen.
-export async function startScanWithFiles(files, hint = '') {
+export async function startScanWithFiles(files, hint = '', extra = {}) {
   const photos = files.slice(0, MAX_PHOTOS).map((file) => ({ file, url: URL.createObjectURL(file) }));
   if (files.length > MAX_PHOTOS) toast(`Nur die ersten ${MAX_PHOTOS} Fotos wurden übernommen.`);
-  return startScan({ photos, hint });
+  return startScan({ photos, hint, ...extra });
 }
