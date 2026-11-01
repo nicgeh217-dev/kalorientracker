@@ -17,7 +17,11 @@ test('Hinweise: nichts anzuzeigen -> null', () => {
 
 test('Standardmenge: pro 100 g -> 100 g, pro Portion -> 1 Portion', () => {
   assert.deepEqual(defaultAmount({ basis: 'per100g', servingGrams: null }), { unit: 'g', value: 100 });
-  assert.deepEqual(defaultAmount({ basis: 'per100g', servingGrams: 50 }), { unit: 'g', value: 100 });
+  // Ist die Portion klein (z. B. ein 40-g-Riegel mit Werten pro 100 g), ist eine Portion die richtige Voreinstellung, nicht 100 g.
+  assert.deepEqual(defaultAmount({ basis: 'per100g', servingGrams: 50 }), { unit: 'servings', value: 1 });
+  assert.deepEqual(defaultAmount({ basis: 'per100g', servingGrams: 100 }), { unit: 'servings', value: 1 });
+  // Große Packungen (z. B. 500 g) bleiben bei 100 g, sonst würde eine ganze Tüte eingetragen.
+  assert.deepEqual(defaultAmount({ basis: 'per100g', servingGrams: 500 }), { unit: 'g', value: 100 });
   assert.deepEqual(defaultAmount({ basis: 'perServing', servingGrams: null }), { unit: 'servings', value: 1 });
   assert.deepEqual(defaultAmount({ basis: null, servingGrams: null }), { unit: 'servings', value: 1 });
 });
