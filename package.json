@@ -6,5 +6,12 @@
   "scripts": {
     "test": "node --test \"tests/*.test.js\"",
     "serve": "npx serve ."
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.6.0",
+    "@capacitor/core": "^8.6.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.6.0"
   }
 }

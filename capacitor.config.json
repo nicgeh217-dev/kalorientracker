@@ -1,0 +1,10 @@
+{
+  "appId": "app.kalorientracker",
+  "appName": "Kalorientracker",
+  "webDir": "www",
+  "backgroundColor": "#0e0e10",
+  "android": {
+    "backgroundColor": "#0e0e10",
+    "allowMixedContent": false
+  }
+}

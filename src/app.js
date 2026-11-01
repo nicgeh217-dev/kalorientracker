@@ -54,7 +54,10 @@ function showUpdateBanner() {
     el('button', { onClick: () => location.reload() }, 'Neu laden')));
 }
 
-if ('serviceWorker' in navigator) {
+// In der Android-App (Capacitor) liefert die App die Dateien selbst aus, dort gibt es keinen Service Worker.
+const isNativeApp = Boolean(globalThis.Capacitor?.isNativePlatform?.());
+
+if ('serviceWorker' in navigator && !isNativeApp) {
   const hadController = Boolean(navigator.serviceWorker.controller); // Erstinstallation löst keinen Hinweis aus
   navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController) showUpdateBanner(); });
   navigator.serviceWorker.register('sw.js').then((reg) => {
