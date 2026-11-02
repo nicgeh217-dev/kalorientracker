@@ -175,3 +175,30 @@ export function trainingDaysThisWeek(workouts, todayKey) {
   const list = [...days].sort();
   return { count: list.length, days: list };
 }
+
+// Übung aus einem offenen Entwurf nehmen (falsche Übung gewählt). Gibt die Position und die Übung für "Rückgängig" zurück.
+export function removeEntry(draft, exerciseId) {
+  const index = draft.entries.findIndex((e) => e.exerciseId === exerciseId);
+  if (index < 0) return null;
+  const [entry] = draft.entries.splice(index, 1);
+  return { index, entry };
+}
+
+// Stellt eine entfernte oder geänderte Übung wieder her; eine vorhandene mit derselben ID wird ersetzt, nie verdoppelt.
+export function restoreEntry(draft, { index, entry }) {
+  const at = draft.entries.findIndex((e) => e.exerciseId === entry.exerciseId);
+  if (at >= 0) draft.entries[at] = entry;
+  else draft.entries.splice(Math.min(index, draft.entries.length), 0, entry);
+}
+
+// Einen Satz entfernen; ohne Sätze bleibt keine leere Übung zurück. snapshot dient für "Rückgängig" (restoreEntry).
+export function removeSet(draft, exerciseId, setIndex) {
+  const index = draft.entries.findIndex((e) => e.exerciseId === exerciseId);
+  const entry = draft.entries[index];
+  if (!entry || setIndex < 0 || setIndex >= entry.sets.length) return null;
+  const snapshot = { index, entry: structuredClone(entry) };
+  entry.sets.splice(setIndex, 1);
+  const entryRemoved = entry.sets.length === 0;
+  if (entryRemoved) draft.entries.splice(index, 1);
+  return { entryRemoved, snapshot };
+}
