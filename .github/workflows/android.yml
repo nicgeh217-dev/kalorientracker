@@ -25,8 +25,18 @@ jobs:
           npx cap sync android
       - name: Android-Lizenzen akzeptieren
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+      - name: Festen Debug-Schlüssel aus dem Secret holen
+        env:
+          KEYSTORE_B64: ${{ secrets.DEBUG_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/debug-fest.p12"
+            echo "DEBUG_KEYSTORE_FILE=$RUNNER_TEMP/debug-fest.p12" >> "$GITHUB_ENV"
+          fi
       - name: Debug-APK bauen
         working-directory: android
+        env:
+          DEBUG_KEYSTORE_PASSWORD: ${{ secrets.DEBUG_KEYSTORE_PASSWORD }}
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon

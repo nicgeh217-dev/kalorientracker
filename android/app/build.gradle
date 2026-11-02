@@ -16,6 +16,19 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // Fester Debug-Schlüssel aus der Umgebung (GitHub-Secret, nicht im Repo): gleiche Signatur bei jedem Build, Updates lassen sich über die alte App installieren.
+    // Ohne diese Variablen (lokaler Build) gilt der übliche Debug-Schlüssel.
+    if (System.getenv('DEBUG_KEYSTORE_FILE')) {
+        signingConfigs {
+            debug {
+                storeFile file(System.getenv('DEBUG_KEYSTORE_FILE'))
+                storeType 'pkcs12'
+                storePassword System.getenv('DEBUG_KEYSTORE_PASSWORD')
+                keyAlias 'kalorientracker'
+                keyPassword System.getenv('DEBUG_KEYSTORE_PASSWORD')
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
