@@ -192,3 +192,40 @@ test('trainingDaysThisWeek: verschiedene Tage der laufenden Woche (Mo bis So), n
   assert.deepEqual(trainingDaysThisWeek([], '2026-10-25'), { count: 0, days: [] });
   assert.equal(trainingDaysThisWeek([W('2026-10-20', [])], '2026-10-25').count, 0); // Einheit ohne Sätze zählt nicht
 });
+
+import { removeEntry, restoreEntry, removeSet } from '../src/training.js';
+
+const mkDraft = () => ({ entries: [
+  { exerciseId: 1, sets: [{ kg: 50, reps: 8, done: true }, { kg: 50, reps: 6, done: false }] },
+  { exerciseId: 2, sets: [{ kg: null, reps: 10, done: false }] },
+  { exerciseId: 3, sets: [{ kg: 20, reps: 12, done: false }] },
+] });
+
+test('removeEntry: nimmt die Übung samt Sätzen aus dem Entwurf und merkt sich die Position', () => {
+  const d = mkDraft();
+  const r = removeEntry(d, 2);
+  assert.deepEqual(d.entries.map((e) => e.exerciseId), [1, 3]);
+  assert.equal(r.index, 1);
+  assert.equal(r.entry.exerciseId, 2);
+  assert.equal(removeEntry(d, 99), null);
+});
+
+test('restoreEntry: setzt die entfernte Übung an ihre alte Stelle zurück, aber nie doppelt', () => {
+  const d = mkDraft();
+  const r = removeEntry(d, 2);
+  restoreEntry(d, r);
+  assert.deepEqual(d.entries.map((e) => e.exerciseId), [1, 2, 3]);
+  restoreEntry(d, r);
+  assert.equal(d.entries.length, 3);
+});
+
+test('removeSet: entfernt den Satz, mit dem letzten Satz entfällt die Übung', () => {
+  const d = mkDraft();
+  const a = removeSet(d, 1, 0);
+  assert.deepEqual(d.entries[0].sets, [{ kg: 50, reps: 6, done: false }]);
+  assert.equal(a.entryRemoved, false);
+  const b = removeSet(d, 2, 0);
+  assert.deepEqual(d.entries.map((e) => e.exerciseId), [1, 3]);
+  assert.equal(b.entryRemoved, true);
+  assert.equal(removeSet(d, 1, 7), null);
+});

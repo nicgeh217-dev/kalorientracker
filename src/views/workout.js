@@ -4,7 +4,7 @@ import { refreshCurrent } from '../nav.js';
 import {
   listExercises, listWorkouts, addWorkout, getTrainingDraft, saveTrainingDraft, clearTrainingDraft,
 } from '../db.js';
-import { lastSetsFor, isNewRecord, restRemaining, draftToWorkout, epley1RM, repeatDraft } from '../training.js';
+import { lastSetsFor, isNewRecord, restRemaining, draftToWorkout, epley1RM, repeatDraft, removeEntry, restoreEntry, removeSet } from '../training.js';
 import { dayHeading } from '../state.js';
 import { foxSvg } from './fox.js';
 import { prefersReducedMotion } from './motion.js';
@@ -120,6 +120,25 @@ export async function openWorkout({ dateKey = null, template = null } = {}) {
     draw();
   }
 
+  // Falsche Übung oder Satz entfernen; "Rückgängig" stellt den Stand davor wieder her.
+  function dropEntry(entry) {
+    const removed = removeEntry(draft, entry.exerciseId);
+    if (!removed) return;
+    rest = null;
+    schedule();
+    draw();
+    drawTimer();
+    toast(`${names().get(entry.exerciseId)?.name ?? 'Übung'} entfernt`, 'Rückgängig', () => { restoreEntry(draft, removed); schedule(); draw(); });
+  }
+
+  function dropLastSet(entry) {
+    const res = removeSet(draft, entry.exerciseId, entry.sets.length - 1);
+    if (!res) return;
+    schedule();
+    draw();
+    toast(res.entryRemoved ? 'Übung entfernt' : 'Satz entfernt', 'Rückgängig', () => { restoreEntry(draft, res.snapshot); schedule(); draw(); });
+  }
+
   function addExerciseToDraft(exercise) {
     if (draft.entries.some((e) => e.exerciseId === exercise.id)) return;
     const last = lastSetsFor(workouts, exercise.id);
@@ -193,7 +212,8 @@ export async function openWorkout({ dateKey = null, template = null } = {}) {
     const ex = names().get(entry.exerciseId);
     const last = lastSetsFor(workouts, entry.exerciseId);
     return el('div', { class: 'card wentry' },
-      el('div', { class: 'row' }, el('b', {}, ex?.name ?? 'Gelöschte Übung'), el('span', { class: 'muted' }, ex?.muscle ?? '')),
+      el('div', { class: 'row' }, el('b', {}, ex?.name ?? 'Gelöschte Übung'), el('span', { class: 'muted' }, ex?.muscle ?? ''),
+        el('button', { type: 'button', class: 'small ghost', 'aria-label': `${ex?.name ?? 'Übung'} entfernen`, onClick: () => dropEntry(entry) }, 'Entfernen')),
       last.length ? el('div', { class: 'muted', style: 'margin:2px 0 8px' }, `Letztes Mal: ${last.map((s) => `${s.kg > 0 ? de(s.kg) : 'KG'} × ${s.reps}`).join(', ')}`) : el('div', { style: 'height:8px' }),
       ...entry.sets.map((set, i) => {
         const kg = el('input', { inputMode: 'decimal', value: de(set.kg), placeholder: 'kg', title: 'Leer = Körpergewicht', 'aria-label': `Satz ${i + 1} Gewicht in kg` });
@@ -204,12 +224,14 @@ export async function openWorkout({ dateKey = null, template = null } = {}) {
           el('span', { class: 'wn' }, String(i + 1)), kg, reps,
           el('button', { type: 'button', class: 'wcheck', 'aria-pressed': set.done ? 'true' : 'false', 'aria-label': `Satz ${i + 1} erledigt`, onClick: () => toggleDone(entry, set) }, '✓'));
       }),
-      el('button', { type: 'button', class: 'small ghost', style: 'margin-top:8px', onClick: () => addSet(entry) }, 'Satz hinzufügen'));
+      el('div', { class: 'row', style: 'margin-top:8px; justify-content:flex-start; gap:8px' },
+        el('button', { type: 'button', class: 'small ghost', onClick: () => addSet(entry) }, 'Satz hinzufügen'),
+        el('button', { type: 'button', class: 'small ghost', onClick: () => dropLastSet(entry) }, 'Letzten Satz entfernen')));
   }
   function draw() {
     body.replaceChildren(
       ...draft.entries.map(entryCard),
-      draft.entries.length ? null : el('div', { class: 'card muted' }, 'Füge deine erste Übung hinzu.'),
+      ...(draft.entries.length ? [] : [el('div', { class: 'card muted' }, 'Füge deine erste Übung hinzu.')]),
       el('button', { class: 'btn', style: 'width:100%', onClick: pickExercise }, '+ Übung hinzufügen'));
   }
 
