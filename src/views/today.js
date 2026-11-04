@@ -18,7 +18,7 @@ import { weekStrip } from './week-strip.js';
 import { foodIconFor } from '../food-icons.js';
 import { foodIconSvg } from './food-icons.js';
 import { nutrientTile } from './nutrient-rings.js';
-import { takeJustLogged, setJustLogged } from '../state.js';
+import { takeJustLogged, setJustLogged, takeJustWeighed } from '../state.js';
 import { countUp, flyIcon } from './motion.js';
 import { openOnlineRestore } from './online-backup-ui.js';
 import { openKeySetup } from './key-setup.js';
@@ -125,6 +125,7 @@ export async function renderToday() {
   if (isToday) prevTodayCount = todayCount;
   const petCfg = settings.pet;
   const logged = takeJustLogged(); // Name der eben eingetragenen Mahlzeit oder null
+  const nod = isToday && takeJustWeighed();
   const before = logged && lastShown?.dateKey === dateKey ? lastShown : { center: 0, eaten: 0, over: false, nutrients: {} };
   let petNode = null;
   if (isToday && !petCfg && !introOpen && !document.querySelector('.sheet')) {
@@ -132,7 +133,7 @@ export async function renderToday() {
     openPetIntro(petLvl);
   } else if (isToday && petCfg && petCfg.enabled !== false) {
     petNode = petLine({
-      cfg: petCfg, chew: munch && !logged, level: petLvl, total: petTotal, streak: petStreak, todayCount, munch, todayKey,
+      cfg: petCfg, chew: munch && !logged, nod, level: petLvl, total: petTotal, streak: petStreak, todayCount, munch, todayKey,
       // Krank-Tage zählen nicht als Pause (die Serie bleibt ja auch bestehen)
       daysSinceLast: petDays.length ? Math.max(0, daysBetween(petDays.at(-1), todayKey) - sickDays.filter((d) => d > petDays.at(-1) && d <= todayKey).length) : null,
       weightToday: weights.some((w) => w.date === todayKey),
@@ -346,12 +347,12 @@ function backupCard(r) {
 }
 
 // Zeile oben in der Kalorien-Karte: Sprechblase als Text, Serie und Fuchs. Details (Stufen, Rekord, Umbenennen) im Dialog.
-function petLine({ cfg, chew, level, total, streak: stk, todayCount, daysSinceLast, weightToday, munch, todayKey }) {
+function petLine({ cfg, chew, nod, level, total, streak: stk, todayCount, daysSinceLast, weightToday, munch, todayKey }) {
   const hour = new Date().getHours();
   const mood = munch ? 'happy' : petMood({ todayCount, hour, daysSinceLast, streakCurrent: stk.current, weightToday });
   const text = munch
     ? 'Lecker, danke fürs Eintragen!'
-    : petMessage({ mood, hour, name: cfg.name, streak: stk.current, todayCount, totalDays: total, dateKey: todayKey });
+    : nod ? 'Notiert.' : petMessage({ mood, hour, name: cfg.name, streak: stk.current, todayCount, totalDays: total, dateKey: todayKey });
   return el('button', {
     class: 'pet-line',
     'aria-label': `${cfg.name} öffnen. ${stk.current} Tage in Folge, Rekord ${stk.best}`,
@@ -361,5 +362,5 @@ function petLine({ cfg, chew, level, total, streak: stk, todayCount, daysSinceLa
     total > 0
       ? el('div', { class: 'streak' }, el('b', {}, String(stk.current)), el('span', {}, stk.current === 1 ? 'Tag' : 'Tage'))
       : null,
-    el('div', { class: 'pet-fox' }, foxSvg({ mood, accessories: accessoriesFor(level).map((a) => a.id), munch: chew, size: 48 })));
+    el('div', { class: `pet-fox${nod && !munch ? ' nod' : ''}` }, foxSvg({ mood, accessories: accessoriesFor(level).map((a) => a.id), munch: chew, size: 48 })));
 }

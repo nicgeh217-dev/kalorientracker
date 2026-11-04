@@ -229,3 +229,106 @@ test('removeSet: entfernt den Satz, mit dem letzten Satz entfällt die Übung', 
   assert.equal(b.entryRemoved, true);
   assert.equal(removeSet(d, 1, 7), null);
 });
+
+import { progressCurve, toggleLink, supersetNext } from '../src/training.js';
+
+test('progressCurve: mit Gewicht das geschätzte Maximum, Sätze ohne Gewicht zählen dann nicht', () => {
+  const c = progressCurve([
+    { dateKey: '2026-10-02', sets: [{ exerciseId: 1, kg: 60, reps: 10 }, { exerciseId: 1, kg: 0, reps: 20 }] },
+    { dateKey: '2026-10-01', sets: [{ exerciseId: 1, kg: 0, reps: 12 }] },
+  ], 1);
+  assert.equal(c.kind, 'weight');
+  assert.deepEqual(c.points, [{ dateKey: '2026-10-02', value: 80 }]);
+});
+
+test('progressCurve: nur Körpergewicht zeigt die meisten Wiederholungen je Tag', () => {
+  const c = progressCurve([
+    { dateKey: '2026-10-02', sets: [{ exerciseId: 1, kg: 0, reps: 8 }, { exerciseId: 1, kg: 0, reps: 11 }, { exerciseId: 2, kg: 0, reps: 99 }] },
+    { dateKey: '2026-10-01', sets: [{ exerciseId: 1, kg: 0, reps: 6 }] },
+  ], 1);
+  assert.equal(c.kind, 'reps');
+  assert.deepEqual(c.points, [{ dateKey: '2026-10-01', value: 6 }, { dateKey: '2026-10-02', value: 11 }]);
+});
+
+test('progressCurve: ohne Sätze keine Punkte', () => {
+  assert.deepEqual(progressCurve([], 1).points, []);
+});
+
+const set = (done) => ({ kg: 10, reps: 5, done });
+const ss = (...entries) => ({ dateKey: '2026-10-25', startedAt: 0, entries: entries.map(([exerciseId, sets, linked]) => ({ exerciseId, sets, ...(linked ? { linked: true } : {}) })) });
+
+test('toggleLink: koppelt an die vorherige Übung und löst wieder; die erste Übung kann nicht koppeln', () => {
+  const d = ss([1, [set(false)]], [2, [set(false)]]);
+  toggleLink(d, 1);
+  assert.equal(d.entries[1].linked, true);
+  toggleLink(d, 1);
+  assert.equal(Boolean(d.entries[1].linked), false);
+  toggleLink(d, 0);
+  assert.equal(Boolean(d.entries[0].linked), false);
+});
+
+test('supersetNext: nennt die Übung, die in dieser Runde noch fehlt', () => {
+  const d = ss([1, [set(true), set(false)]], [2, [set(false), set(false)], true], [3, [set(false)]]);
+  assert.equal(supersetNext(d, d.entries[0]).exerciseId, 2);
+});
+
+test('supersetNext: nach der letzten Übung der Runde kommt die Pause', () => {
+  const d = ss([1, [set(true), set(false)]], [2, [set(true), set(false)], true]);
+  assert.equal(supersetNext(d, d.entries[1]), null);
+});
+
+test('supersetNext: von hinten zurück nach vorn, wenn vorn noch ein Satz der Runde fehlt', () => {
+  const d = ss([1, [set(false)]], [2, [set(true)], true]);
+  assert.equal(supersetNext(d, d.entries[1]).exerciseId, 1);
+});
+
+test('supersetNext: eine Übung ohne offene Sätze wird übersprungen', () => {
+  const d = ss([1, [set(true), set(true), set(false)]], [2, [set(true)], true]);
+  assert.equal(supersetNext(d, d.entries[0]), null);
+});
+
+test('supersetNext: ohne Kopplung und über Gruppengrenzen hinweg nie', () => {
+  const d = ss([1, [set(true)]], [2, [set(false)]], [3, [set(false)], true]);
+  assert.equal(supersetNext(d, d.entries[0]), null);
+  d.entries[1].sets[0].done = true;
+  assert.equal(supersetNext(d, d.entries[1]).exerciseId, 3);
+});
+
+test('removeEntry: nimmt man die erste Übung einer Kopplung, rückt die nächste an die Spitze; Rückgängig stellt es her', () => {
+  const d = ss([1, [set(false)]], [2, [set(false)]], [3, [set(false)], true], [4, [set(false)], true]);
+  const r = removeEntry(d, 2);
+  assert.deepEqual(d.entries.map((e) => Boolean(e.linked)), [false, false, true]);
+  restoreEntry(d, r);
+  assert.deepEqual(d.entries.map((e) => e.exerciseId), [1, 2, 3, 4]);
+  assert.deepEqual(d.entries.map((e) => Boolean(e.linked)), [false, false, true, true]);
+});
+
+test('removeSet: entfällt die Übung mit dem letzten Satz, bleibt die Kopplung stimmig; Rückgängig stellt es her', () => {
+  const d = ss([1, [set(false)]], [2, [set(false)], true]);
+  const { snapshot } = removeSet(d, 1, 0);
+  assert.equal(Boolean(d.entries[0].linked), false);
+  restoreEntry(d, snapshot);
+  assert.deepEqual(d.entries.map((e) => Boolean(e.linked)), [false, true]);
+});
+
+test('draftToWorkout: speichert Kopplungen nur, wenn es welche gibt', () => {
+  const d = ss([1, [set(true)]], [2, [set(true)], true], [3, [set(true)]]);
+  assert.deepEqual(draftToWorkout(d, 60000, EX).links, [2]);
+  assert.equal('links' in draftToWorkout(ss([1, [set(true)]]), 60000, EX), false);
+});
+
+test('draftToWorkout: fällt eine gekoppelte Übung ohne Sätze weg, bleibt die Kopplung nur innerhalb derselben Gruppe', () => {
+  const a = ss([1, [set(false)]], [2, [set(true)], true], [3, [set(true)], true]);
+  assert.deepEqual(draftToWorkout(a, 60000, EX).links, [3]);
+  const b = ss([1, [set(true)]], [2, [set(false)]], [3, [set(true)], true]);
+  assert.equal('links' in draftToWorkout(b, 60000, EX), false);
+});
+
+test('repeatDraft: übernimmt Kopplungen, eine gelöschte Spitze macht die nächste Übung zur neuen Spitze', () => {
+  const known = [{ id: 1 }, { id: 3 }, { id: 4 }];
+  const w = { links: [3, 4], sets: [1, 2, 3, 4].map((exerciseId) => ({ exerciseId, kg: 10, reps: 5 })) };
+  const d = repeatDraft(w, known, '2026-10-25', 1);
+  assert.deepEqual(d.entries.map((e) => [e.exerciseId, Boolean(e.linked)]), [[1, false], [3, false], [4, true]]);
+  const plain = repeatDraft({ sets: [{ exerciseId: 1, kg: 1, reps: 1 }] }, known, '2026-10-25', 1);
+  assert.equal('linked' in plain.entries[0], false);
+});

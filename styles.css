@@ -442,3 +442,15 @@ body.meal-dragging { cursor: grabbing; }
 input.unsure { background: var(--warn-bg); border-color: var(--orange); }
 .labelphoto { display: block; width: 100%; max-height: 120px; object-fit: cover; border-radius: 12px; border: 1px solid var(--line, rgba(128,128,128,.3)); }
 .labelphoto.big { max-height: none; object-fit: contain; }
+
+/* Superset und Notiz in der Einheit */
+.wentry.sup { border-left: 3px solid var(--orange); }
+.wlink { justify-self: center; margin: -4px 0; }
+.wnote { min-height: 36px; margin: 6px 0 2px; font-size: 14px; background: transparent; }
+
+/* Fuchs-Reaktionen und Wochenrückblick */
+.hopfox { top: auto; bottom: 120px; }
+.restfox { flex: none; }
+.miniline { width: 120px; height: 32px; flex: none; color: var(--muted); }
+.pet-fox.nod .fox .head { animation: nod .8s ease-in-out 1; }
+@keyframes nod { 0%, 100% { transform: rotate(0) translateY(0); } 35% { transform: rotate(2deg) translateY(5px); } 65% { transform: rotate(-1deg) translateY(-1px); } }

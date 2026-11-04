@@ -2,10 +2,11 @@ import { el, mount } from '../dom.js';
 import { dayTotals, localDateKey } from '../logic.js';
 import { addDays, weekSummary } from '../overview.js';
 import { yearGrid } from '../calendar.js';
-import { shiftWeek } from '../week.js';
+import { shiftWeek, weekReview, weekTitle } from '../week.js';
 import { trackingDays, streak } from '../pet.js';
 import { mealsForDate, getSettings, listMeals, listDayStatuses, setDayStatus, listWorkouts, listExercises, listWeights } from '../db.js';
-import { MUSCLES, personalRecords, muscleDistribution, weeklySetSeries, strengthCurve, daysSinceMuscle } from '../training.js';
+import { MUSCLES, personalRecords, muscleDistribution, weeklySetSeries, progressCurve, daysSinceMuscle } from '../training.js';
+import { curveBlock, miniLine } from './curve-chart.js';
 import { openWorkout } from './workout.js';
 import { showView } from '../nav.js';
 import { setViewedDateKey, dayLabel, dayHeading } from '../state.js';
@@ -53,6 +54,7 @@ export async function renderHistory() {
     weekStrip({ selected: day, todayKey, counts, statuses, onSelect: pick, onShift: shift }),
     dayCard({ day, meals: dayMeals, status: statuses[day] ?? null, workouts: workouts.filter((w) => w.dateKey === day) }),
     yearCard({ counts, statuses, todayKey, stk: streak(trackedDays, todayKey, sickDays), total: trackedDays.length }),
+    reviewCard(weekReview({ dateKey: day, meals: everyMeal, workouts, weights }), day),
     el('h2', {}, 'Letzte 7 Tage'),
     weekCard(days, settings.calorieGoal, day),
     el('h2', {}, 'Fortschritt'),
@@ -119,15 +121,24 @@ function weekCard(days, goal, selectedDay) {
 }
 
 // ---------- Fortschritt ----------
-const NS = 'http://www.w3.org/2000/svg';
-const sv = (tag, attrs = {}, text = null) => {
-  const n = document.createElementNS(NS, tag);
-  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
-  if (text != null) n.textContent = text;
-  return n;
-};
 const de1 = (n) => String(n).replace('.', ',');
 const invite = (text) => el('div', { class: 'muted' }, text);
+
+// Wochenrückblick: nur Zahlen, kein Soll und Ist, keine Farbe für gut oder schlecht.
+function reviewCard(r, day) {
+  const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+  const first = r.weights[0];
+  const last = r.weights.at(-1);
+  return el('div', { class: 'card' },
+    el('b', {}, weekTitle(day)),
+    el('div', { style: 'margin-top:8px' }, r.loggedDays ? `${plural(r.loggedDays, 'Tag', 'Tage')} eingetragen` : 'Kein Tag eingetragen'),
+    el('div', {}, r.trainingDays ? `${plural(r.trainingDays, 'Trainingstag', 'Trainingstage')}, ${plural(r.sets, 'Satz', 'Sätze')}` : 'Kein Training'),
+    first
+      ? el('div', { class: 'row', style: 'margin-top:2px' },
+          el('span', {}, r.weights.length > 1 ? `Gewicht ${de1(first.kg)} → ${de1(last.kg)} kg` : `Gewicht ${de1(first.kg)} kg`),
+          r.weights.length > 1 ? miniLine(r.weights.map((w) => w.kg)) : null)
+      : el('div', { class: 'muted' }, 'Kein Gewicht in dieser Woche'));
+}
 
 function progressCards({ workouts, exercises, weights, todayKey }) {
   const last = weights.at(-1);
@@ -135,7 +146,7 @@ function progressCards({ workouts, exercises, weights, todayKey }) {
   const dist = muscleDistribution(workouts, exercises, todayKey);
   const since = MUSCLES.map((m) => [m, daysSinceMuscle(workouts, exercises, m, todayKey)]).filter(([, d]) => d != null).sort((a, b) => b[1] - a[1])[0];
   const series = weeklySetSeries(workouts, todayKey);
-  const withCurve = exercises.map((e) => ({ e, points: strengthCurve(workouts, e.id) })).filter((x) => x.points.length).sort((a, b) => b.points.length - a.points.length);
+  const withCurve = exercises.map((e) => ({ e, curve: progressCurve(workouts, e.id) })).filter((x) => x.curve.points.length).sort((a, b) => b.curve.points.length - a.curve.points.length);
   const chosen = withCurve.find((x) => x.e.id === curveExercise) ?? withCurve[0] ?? null;
 
   return [
@@ -162,14 +173,13 @@ function progressCards({ workouts, exercises, weights, todayKey }) {
       el('b', {}, 'Sätze pro Woche'),
       series.some((s) => s.sets) ? weeklyBars(series) : invite('Hier erscheinen deine Sätze der letzten 8 Wochen.')),
     el('div', { class: 'card' },
-      el('b', {}, 'Kraft pro Übung'),
+      el('b', {}, 'Verlauf pro Übung'),
       chosen
         ? el('div', {},
             el('div', { class: 'chips', style: 'margin:8px -16px 8px' }, ...withCurve.map((x) => el('button', {
               class: x.e.id === chosen.e.id ? 'on' : '', 'aria-pressed': x.e.id === chosen.e.id ? 'true' : 'false', onClick: () => { curveExercise = x.e.id; renderHistory(); },
             }, el('b', {}, x.e.name)))),
-            curveChart(chosen.points),
-            el('div', { class: 'muted' }, 'Geschätztes Maximum für eine Wiederholung.'))
+            curveBlock(chosen.curve))
         : invite('Nach deinen ersten Sätzen siehst du hier die Entwicklung je Übung.')),
   ];
 }
@@ -181,25 +191,4 @@ function weeklyBars(series) {
     return el('div', { class: 'sbar', 'aria-label': `Woche ab ${Number(d)}.${Number(m)}.: ${s.sets} Sätze` },
       el('span', {}, String(s.sets)), el('i', { style: `height:${Math.max(3, (s.sets / max) * 70)}px` }), el('small', {}, `${Number(d)}.${Number(m)}.`));
   }));
-}
-
-function curveChart(points) {
-  const W = 320;
-  const H = 120;
-  const pad = { l: 34, r: 10, t: 10, b: 20 };
-  const vals = points.map((p) => p.best1RM);
-  let lo = Math.min(...vals);
-  let hi = Math.max(...vals);
-  if (hi === lo) { lo -= 5; hi += 5; }
-  const x = (i) => pad.l + (points.length === 1 ? (W - pad.l - pad.r) / 2 : (i / (points.length - 1)) * (W - pad.l - pad.r));
-  const y = (v) => pad.t + (1 - (v - lo) / (hi - lo)) * (H - pad.t - pad.b);
-  const svg = sv('svg', { viewBox: `0 0 ${W} ${H}`, class: 'curve', role: 'img', 'aria-label': 'Kraftverlauf' });
-  svg.append(
-    sv('text', { x: 2, y: pad.t + 4, class: 'ct' }, de1(Math.round(hi))),
-    sv('text', { x: 2, y: H - pad.b, class: 'ct' }, de1(Math.round(lo))),
-    sv('polyline', { points: points.map((p, i) => `${x(i)},${y(p.best1RM)}`).join(' '), fill: 'none', stroke: '#f2711c', 'stroke-width': 3, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }),
-    ...points.map((p, i) => sv('circle', { cx: x(i), cy: y(p.best1RM), r: 4, fill: '#f2711c' })),
-    sv('text', { x: pad.l, y: H - 4, class: 'ct' }, points[0].dateKey.slice(5).split('-').reverse().map(Number).join('.') + '.'),
-    sv('text', { x: W - pad.r, y: H - 4, class: 'ct', 'text-anchor': 'end' }, points.at(-1).dateKey.slice(5).split('-').reverse().map(Number).join('.') + '.'));
-  return svg;
 }

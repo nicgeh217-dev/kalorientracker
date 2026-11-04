@@ -6,10 +6,12 @@ import {
   listExercises, listWorkouts, addExercise, updateExercise, deleteExercise, deleteWorkout, restoreWorkout,
   getTrainingDraft, setDayStatus, listDayStatuses,
 } from '../db.js';
-import { MUSCLES, DEFAULT_EXERCISES, trainingDaysThisWeek } from '../training.js';
+import { MUSCLES, DEFAULT_EXERCISES, trainingDaysThisWeek, progressCurve } from '../training.js';
+import { curveBlock } from './curve-chart.js';
 import { getSettings, saveSettings } from '../db.js';
 import { dayLabel } from '../state.js';
 import { openWorkout } from './workout.js';
+import { foxSvg } from './fox.js';
 
 const shortDate = (dateKey) => {
   const [y, m, d] = dateKey.split('-').map(Number);
@@ -42,11 +44,14 @@ export async function renderTraining() {
     el('div', { class: 'quick', style: 'margin-top:10px' }, restToggle,
       el('button', { type: 'button', class: 'chipbtn', onClick: openBackfill }, 'Nachtragen')),
     weekCard(workouts, settings, todayKey),
-    el('div', { class: 'card' },
-      el('b', {}, 'Heute'),
-      todays.length
-        ? el('div', { class: 'muted' }, todays.map((w) => `${w.title}${w.durationMin ? ` · ${w.durationMin} min` : ''} · ${w.sets.length} Sätze`).join(' | '))
-        : el('div', { class: 'muted' }, status === 'rest' ? 'Ruhetag. Erholung gehört zum Training.' : status === 'sick' ? 'Du bist als krank markiert. Gute Besserung.' : 'Heute noch kein Training.')),
+    el('div', { class: 'card row' },
+      el('div', {},
+        el('b', {}, 'Heute'),
+        todays.length
+          ? el('div', { class: 'muted' }, todays.map((w) => `${w.title}${w.durationMin ? ` · ${w.durationMin} min` : ''} · ${w.sets.length} Sätze`).join(' | '))
+          : el('div', { class: 'muted' }, status === 'rest' ? 'Ruhetag. Erholung gehört zum Training.' : status === 'sick' ? 'Du bist als krank markiert. Gute Besserung.' : 'Heute noch kein Training.')),
+      // Am Ruhetag schläft der Fuchs, sofern er nicht ausgeblendet ist.
+      status === 'rest' && settings.pet && settings.pet.enabled !== false ? el('div', { class: 'restfox' }, foxSvg({ mood: 'sleeping', size: 56 })) : null),
     el('h2', {}, 'Letzte Einheiten'),
     recent.length
       ? el('div', { class: 'card slotlist' }, ...recent.map((w) => workoutRow(w, names)))
@@ -61,6 +66,14 @@ function workoutRow(w, names) {
     el('div', { class: 'mk' }, String(w.sets.length), el('small', {}, w.sets.length === 1 ? 'Satz' : 'Sätze')));
 }
 
+// Teil eines Supersets: an die Übung davor gekoppelt, oder die nächste hängt an ihr.
+function inSuperset(w, id) {
+  const links = w.links ?? [];
+  if (links.includes(id)) return true;
+  const order = [...new Set(w.sets.map((s) => s.exerciseId))];
+  return links.includes(order[order.indexOf(id) + 1]);
+}
+
 function openDetails(w, names) {
   const groups = new Map();
   for (const s of w.sets) {
@@ -73,6 +86,7 @@ function openDetails(w, names) {
     w.sets.length
       ? el('div', { class: 'card' }, ...[...groups.entries()].map(([id, sets]) => el('div', { style: 'margin-bottom:8px' },
           el('b', {}, names.get(id)?.name ?? 'Gelöschte Übung'),
+          inSuperset(w, id) ? el('span', { class: 'muted' }, ' · Superset') : null,
           el('div', { class: 'muted' }, sets.map((s) => `${s.kg > 0 ? `${String(s.kg).replace('.', ',')} kg` : 'Körpergewicht'} × ${s.reps}`).join(' · ')))))
       : el('div', { class: 'card muted' }, 'Keine Sätze gespeichert.'),
     el('div', { class: 'actions' },
@@ -130,11 +144,20 @@ function exerciseGroups(exercises) {
 export function openExerciseForm(e, { onSaved = null } = {}) {
   const name = el('input', { value: e?.name ?? '', placeholder: 'z. B. Beinpresse', 'aria-label': 'Name der Übung' });
   const muscle = el('select', { 'aria-label': 'Muskelgruppe' }, ...MUSCLES.map((m) => el('option', { value: m, selected: (e?.muscle ?? 'Ganzkörper') === m }, m)));
+  const note = el('input', { value: e?.note ?? '', placeholder: 'z. B. Sitz auf Stufe 4', 'aria-label': 'Notiz zur Übung' });
   const msg = el('div');
+  const curveBox = el('div');
+  // Verlauf nur, wenn es schon Sätze gibt. Der Dialog öffnet sofort, die Kurve kommt nach.
+  if (e) listWorkouts().then((workouts) => {
+    const curve = progressCurve(workouts, e.id);
+    if (curve.points.length) curveBox.replaceChildren(el('div', { class: 'card' }, curveBlock(curve)));
+  }).catch(() => {});
   openSheet(
     el('h1', {}, e ? 'Übung bearbeiten' : 'Neue Übung'),
+    curveBox,
     el('label', {}, 'Name'), name,
     el('label', {}, 'Muskelgruppe'), muscle,
+    el('label', {}, 'Notiz (optional)'), note,
     msg,
     el('div', { class: 'actions' },
       el('button', { class: 'btn', onClick: closeSheet }, 'Abbrechen'),
@@ -144,7 +167,9 @@ export function openExerciseForm(e, { onSaved = null } = {}) {
           const n = name.value.trim();
           if (!n) return msg.replaceChildren(el('div', { class: 'note bad' }, 'Bitte einen Namen eingeben.'));
           let saved;
-          if (e) { saved = { ...e, name: n, muscle: muscle.value }; await updateExercise(saved); } else { saved = { name: n, muscle: muscle.value }; saved.id = await addExercise(saved); }
+          const text = note.value.trim();
+          const fields = { name: n, muscle: muscle.value };
+          if (e) { saved = { ...e, ...fields }; delete saved.note; if (text) saved.note = text; await updateExercise(saved); } else { saved = { ...fields, ...(text ? { note: text } : {}) }; saved.id = await addExercise(saved); }
           closeSheet();
           await (onSaved ? onSaved(saved) : renderTraining());
         },

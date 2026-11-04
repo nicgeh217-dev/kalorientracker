@@ -101,6 +101,19 @@ export function strengthCurve(workouts, exerciseId) {
   return [...perDay.entries()].map(([dateKey, best1RM]) => ({ dateKey, best1RM })).sort((a, b) => a.dateKey.localeCompare(b.dateKey));
 }
 
+// Verlauf einer Übung. Mit Gewicht: geschätztes Maximum. Nur mit Körpergewicht: meiste Wiederholungen in einem Satz je Tag.
+export function progressCurve(workouts, exerciseId) {
+  const weighted = strengthCurve(workouts, exerciseId);
+  if (weighted.length) return { kind: 'weight', points: weighted.map((p) => ({ dateKey: p.dateKey, value: p.best1RM })) };
+  const perDay = new Map();
+  for (const s of allSets(workouts)) {
+    if (s.exerciseId !== exerciseId || !(s.reps >= 1)) continue;
+    perDay.set(s.dateKey, Math.max(perDay.get(s.dateKey) ?? 0, s.reps));
+  }
+  const points = [...perDay.entries()].map(([dateKey, value]) => ({ dateKey, value })).sort((a, b) => a.dateKey.localeCompare(b.dateKey));
+  return { kind: 'reps', points };
+}
+
 export function lastSetsFor(workouts, exerciseId) {
   const withEx = workouts.filter((w) => w.sets.some((s) => s.exerciseId === exerciseId));
   if (!withEx.length) return [];
@@ -139,15 +152,19 @@ export function workoutTitle(entries, exercises) {
 export const restRemaining = (startedAtMs, nowMs, totalSec) => Math.max(0, totalSec - Math.floor((nowMs - startedAtMs) / 1000));
 
 export function draftToWorkout(draft, finishedAtMs, exercises) {
+  // Gruppe je Superset, damit eine weggefallene Übung keine fremden Übungen koppelt.
+  let group = 0;
   const entries = draft.entries
-    .map((e) => ({ exerciseId: e.exerciseId, sets: e.sets.filter((s) => s.done && Number.isFinite(s.reps) && s.reps >= 1 && Number.isFinite(s.kg ?? 0) && (s.kg ?? 0) >= 0) }))
+    .map((e) => ({ exerciseId: e.exerciseId, group: e.linked ? group : ++group, sets: e.sets.filter((s) => s.done && Number.isFinite(s.reps) && s.reps >= 1 && Number.isFinite(s.kg ?? 0) && (s.kg ?? 0) >= 0) }))
     .filter((e) => e.sets.length);
+  const links = entries.filter((e, i) => i > 0 && entries[i - 1].group === e.group).map((e) => e.exerciseId);
   return {
     dateKey: draft.dateKey,
     startedAt: draft.startedAt,
     durationMin: draft.manual ? null : Math.min(MAX_DURATION_MIN, Math.max(1, Math.round(((draft.lastActivityAt ?? finishedAtMs) - draft.startedAt) / 60000))),
     title: workoutTitle(entries, exercises),
     sets: entries.flatMap((e) => e.sets.map((s) => ({ exerciseId: e.exerciseId, kg: s.kg ?? 0, reps: s.reps }))),
+    ...(links.length ? { links } : {}),
   };
 }
 
@@ -155,11 +172,23 @@ export function draftToWorkout(draft, finishedAtMs, exercises) {
 // opts.today: heutiges Datum; liegt dateKey davor, ist es ein Nachtrag ohne Dauer.
 export function repeatDraft(workout, exercises, dateKey, startedAt, { today = dateKey } = {}) {
   const known = new Set(exercises.map((e) => e.id));
+  const links = new Set(workout.links ?? []);
   const entries = [];
+  const gone = new Set();
+  let headGone = false; // die Spitze eines Supersets wurde gelöscht: die nächste Übung wird neue Spitze
   for (const s of workout.sets) {
-    if (!known.has(s.exerciseId)) continue;
+    if (!known.has(s.exerciseId)) {
+      if (!gone.has(s.exerciseId) && !links.has(s.exerciseId)) headGone = true;
+      gone.add(s.exerciseId);
+      continue;
+    }
     let entry = entries.find((e) => e.exerciseId === s.exerciseId);
-    if (!entry) { entry = { exerciseId: s.exerciseId, sets: [] }; entries.push(entry); }
+    if (!entry) {
+      entry = { exerciseId: s.exerciseId, sets: [] };
+      if (links.has(s.exerciseId) && !headGone && entries.length) entry.linked = true;
+      headGone = false;
+      entries.push(entry);
+    }
     entry.sets.push({ kg: s.kg, reps: s.reps, done: false });
   }
   return { dateKey, startedAt, restSec: 90, manual: dateKey !== today, entries };
@@ -181,14 +210,20 @@ export function removeEntry(draft, exerciseId) {
   const index = draft.entries.findIndex((e) => e.exerciseId === exerciseId);
   if (index < 0) return null;
   const [entry] = draft.entries.splice(index, 1);
-  return { index, entry };
+  // War sie die Spitze eines Supersets, rückt die nächste an die Spitze (sonst hinge sie an der fremden Übung davor).
+  const next = draft.entries[index];
+  const nextLinked = Boolean(!entry.linked && next?.linked);
+  if (nextLinked) delete next.linked;
+  return { index, entry, nextLinked };
 }
 
 // Stellt eine entfernte oder geänderte Übung wieder her; eine vorhandene mit derselben ID wird ersetzt, nie verdoppelt.
-export function restoreEntry(draft, { index, entry }) {
+export function restoreEntry(draft, { index, entry, nextLinked = false }) {
   const at = draft.entries.findIndex((e) => e.exerciseId === entry.exerciseId);
-  if (at >= 0) draft.entries[at] = entry;
-  else draft.entries.splice(Math.min(index, draft.entries.length), 0, entry);
+  if (at >= 0) { draft.entries[at] = entry; return; }
+  const pos = Math.min(index, draft.entries.length);
+  draft.entries.splice(pos, 0, entry);
+  if (nextLinked && draft.entries[pos + 1]) draft.entries[pos + 1].linked = true;
 }
 
 // Einen Satz entfernen; ohne Sätze bleibt keine leere Übung zurück. snapshot dient für "Rückgängig" (restoreEntry).
@@ -199,6 +234,32 @@ export function removeSet(draft, exerciseId, setIndex) {
   const snapshot = { index, entry: structuredClone(entry) };
   entry.sets.splice(setIndex, 1);
   const entryRemoved = entry.sets.length === 0;
-  if (entryRemoved) draft.entries.splice(index, 1);
+  if (entryRemoved) snapshot.nextLinked = removeEntry(draft, exerciseId).nextLinked;
   return { entryRemoved, snapshot };
+}
+
+// Koppelt eine Übung an die direkt darüber (Superset) oder löst sie wieder.
+export function toggleLink(draft, index) {
+  const entry = draft.entries[index];
+  if (!entry || index === 0) return;
+  if (entry.linked) delete entry.linked; else entry.linked = true;
+}
+
+const doneCount = (entry) => entry.sets.filter((s) => s.done).length;
+
+// Nach einem abgehakten Satz: die Übung des Supersets, die in dieser Runde noch fehlt. null = Runde fertig, jetzt Pause.
+export function supersetNext(draft, entry) {
+  const i = draft.entries.indexOf(entry);
+  if (i < 0) return null;
+  let first = i;
+  while (first > 0 && draft.entries[first].linked) first -= 1;
+  let last = i;
+  while (draft.entries[last + 1]?.linked) last += 1;
+  const size = last - first + 1;
+  const round = doneCount(entry);
+  for (let step = 1; step < size; step += 1) {
+    const other = draft.entries[first + ((i - first + step) % size)];
+    if (doneCount(other) < round && other.sets.some((s) => !s.done)) return other;
+  }
+  return null;
 }
