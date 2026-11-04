@@ -18,6 +18,8 @@ Fall A – in mindestens einem Foto ist eine Nährwerttabelle lesbar (oft korean
 - servingGrams = Gramm (oder ml) einer Portion bzw. Packung, falls angegeben. Steht keine Portion, aber der Gesamtinhalt der Packung auf dem Etikett (z. B. 총 내용량, Nettofüllmenge), nimm diesen. Sonst null.
 - kcal, protein, carbs, fat, fiber, sugar = Zahlen für diese Bezugsgröße (fiber = Ballaststoffe, sugar = Zucker bzw. davon Zucker). Nicht lesbare oder nicht angegebene Werte = null.
 - name = Produktname von der Verpackung, falls sichtbar, sonst null. Ist der Name nicht deutsch (z. B. Koreanisch/Hangul), gib ihn als kurze deutsche Übersetzung mit dem Originalnamen in Klammern an, z. B. "Thunfisch-Kimbap (삼각김밥 참치마요)". Höchstens 60 Zeichen.
+- uncertain = Liste der Felder, die du NICHT sicher lesen konntest (Feldnamen: basis, servingGrams, kcal, protein, carbs, fat, fiber, sugar), z. B. weil das Foto unscharf, verdeckt, spiegelnd, abgeschnitten oder widersprüchlich ist. Sicher gelesene Werte gehören nicht hinein. Leere Liste, wenn alles klar lesbar ist.
+- labelPhotoIndex = Nummer des Fotos (das erste Foto ist 0), auf dem die Nährwerttabelle am besten lesbar ist.
 - confidence, note, kcalMin, kcalMax = null.
 
 Fall B – keine lesbare Nährwerttabelle (Restaurantgericht, Bäckerware, Obst, Verpackung ohne Tabelle) oder nur eine Textbeschreibung:
@@ -47,11 +49,13 @@ const SCHEMA = {
     note: { type: 'STRING', nullable: true },
     kcalMin: NUM,
     kcalMax: NUM,
+    uncertain: { type: 'ARRAY', items: { type: 'STRING' }, nullable: true },
+    labelPhotoIndex: { type: 'INTEGER', nullable: true },
   },
   required: ['source'],
 };
 
-export async function resizeImage(file, maxEdge = 1600) {
+export async function resizeImage(file, maxEdge = 1600, quality = 0.85) {
   const bmp = await createImageBitmap(file);
   const scale = Math.min(1, maxEdge / Math.max(bmp.width, bmp.height));
   const w = Math.round(bmp.width * scale);
@@ -62,7 +66,7 @@ export async function resizeImage(file, maxEdge = 1600) {
   canvas.getContext('2d').drawImage(bmp, 0, 0, w, h);
   bmp.close?.();
   return new Promise((resolve, reject) => {
-    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Bild konnte nicht verkleinert werden.'))), 'image/jpeg', 0.85);
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Bild konnte nicht verkleinert werden.'))), 'image/jpeg', quality);
   });
 }
 

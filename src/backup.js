@@ -6,7 +6,7 @@ export function buildBackup(data, now) {
   return {
     version: 2,
     exportedAt: now.toISOString(),
-    products: data.products,
+    products: data.products.map(({ labelPhoto, ...p }) => p), // Etikettenfotos bleiben lokal
     meals: data.meals,
     weights: data.weights,
     days: data.days ?? [],

@@ -437,3 +437,8 @@ input:focus-visible, textarea:focus-visible { outline: none; }
 .drag-ghost .mrow, .drag-ghost.mrow { min-height: 60px; padding: 10px 16px; }
 .slot.drop-target { outline: 2px dashed var(--orange); outline-offset: 4px; border-radius: 20px; }
 body.meal-dragging { cursor: grabbing; }
+
+/* Von der KI als unsicher gelesen: orange, bis der Nutzer das Feld antippt oder ändert */
+input.unsure { background: var(--warn-bg); border-color: var(--orange); }
+.labelphoto { display: block; width: 100%; max-height: 120px; object-fit: cover; border-radius: 12px; border: 1px solid var(--line, rgba(128,128,128,.3)); }
+.labelphoto.big { max-height: none; object-fit: contain; }

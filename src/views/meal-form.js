@@ -6,18 +6,22 @@ import { showView, refreshCurrent } from '../nav.js';
 import { setJustLogged } from '../state.js';
 import { SLOTS, slotForTime } from '../slots.js';
 import { defaultAmount, quickAmounts, amountForBasisChange } from '../amount.js';
+import { describeUncertain } from '../uncertain.js';
 
 const FIELDS = [['kcal', 'Kalorien (kcal)'], ['protein', 'Protein (g)'], ['carbs', 'Kohlenhydrate (g)'], ['fat', 'Fett (g)']];
 const EXTRA_FIELDS = [['fiber', 'Ballaststoffe (g)'], ['sugar', 'Zucker (g)']];
 const de = (n) => String(n).replace('.', ',');
 
 // prefill: {name, basis, servingGrams, kcal, protein, carbs, fat, fiber?, sugar?, productId?, amount?} oder null (manuell)
-// opts: {info?, meal? (Bearbeiten), dateKey?, slot? (Vorauswahl Abschnitt), estimate?, onSaved?, onCancel?, onRefine?}
+// prefill.uncertain: Felder, die die KI nicht sicher lesen konnte (nur frisch nach einem Scan).
+// opts: {info?, meal? (Bearbeiten), dateKey?, slot? (Vorauswahl Abschnitt), estimate?, labelPhoto? (Beleg fürs Produkt), onSaved?, onCancel?, onRefine?}
 // Mit Vorgabe (Scan, Produkt, Bearbeiten) zeigt das Formular nur Name, Zusammenfassung und Menge. "Werte bearbeiten" klappt den Rest auf.
 export function openMealForm(prefill, opts = {}) {
   const p = prefill ?? {};
   const { info = null, meal = null, estimate = null, onSaved = null, onCancel = null, onRefine = null } = opts;
   const isEstimate = Boolean(estimate || p.estimated || meal?.estimated);
+  const marked = new Set(isEstimate ? [] : (p.uncertain ?? [])); // noch nicht geprüfte, unsicher gelesene Felder
+  const labelPhoto = opts.labelPhoto ?? p.labelPhoto ?? null;
   const dateKey = opts.dateKey ?? meal?.dateKey ?? viewedDateKey();
   const today = localDateKey(new Date());
   const val = (v) => (v == null ? '' : String(v));
@@ -26,7 +30,7 @@ export function openMealForm(prefill, opts = {}) {
 
   const compact = prefill != null && p.kcal != null;
   const basisUnknown = prefill != null && p.productId == null && p.basis == null && !meal;
-  const hasGaps = compact && (FIELDS.slice(1).some(([k]) => p[k] == null) || basisUnknown);
+  const hasGaps = compact && (FIELDS.slice(1).some(([k]) => p[k] == null) || basisUnknown || marked.size > 0);
   // Rote Markierungen und Fehlertexte erst, wenn etwas vorgegeben war (z. B. nicht erkannte Werte) oder der Nutzer speichern wollte.
   let touched = prefill != null;
   let amountTouched = Boolean(p.amount);
@@ -50,12 +54,15 @@ export function openMealForm(prefill, opts = {}) {
   const slot = el('select', {}, ...SLOTS.map((s) => el('option', { value: s.id, 'data-short': shortSlot[s.id] }, s.label)));
   slot.value = opts.slot ?? meal?.slot ?? slotForTime(meal?.timestamp ?? timestampFor(dateKey));
 
+  const unsureNote = el('div', { class: 'note warn' });
   const amountHint = el('div', { class: 'note warn', style: 'margin:8px 0 0' });
   const notes = el('div');
   const summary = el('div', { class: 'fsum' });
   const preview = el('div', { class: 'fpreview' });
   const quick = el('div', { class: 'quick' });
   const saveBtn = el('button', { class: 'primary', onClick: onSave }, 'Speichern');
+
+  const markable = [['basis', basis], ['servingGrams', serving], ...Object.entries(inputs)];
 
   const editBox = el('div', {},
     el('label', {}, 'Nährwerte gelten'), segmented(basis),
@@ -98,6 +105,7 @@ export function openMealForm(prefill, opts = {}) {
       }
     }
     if (!isEstimate) { // Schätzungen sind per Definition ungenau: keine zusätzliche Bestätigung nötig
+      if (marked.size) issues.push(`Noch nicht geprüft: ${describeUncertain(marked)}.`);
       for (const [k, label] of FIELDS.slice(1)) {
         if (product[k] == null) issues.push(`${label.split(' (')[0]} fehlt und zählt als 0.`);
       }
@@ -119,6 +127,9 @@ export function openMealForm(prefill, opts = {}) {
     issuesShown = false;
     saveBtn.textContent = 'Speichern';
     for (const [k] of FIELDS) inputs[k].classList.toggle('missing', touched && parseNum(inputs[k].value) == null);
+    for (const [k, node] of markable) node.classList.toggle('unsure', marked.has(k));
+    unsureNote.hidden = !marked.size;
+    if (marked.size) unsureNote.textContent = `Bitte prüfen: ${describeUncertain(marked)}. Die KI war sich hier nicht sicher.`;
     const v = validate();
     notes.replaceChildren(...(touched ? v.errors.map((e) => el('div', { class: 'note bad' }, e)) : []));
 
@@ -166,7 +177,7 @@ export function openMealForm(prefill, opts = {}) {
     saveBtn.disabled = true;
     try {
       let productId = p.productId;
-      const stored = isEstimate ? { ...v.product, estimated: true } : v.product;
+      const stored = { ...v.product, ...(isEstimate ? { estimated: true } : {}), ...(labelPhoto ? { labelPhoto } : {}) };
       if (productId != null) await updateProduct({ id: productId, ...stored });
       else productId = await addProduct(stored);
       const data = { productId, name: v.product.name, slot: slot.value, amount: v.amount, ...v.scaled, ...(isEstimate ? { estimated: true } : {}) };
@@ -215,6 +226,11 @@ export function openMealForm(prefill, opts = {}) {
     }
   });
 
+  // Antippen oder Ändern gilt als geprüft.
+  for (const [k, node] of markable) {
+    const check = () => { if (marked.delete(k)) refresh(); };
+    for (const type of ['focus', 'click', 'input']) node.addEventListener(type, check);
+  }
   const all = [name, basis, serving, amountValue, amountUnit, ...Object.values(inputs)];
   for (const i of all) i.addEventListener('input', refresh);
 
@@ -223,6 +239,7 @@ export function openMealForm(prefill, opts = {}) {
     dateKey !== today ? el('div', { class: 'note warn', style: 'margin-top:-4px' }, `${meal ? 'Mahlzeit von' : 'Wird eingetragen für'} ${dayLabel(dateKey)}, ${longDate(dateKey)}`) : null,
     info ? el('div', { class: 'muted', style: 'margin:-8px 4px 8px' }, info) : null,
     estimate ? estimateBanner(estimate, onRefine) : (isEstimate ? el('div', { class: 'muted', style: 'margin:-8px 4px 8px' }, '~ Dieser Eintrag ist eine Schätzung.') : null),
+    unsureNote,
     basisUnknown ? el('div', { class: 'note warn' }, 'Die Bezugsgröße (pro Portion oder pro 100 g) wurde nicht erkannt. Bitte am Etikett prüfen.') : null,
     el('label', {}, 'Name'), name,
     compact ? summary : null,
