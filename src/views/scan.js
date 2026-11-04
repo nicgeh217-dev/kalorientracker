@@ -133,7 +133,11 @@ async function run(state) {
   closeSheet();
   const l = result.label;
   const isEstimate = l.source === 'estimate';
+  // Beleg nur, wenn die KI unsicher war: das Foto mit der Tabelle, verkleinert. Scheitert das, geht es ohne weiter.
+  const photoFile = l.uncertain?.length ? (state.photos[l.labelPhotoIndex] ?? state.photos[0])?.file : null;
+  const labelPhoto = photoFile ? await resizeImage(photoFile, 800, 0.7).catch(() => null) : null;
   openMealForm(l, {
+    labelPhoto,
     info: `Ausgewertet mit ${result.model} in ${result.seconds.toFixed(1).replace('.', ',')} s`,
     estimate: isEstimate ? { confidence: l.confidence, note: l.note, kcalMin: l.kcalMin, kcalMax: l.kcalMax } : null,
     dateKey: state.dateKey,

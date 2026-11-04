@@ -29,6 +29,17 @@ export function openProductForm(p) {
   } }, 'Scannen') : null;
   const msg = el('div');
 
+  // Etikettenfoto als Beleg, nur vorhanden, wenn die KI beim Lesen unsicher war. Bleibt lokal auf dem Gerät.
+  let dropPhoto = false;
+  let photoBox = null;
+  if (p.labelPhoto) {
+    const img = el('img', { class: 'labelphoto', src: URL.createObjectURL(p.labelPhoto), alt: 'Etikettenfoto' });
+    img.addEventListener('click', () => img.classList.toggle('big'));
+    photoBox = el('div', {},
+      el('label', {}, 'Etikettenfoto (zum Nachprüfen, antippen zum Vergrößern)'), img,
+      el('button', { type: 'button', class: 'small ghost', style: 'margin-top:8px', onClick: () => { dropPhoto = true; photoBox.remove(); } }, 'Foto löschen'));
+  }
+
   async function save() {
     const next = {
       ...p,
@@ -52,6 +63,7 @@ export function openProductForm(p) {
     } else {
       delete next.barcode;
     }
+    if (dropPhoto) delete next.labelPhoto;
     if (!next.name) return msg.replaceChildren(el('div', { class: 'note bad' }, 'Bitte einen Namen eingeben.'));
     if (next.kcal == null) return msg.replaceChildren(el('div', { class: 'note bad' }, 'Kalorien fehlen oder sind ungültig.'));
     try {
@@ -82,6 +94,7 @@ export function openProductForm(p) {
     el('div', { class: 'grid2' }, ...[...FIELDS, ...EXTRA_FIELDS].map(([k, label]) => el('div', {}, el('label', {}, label), inputs[k]))),
     el('label', {}, 'Strichcode (optional)'),
     el('div', { class: 'row' }, barcode, scanBtn),
+    photoBox,
     msg,
     el('div', { class: 'actions' },
       el('button', { class: 'btn', onClick: closeSheet }, 'Abbrechen'),

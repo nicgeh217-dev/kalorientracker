@@ -1,3 +1,5 @@
+import { cleanUncertain } from './uncertain.js';
+
 const BASES = ['per100g', 'perServing'];
 const CONFIDENCES = ['low', 'medium', 'high'];
 
@@ -55,6 +57,9 @@ export function parseLabelResponse(apiJson) {
       note,
       kcalMin,
       kcalMax,
+      // Nur bei Etiketten: unsicher gelesene Felder und das Foto mit der Tabelle (für den Beleg am Produkt)
+      uncertain: estimate ? [] : cleanUncertain(obj.uncertain),
+      labelPhotoIndex: !estimate && Number.isInteger(obj.labelPhotoIndex) && obj.labelPhotoIndex >= 0 ? obj.labelPhotoIndex : null,
     },
   };
 }

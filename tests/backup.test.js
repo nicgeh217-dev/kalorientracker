@@ -130,3 +130,11 @@ test('ungültiger Tagesstatus, Einheit ohne sets, Übung ohne name -> Fehler', (
   assert.equal(parseBackup(JSON.stringify({ ...base, workouts: [{ id: 1, dateKey: '2026-10-06' }] })).ok, false);
   assert.equal(parseBackup(JSON.stringify({ ...base, exercises: [{ id: 1 }] })).ok, false);
 });
+
+test('buildBackup: Etikettenfotos bleiben lokal und stehen nicht in der Sicherung', () => {
+  const photo = new Uint8Array([1, 2, 3]);
+  const d = { ...data, products: [{ id: 1, name: 'Kimbap', kcal: 200, labelPhoto: photo }, { id: 2, name: 'Riegel', kcal: 380 }] };
+  const b = buildBackup(d, new Date(0));
+  assert.deepEqual(b.products, [{ id: 1, name: 'Kimbap', kcal: 200 }, { id: 2, name: 'Riegel', kcal: 380 }]);
+  assert.equal(d.products[0].labelPhoto, photo, 'Quelldaten bleiben unverändert');
+});

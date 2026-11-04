@@ -8,7 +8,7 @@ const good = { name: '삼각김밥', basis: 'perServing', servingGrams: 110, kca
 test('gültiges JSON -> ok', () => {
   const r = parseLabelResponse(wrap(JSON.stringify(good)));
   assert.equal(r.ok, true);
-  assert.deepEqual(r.label, { ...good, source: 'label', confidence: null, note: null, kcalMin: null, kcalMax: null });
+  assert.deepEqual(r.label, { ...good, source: 'label', confidence: null, note: null, kcalMin: null, kcalMax: null, uncertain: [], labelPhotoIndex: null });
 });
 
 test('JSON im ```json-Zaun -> ok', () => {
@@ -63,7 +63,7 @@ const est = { name: 'Bibimbap', source: 'estimate', basis: 'perServing', serving
 test('Schätzung: alle Zusatzfelder werden übernommen', () => {
   const r = parseLabelResponse(wrap(JSON.stringify(est)));
   assert.equal(r.ok, true);
-  assert.deepEqual(r.label, est);
+  assert.deepEqual(r.label, { ...est, uncertain: [], labelPhotoIndex: null });
 });
 
 test('Schätzung: basis wird immer perServing', () => {
@@ -109,4 +109,23 @@ test('Zucker als Komma-String wird Zahl, fehlende Felder und negative Werte werd
   assert.equal(r.label.fiber, null);
   assert.equal(r.label.sugar, null);
   assert.equal(parseLabelResponse(wrap(JSON.stringify({ ...good, fiber: -1 }))).label.fiber, null);
+});
+
+test('uncertain: nur bekannte Felder, ohne Doppelte; labelPhotoIndex als ganze Zahl', () => {
+  const r = parseLabelResponse(wrap(JSON.stringify({ ...good, source: 'label', uncertain: ['kcal', 'fat', 'kcal', 'quatsch', 7], labelPhotoIndex: 1 })));
+  assert.deepEqual(r.label.uncertain, ['kcal', 'fat']);
+  assert.equal(r.label.labelPhotoIndex, 1);
+});
+
+test('uncertain: fehlt oder ist kein Array -> leer; ungültiger Fotoindex -> null', () => {
+  assert.deepEqual(parseLabelResponse(wrap(JSON.stringify({ ...good, source: 'label' }))).label.uncertain, []);
+  assert.deepEqual(parseLabelResponse(wrap(JSON.stringify({ ...good, source: 'label', uncertain: 'kcal' }))).label.uncertain, []);
+  assert.equal(parseLabelResponse(wrap(JSON.stringify({ ...good, source: 'label', labelPhotoIndex: -1 }))).label.labelPhotoIndex, null);
+  assert.equal(parseLabelResponse(wrap(JSON.stringify({ ...good, source: 'label', labelPhotoIndex: 1.5 }))).label.labelPhotoIndex, null);
+});
+
+test('uncertain: bei Schätzungen immer leer', () => {
+  const r = parseLabelResponse(wrap(JSON.stringify({ source: 'estimate', kcal: 500, uncertain: ['kcal'], labelPhotoIndex: 0 })));
+  assert.deepEqual(r.label.uncertain, []);
+  assert.equal(r.label.labelPhotoIndex, null);
 });
