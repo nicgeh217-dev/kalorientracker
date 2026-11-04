@@ -2,9 +2,9 @@ import { el, openSheet, closeSheet, toast, parseNum } from '../dom.js';
 import { localDateKey } from '../logic.js';
 import { refreshCurrent } from '../nav.js';
 import {
-  listExercises, listWorkouts, addWorkout, getTrainingDraft, saveTrainingDraft, clearTrainingDraft,
+  listExercises, listWorkouts, addWorkout, updateExercise, getTrainingDraft, saveTrainingDraft, clearTrainingDraft,
 } from '../db.js';
-import { lastSetsFor, isNewRecord, restRemaining, draftToWorkout, epley1RM, repeatDraft, removeEntry, restoreEntry, removeSet } from '../training.js';
+import { lastSetsFor, isNewRecord, restRemaining, draftToWorkout, epley1RM, repeatDraft, removeEntry, restoreEntry, removeSet, toggleLink, supersetNext } from '../training.js';
 import { dayHeading } from '../state.js';
 import { foxSvg } from './fox.js';
 import { prefersReducedMotion } from './motion.js';
@@ -96,14 +96,21 @@ export async function openWorkout({ dateKey = null, template = null } = {}) {
   function toggleDone(entry, set) {
     if (!set.done && !(set.reps >= 1)) { toast('Trag erst die Wiederholungen ein.'); return; }
     set.done = !set.done;
+    // Ein alter Hinweis "Weiter mit ..." darf nicht stehen bleiben, wenn die Runde schon fertig ist.
+    const shown = document.getElementById('toast-root');
+    if (shown?.textContent.startsWith('Weiter mit ')) shown.remove();
     if (set.done) {
       draft.lastActivityAt = Date.now();
       navigator.vibrate?.(30);
-      rest = { startedAt: Date.now() };
+      // Im Superset gibt es erst nach der letzten Übung der Runde eine Pause.
+      const next = supersetNext(draft, entry);
+      rest = next ? null : { startedAt: Date.now() };
       const kg = set.kg ?? 0;
       if (!set.celebrated && isNewRecord(priorWorkouts(entry.exerciseId, set), entry.exerciseId, { kg, reps: set.reps })) {
         set.celebrated = true;
         showRecord(names().get(entry.exerciseId)?.name ?? 'Übung', epley1RM(kg, set.reps));
+      } else if (next) {
+        toast(`Weiter mit ${names().get(next.exerciseId)?.name ?? 'der nächsten Übung'}`, null, null, 2500);
       }
     } else {
       rest = null;
@@ -208,12 +215,33 @@ export async function openWorkout({ dateKey = null, template = null } = {}) {
 
   // ---------- Zeichnen ----------
   const body = el('div', { class: 'wbody' });
-  function entryCard(entry) {
+  // Notiz gehört zur Übung, nicht zur Einheit, und ist beim nächsten Mal wieder da.
+  function noteField(ex) {
+    const note = el('input', { class: 'wnote', value: ex.note ?? '', placeholder: 'Notiz zur Übung', 'aria-label': `Notiz zu ${ex.name}` });
+    note.addEventListener('input', () => { ex.note = note.value; });
+    note.addEventListener('change', () => {
+      const text = note.value.trim();
+      if (text) ex.note = text; else delete ex.note;
+      updateExercise(ex).catch(() => toast('Die Notiz konnte nicht gespeichert werden.'));
+    });
+    return note;
+  }
+
+  function linkButton(entry, i) {
+    return el('button', {
+      type: 'button', class: 'small ghost wlink', 'aria-pressed': entry.linked ? 'true' : 'false',
+      onClick: () => { toggleLink(draft, i); schedule(); draw(); },
+    }, entry.linked ? 'Superset lösen' : 'Als Superset koppeln');
+  }
+
+  function entryCard(entry, i) {
     const ex = names().get(entry.exerciseId);
     const last = lastSetsFor(workouts, entry.exerciseId);
-    return el('div', { class: 'card wentry' },
+    const inSuperset = entry.linked || draft.entries[i + 1]?.linked;
+    return el('div', { class: `card wentry${inSuperset ? ' sup' : ''}` },
       el('div', { class: 'row' }, el('b', {}, ex?.name ?? 'Gelöschte Übung'), el('span', { class: 'muted' }, ex?.muscle ?? ''),
         el('button', { type: 'button', class: 'small ghost', 'aria-label': `${ex?.name ?? 'Übung'} entfernen`, onClick: () => dropEntry(entry) }, 'Entfernen')),
+      ex ? noteField(ex) : null,
       last.length ? el('div', { class: 'muted', style: 'margin:2px 0 8px' }, `Letztes Mal: ${last.map((s) => `${s.kg > 0 ? de(s.kg) : 'KG'} × ${s.reps}`).join(', ')}`) : el('div', { style: 'height:8px' }),
       ...entry.sets.map((set, i) => {
         const kg = el('input', { inputMode: 'decimal', value: de(set.kg), placeholder: 'kg', title: 'Leer = Körpergewicht', 'aria-label': `Satz ${i + 1} Gewicht in kg` });
@@ -230,7 +258,7 @@ export async function openWorkout({ dateKey = null, template = null } = {}) {
   }
   function draw() {
     body.replaceChildren(
-      ...draft.entries.map(entryCard),
+      ...draft.entries.flatMap((entry, i) => (i > 0 ? [linkButton(entry, i), entryCard(entry, i)] : [entryCard(entry, i)])),
       ...(draft.entries.length ? [] : [el('div', { class: 'card muted' }, 'Füge deine erste Übung hinzu.')]),
       el('button', { class: 'btn', style: 'width:100%', onClick: pickExercise }, '+ Übung hinzufügen'));
   }

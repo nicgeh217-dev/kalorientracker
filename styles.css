@@ -442,3 +442,8 @@ body.meal-dragging { cursor: grabbing; }
 input.unsure { background: var(--warn-bg); border-color: var(--orange); }
 .labelphoto { display: block; width: 100%; max-height: 120px; object-fit: cover; border-radius: 12px; border: 1px solid var(--line, rgba(128,128,128,.3)); }
 .labelphoto.big { max-height: none; object-fit: contain; }
+
+/* Superset und Notiz in der Einheit */
+.wentry.sup { border-left: 3px solid var(--orange); }
+.wlink { justify-self: center; margin: -4px 0; }
+.wnote { min-height: 36px; margin: 6px 0 2px; font-size: 14px; background: transparent; }
