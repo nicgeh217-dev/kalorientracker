@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Der Fuchs aus src/views/fox.js (Stimmung "happy"), Kopf und Augen übernommen. Nur die Grafik fürs Widget. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="44dp"
+    android:height="44dp"
+    android:viewportWidth="200"
+    android:viewportHeight="200">
+    <group android:translateY="20">
+        <path android:fillColor="#F2711C" android:pathData="M 40 92 L 52 38 L 86 62 Q 100 58 114 62 L 148 38 L 160 92 Q 162 132 100 142 Q 38 132 40 92 Z" />
+        <path android:fillColor="#3B2417" android:pathData="M 56 52 L 76 66 L 55 80 Z" />
+        <path android:fillColor="#3B2417" android:pathData="M 144 52 L 124 66 L 145 80 Z" />
+        <path android:fillColor="#FFF4E6" android:pathData="M 41 100 Q 62 140 100 142 Q 138 140 159 100 Q 130 120 100 114 Q 70 120 41 100 Z" />
+        <path android:strokeColor="#3B2417" android:strokeWidth="4.5" android:strokeLineCap="round" android:pathData="M 67 94 Q 76 82 85 94" />
+        <path android:strokeColor="#3B2417" android:strokeWidth="4.5" android:strokeLineCap="round" android:pathData="M 115 94 Q 124 82 133 94" />
+        <path android:fillColor="#3B2417" android:pathData="M 93 113 A 7 5 0 1 0 107 113 A 7 5 0 1 0 93 113 Z" />
+        <path android:strokeColor="#3B2417" android:strokeWidth="3.5" android:strokeLineCap="round" android:pathData="M 89 124 Q 100 136 111 124" />
+    </group>
+</vector>

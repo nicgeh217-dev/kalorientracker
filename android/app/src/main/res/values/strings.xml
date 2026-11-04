@@ -4,4 +4,7 @@
     <string name="title_activity_main">Kalorientracker</string>
     <string name="package_name">app.kalorientracker</string>
     <string name="custom_url_scheme">app.kalorientracker</string>
+    <string name="widget_today">Heute</string>
+    <string name="widget_kcal_value">%1$d kcal</string>
+    <string name="widget_description">Heutige Kalorien, ein Tipp öffnet die Kamera</string>
 </resources>

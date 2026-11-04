@@ -68,9 +68,15 @@ export async function updateProduct(p) {
   await wrap((await store('products', 'readwrite')).put(p));
 }
 
+// Meldet jede Änderung an den Mahlzeiten (für das Widget der Android-App).
+let mealsListener = null;
+export const onMealsChanged = (fn) => { mealsListener = fn; };
+
 export async function addMeal(m) {
   const { id, ...rest } = m;
-  return wrap((await store('meals', 'readwrite')).add(rest));
+  const newId = await wrap((await store('meals', 'readwrite')).add(rest));
+  mealsListener?.();
+  return newId;
 }
 export async function mealsForDate(dateKey) {
   const s = await store('meals');
@@ -80,16 +86,19 @@ export async function mealsForDate(dateKey) {
 export const listMeals = () => getAll('meals');
 export async function updateMeal(m) {
   await wrap((await store('meals', 'readwrite')).put(m));
+  mealsListener?.();
 }
 // Stellt einen gelöschten Eintrag mit derselben ID wieder her ("Rückgängig").
 export async function restoreMeal(m) {
   await wrap((await store('meals', 'readwrite')).put(m));
+  mealsListener?.();
 }
 export async function restoreProduct(p) {
   await wrap((await store('products', 'readwrite')).put(p));
 }
 export async function deleteMeal(id) {
   await wrap((await store('meals', 'readwrite')).delete(id));
+  mealsListener?.();
 }
 
 export async function setWeight(dateKey, kg) {
@@ -172,7 +181,7 @@ export async function replaceAll(data) {
   const kept = await getSettings(); // Gerätezustand (Key, Online-Sicherung) überlebt das Einspielen einer Sicherung
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORES, 'readwrite');
-    tx.oncomplete = () => resolve();
+    tx.oncomplete = () => { mealsListener?.(); resolve(); };
     tx.onerror = () => reject(tx.error);
     tx.onabort = () => reject(tx.error ?? new Error('Import abgebrochen'));
     try {

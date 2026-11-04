@@ -9,9 +9,11 @@ import { dayHeading } from '../state.js';
 import { foxSvg } from './fox.js';
 import { prefersReducedMotion } from './motion.js';
 import { openExerciseForm } from './training.js';
+import { restNotifier } from '../native-rest.js';
 
 const REST_MIN = 30;
 const REST_MAX = 300;
+const restAlert = restNotifier(); // in der Android-App: Benachrichtigung zum Pausenende
 const de = (n) => (n == null ? '' : String(n).replace('.', ','));
 const clock = (sec) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
 
@@ -42,6 +44,7 @@ export async function openWorkout({ dateKey = null, template = null } = {}) {
   document.body.append(root);
   opening = false;
   let rest = null; // { startedAt }
+  let plannedEnd = null; // Pausenende, für das eine Benachrichtigung geplant ist
   let tickTimer = null;
   let saveTimer = null;
   let celebrate = null;
@@ -67,6 +70,12 @@ export async function openWorkout({ dateKey = null, template = null } = {}) {
     if (rest && left === 0) {
       rest = null;
       navigator.vibrate?.([200, 100, 200]);
+    }
+    // Jede Änderung der Pause (Start, ±15, Stopp, Ablauf, Satz abgewählt) läuft hier durch.
+    const endAt = rest ? rest.startedAt + draft.restSec * 1000 : null;
+    if (endAt !== plannedEnd) {
+      plannedEnd = endAt;
+      if (endAt == null) restAlert.cancel(); else restAlert.schedule(endAt);
     }
     timerBar.classList.toggle('running', Boolean(rest));
     timerText.textContent = rest ? `Pause ${clock(left)}` : `Pause ${draft.restSec} s`;
@@ -207,6 +216,7 @@ export async function openWorkout({ dateKey = null, template = null } = {}) {
     window.removeEventListener('pagehide', flush);
     clearInterval(tickTimer);
     clearTimeout(saveTimer);
+    if (plannedEnd != null) restAlert.cancel();
     if (clear) await clearTrainingDraft(); else await saveTrainingDraft(draft);
     root.remove();
     refreshCurrent();

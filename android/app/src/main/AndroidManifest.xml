@@ -24,6 +24,14 @@
 
         </activity>
 
+        <!-- Widget: heutige Kalorien, ein Tipp öffnet die Kamera -->
+        <receiver android:name=".KalorienWidgetProvider" android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_kalorien_info" />
+        </receiver>
+
         <!-- ML Kit: Strichcode-Scanner-Modul schon bei der Installation vorladen -->
         <meta-data android:name="com.google.mlkit.vision.DEPENDENCIES" android:value="barcode_ui" />
 
@@ -43,5 +51,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Foto aufnehmen aus dem Datei-Dialog der Web-App -->
     <uses-permission android:name="android.permission.CAMERA" />
+    <!-- Pausen-Timer: pünktliche Benachrichtigung auch bei gesperrtem Handy, ohne Umweg über die Einstellungen -->
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 </manifest>

@@ -1,6 +1,8 @@
 import { registerRenderer, showView, refreshCurrent } from './nav.js';
 import { renderToday } from './views/today.js';
-import { startScan, startScanWithFiles } from './views/scan.js';
+import { startScan, startScanWithFiles, startScanWithPicker } from './views/scan.js';
+import { pushToWidget, takeWidgetCamera, widgetKcal } from './native-widget.js';
+import { localDateKey } from './logic.js';
 import { parseLaunchAction } from './launch.js';
 import { takeSharedItems } from './share-inbox.js';
 import { renderProducts } from './views/products.js';
@@ -10,7 +12,7 @@ import { renderWeight } from './views/weight.js';
 import { renderSettings } from './views/settings.js';
 import { renderMore } from './views/more.js';
 import { renderTraining } from './views/training.js';
-import { listQueued } from './db.js';
+import { listQueued, mealsForDate, onMealsChanged } from './db.js';
 import { toast, el } from './dom.js';
 import { requestPersistence } from './storage-persist.js';
 import { shouldShowSplash, splashAlreadyShown, runSplash } from './splash.js';
@@ -68,6 +70,24 @@ if ('serviceWorker' in navigator && !isNativeApp) {
 }
 
 // Start über Kurzbefehl (langes Drücken aufs Icon) oder "Teilen in die App".
+// Android-Widget: bekommt nach jeder Änderung die Tageszahl. Ein Tipp darauf öffnet hier die Kamera.
+function connectWidget() {
+  const sync = async () => {
+    const dateKey = localDateKey(new Date());
+    await pushToWidget({ kcal: widgetKcal(await mealsForDate(dateKey)), dateKey });
+  };
+  const openCamera = async () => { if (await takeWidgetCamera()) startScanWithPicker({ camera: true }); };
+  onMealsChanged(sync);
+  window.addEventListener('widgetcamera', openCamera);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) return;
+    sync();
+    openCamera();
+  });
+  sync();
+  openCamera();
+}
+
 async function handleLaunch() {
   const action = parseLaunchAction(location.search);
   if (!action) return;
@@ -101,6 +121,7 @@ if (splash) {
 
 showView('today');
 handleLaunch();
+if (isNativeApp) connectWidget();
 requestPersistence(); // Ergebnis steht in den Einstellungen, Chrome entscheidet selbst
 
 // Online-Sicherung: beim Öffnen und bei der Rückkehr in die App, still und nur wenn fällig.
