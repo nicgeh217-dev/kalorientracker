@@ -2,11 +2,11 @@ import { el, mount } from '../dom.js';
 import { dayTotals, localDateKey } from '../logic.js';
 import { addDays, weekSummary } from '../overview.js';
 import { yearGrid } from '../calendar.js';
-import { shiftWeek } from '../week.js';
+import { shiftWeek, weekReview, weekTitle } from '../week.js';
 import { trackingDays, streak } from '../pet.js';
 import { mealsForDate, getSettings, listMeals, listDayStatuses, setDayStatus, listWorkouts, listExercises, listWeights } from '../db.js';
 import { MUSCLES, personalRecords, muscleDistribution, weeklySetSeries, progressCurve, daysSinceMuscle } from '../training.js';
-import { curveBlock } from './curve-chart.js';
+import { curveBlock, miniLine } from './curve-chart.js';
 import { openWorkout } from './workout.js';
 import { showView } from '../nav.js';
 import { setViewedDateKey, dayLabel, dayHeading } from '../state.js';
@@ -54,6 +54,7 @@ export async function renderHistory() {
     weekStrip({ selected: day, todayKey, counts, statuses, onSelect: pick, onShift: shift }),
     dayCard({ day, meals: dayMeals, status: statuses[day] ?? null, workouts: workouts.filter((w) => w.dateKey === day) }),
     yearCard({ counts, statuses, todayKey, stk: streak(trackedDays, todayKey, sickDays), total: trackedDays.length }),
+    reviewCard(weekReview({ dateKey: day, meals: everyMeal, workouts, weights }), day),
     el('h2', {}, 'Letzte 7 Tage'),
     weekCard(days, settings.calorieGoal, day),
     el('h2', {}, 'Fortschritt'),
@@ -122,6 +123,22 @@ function weekCard(days, goal, selectedDay) {
 // ---------- Fortschritt ----------
 const de1 = (n) => String(n).replace('.', ',');
 const invite = (text) => el('div', { class: 'muted' }, text);
+
+// Wochenrückblick: nur Zahlen, kein Soll und Ist, keine Farbe für gut oder schlecht.
+function reviewCard(r, day) {
+  const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+  const first = r.weights[0];
+  const last = r.weights.at(-1);
+  return el('div', { class: 'card' },
+    el('b', {}, weekTitle(day)),
+    el('div', { style: 'margin-top:8px' }, r.loggedDays ? `${plural(r.loggedDays, 'Tag', 'Tage')} eingetragen` : 'Kein Tag eingetragen'),
+    el('div', {}, r.trainingDays ? `${plural(r.trainingDays, 'Trainingstag', 'Trainingstage')}, ${plural(r.sets, 'Satz', 'Sätze')}` : 'Kein Training'),
+    first
+      ? el('div', { class: 'row', style: 'margin-top:2px' },
+          el('span', {}, r.weights.length > 1 ? `Gewicht ${de1(first.kg)} → ${de1(last.kg)} kg` : `Gewicht ${de1(first.kg)} kg`),
+          r.weights.length > 1 ? miniLine(r.weights.map((w) => w.kg)) : null)
+      : el('div', { class: 'muted' }, 'Kein Gewicht in dieser Woche'));
+}
 
 function progressCards({ workouts, exercises, weights, todayKey }) {
   const last = weights.at(-1);

@@ -42,6 +42,16 @@ export function takeJustLogged() {
   return name;
 }
 
+// Gewicht gerade eingetragen: Der Fuchs nickt beim nächsten Blick auf "Heute" einmal, bei jedem Wert gleich. Danach verfällt es.
+const WEIGHED_VALID_MS = 10 * 60 * 1000;
+let justWeighedAt = null;
+export const setJustWeighed = () => { justWeighedAt = Date.now(); };
+export function takeJustWeighed() {
+  const fresh = justWeighedAt != null && Date.now() - justWeighedAt < WEIGHED_VALID_MS;
+  justWeighedAt = null;
+  return fresh;
+}
+
 // "Gestern, Samstag, 24. Oktober" bzw. nur "Dienstag, 20. Oktober" (der Wochentag steht schon im langen Datum).
 export function dayHeading(dateKey) {
   const label = dayLabel(dateKey);

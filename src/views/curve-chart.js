@@ -34,3 +34,16 @@ export function curveChart(points) {
 const CAPTION = { weight: 'Geschätztes Maximum für eine Wiederholung.', reps: 'Meiste Wiederholungen in einem Satz.' };
 
 export const curveBlock = ({ kind, points }) => el('div', {}, curveChart(points), el('div', { class: 'muted' }, CAPTION[kind]));
+
+// Kleine Linie ohne Achsen, z. B. fürs Gewicht im Wochenrückblick. Neutrale Farbe: Sie zeigt den Verlauf, kein Urteil.
+export function miniLine(values) {
+  const W = 120;
+  const H = 32;
+  const lo = Math.min(...values);
+  const span = Math.max(...values) - lo || 1;
+  const x = (i) => 3 + (i / (values.length - 1)) * (W - 6);
+  const y = (v) => H - 3 - ((v - lo) / span) * (H - 6);
+  const svg = sv('svg', { viewBox: `0 0 ${W} ${H}`, class: 'miniline', 'aria-hidden': 'true' });
+  svg.append(sv('polyline', { points: values.map((v, i) => `${x(i)},${y(v)}`).join(' '), fill: 'none', stroke: 'currentColor', 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
+  return svg;
+}

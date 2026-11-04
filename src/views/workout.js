@@ -2,7 +2,7 @@ import { el, openSheet, closeSheet, toast, parseNum } from '../dom.js';
 import { localDateKey } from '../logic.js';
 import { refreshCurrent } from '../nav.js';
 import {
-  listExercises, listWorkouts, addWorkout, updateExercise, getTrainingDraft, saveTrainingDraft, clearTrainingDraft,
+  listExercises, listWorkouts, addWorkout, updateExercise, getSettings, getTrainingDraft, saveTrainingDraft, clearTrainingDraft,
 } from '../db.js';
 import { lastSetsFor, isNewRecord, restRemaining, draftToWorkout, epley1RM, repeatDraft, removeEntry, restoreEntry, removeSet, toggleLink, supersetNext } from '../training.js';
 import { dayHeading } from '../state.js';
@@ -14,6 +14,15 @@ const REST_MIN = 30;
 const REST_MAX = 300;
 const de = (n) => (n == null ? '' : String(n).replace('.', ','));
 const clock = (sec) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+
+// Nach einer beendeten Einheit hüpft der Fuchs kurz ins Bild. Reagiert aufs Eintragen, nicht auf die Leistung.
+async function hopFox() {
+  const { pet } = await getSettings();
+  if (!pet || pet.enabled === false || prefersReducedMotion()) return;
+  const fox = el('div', { class: 'recordfox hopfox', 'aria-hidden': 'true' }, foxSvg({ mood: 'happy', size: 110 }));
+  document.body.append(fox);
+  setTimeout(() => fox.remove(), 1600);
+}
 
 // Vollbild-Dialog für eine Trainingseinheit. Ein offener Entwurf wird immer fortgesetzt, damit nichts verloren geht.
 let opening = false;
@@ -188,6 +197,7 @@ export async function openWorkout({ dateKey = null, template = null } = {}) {
     if (!w.sets.length) return toast('Hake mindestens einen Satz mit Wiederholungen ab.');
     await addWorkout(w);
     await close(true);
+    hopFox();
     toast(`Einheit gespeichert: ${w.title}, ${w.sets.length} ${w.sets.length === 1 ? 'Satz' : 'Sätze'}`);
     refreshCurrent();
   }

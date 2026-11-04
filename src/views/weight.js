@@ -2,6 +2,7 @@ import { el, mount } from '../dom.js';
 import { parseWeight } from '../weight-input.js';
 import { setWeight, listWeights, getSettings } from '../db.js';
 import { localDateKey } from '../logic.js';
+import { setJustWeighed } from '../state.js';
 import { rollingAverage, forecast, fastLossWarning } from '../overview.js';
 import { fastLossCard } from './notes.js';
 
@@ -75,6 +76,7 @@ export async function renderWeight() {
       if (!date.value) return msg.replaceChildren(el('div', { class: 'note bad' }, 'Bitte ein Datum wählen.'));
       if (value == null) return msg.replaceChildren(el('div', { class: 'note bad' }, 'Bitte ein Gewicht zwischen 20 und 400 kg eingeben, z. B. 72,5.'));
       await setWeight(date.value, value);
+      setJustWeighed();
       renderWeight();
     },
   }, 'Speichern');

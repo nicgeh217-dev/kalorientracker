@@ -11,6 +11,7 @@ import { curveBlock } from './curve-chart.js';
 import { getSettings, saveSettings } from '../db.js';
 import { dayLabel } from '../state.js';
 import { openWorkout } from './workout.js';
+import { foxSvg } from './fox.js';
 
 const shortDate = (dateKey) => {
   const [y, m, d] = dateKey.split('-').map(Number);
@@ -43,11 +44,14 @@ export async function renderTraining() {
     el('div', { class: 'quick', style: 'margin-top:10px' }, restToggle,
       el('button', { type: 'button', class: 'chipbtn', onClick: openBackfill }, 'Nachtragen')),
     weekCard(workouts, settings, todayKey),
-    el('div', { class: 'card' },
-      el('b', {}, 'Heute'),
-      todays.length
-        ? el('div', { class: 'muted' }, todays.map((w) => `${w.title}${w.durationMin ? ` · ${w.durationMin} min` : ''} · ${w.sets.length} Sätze`).join(' | '))
-        : el('div', { class: 'muted' }, status === 'rest' ? 'Ruhetag. Erholung gehört zum Training.' : status === 'sick' ? 'Du bist als krank markiert. Gute Besserung.' : 'Heute noch kein Training.')),
+    el('div', { class: 'card row' },
+      el('div', {},
+        el('b', {}, 'Heute'),
+        todays.length
+          ? el('div', { class: 'muted' }, todays.map((w) => `${w.title}${w.durationMin ? ` · ${w.durationMin} min` : ''} · ${w.sets.length} Sätze`).join(' | '))
+          : el('div', { class: 'muted' }, status === 'rest' ? 'Ruhetag. Erholung gehört zum Training.' : status === 'sick' ? 'Du bist als krank markiert. Gute Besserung.' : 'Heute noch kein Training.')),
+      // Am Ruhetag schläft der Fuchs, sofern er nicht ausgeblendet ist.
+      status === 'rest' && settings.pet && settings.pet.enabled !== false ? el('div', { class: 'restfox' }, foxSvg({ mood: 'sleeping', size: 56 })) : null),
     el('h2', {}, 'Letzte Einheiten'),
     recent.length
       ? el('div', { class: 'card slotlist' }, ...recent.map((w) => workoutRow(w, names)))
