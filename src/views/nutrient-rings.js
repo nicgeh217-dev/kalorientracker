@@ -36,12 +36,12 @@ function ring(color, progress, animateTo = null) {
 // value: Gramm oder null (unbekannt, z. B. alte Einträge ohne Ballaststoffe); target: Gramm oder null (kein Richtwert).
 export function nutrientTile({ nutrient, value, target, from }) {
   const hasTarget = target != null && target > 0;
-  const hint = !hasTarget ? '' : nutrient.id === 'sugar' ? `höchstens ${target} g` : `von ${target} g`;
+  const hint = !hasTarget ? '' : nutrient.id === 'sugar' ? `max. ${target} g` : `von ${target} g`;
   return el('div', { class: 'ntile', role: 'group', style: `--nc:${nutrient.color}`, 'aria-label': `${nutrient.label}: ${value == null ? 'unbekannt' : `${de(value)} g`}${hint ? `, ${hint}` : ''}` },
     el('div', { class: 'nring' },
       ring(nutrient.color, ringProgress(from !== undefined ? from : value, target), from !== undefined ? ringProgress(value, target) : null),
       el('div', { class: 'nicon' }, foodIconSvg(ICON[nutrient.id], 22))),
     el('div', { class: 'nval num' }, el('span', { class: 'nv' }, value == null ? '–' : de(value)), value == null ? null : el('small', {}, 'g')),
-    el('div', { class: 'nname' }, nutrient.label),
+    el('div', { class: 'nname' }, nutrient.short ?? nutrient.label),
     hint ? el('div', { class: 'nhint' }, hint) : null);
 }

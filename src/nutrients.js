@@ -1,7 +1,7 @@
 // Orientierungswerte (keine Vorgabe): Anteile an den Kalorien, überschreibbar in den Einstellungen.
 export const NUTRIENTS = [
   { id: 'protein', label: 'Eiweiß', color: '#ff6b57' },
-  { id: 'carbs', label: 'Kohlenhydrate', color: '#ffb020' },
+  { id: 'carbs', label: 'Kohlenhydrate', short: 'KH', color: '#ffb020' },
   { id: 'fat', label: 'Fett', color: '#4da3ff' },
   { id: 'fiber', label: 'Ballaststoffe', color: '#3ccf7a' },
   { id: 'sugar', label: 'Zucker', color: '#ff7ac0' },
