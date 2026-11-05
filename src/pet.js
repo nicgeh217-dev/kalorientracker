@@ -76,19 +76,19 @@ export function petMood({ todayCount, hour, daysSinceLast, streakCurrent, weight
 }
 
 export const MESSAGE_BANK = {
-  welcome: ['Hallo, ich bin {name}! Trag dein erstes Essen ein, dann sind wir ein Team.'],
+  welcome: ['Hallo, ich bin {name}. Trag dein erstes Essen ein, dann sind wir ein Team.'],
   curious: {
-    morning: ['Guten Morgen! Schon gefrühstückt? Zeig mal.', 'Morgen! Ein kurzer Eintrag fürs Frühstück, ja?', 'Hallo, Frühaufsteher! Was gab es zum Start in den Tag?'],
-    noon: ['Mittagszeit! Was gab es bei dir?', 'Na, schon Pause? Trag dein Mittagessen kurz ein.', 'Zeit für einen Eintrag, ich bin neugierig.'],
+    morning: ['Guten Morgen. Schon gefrühstückt? Zeig mal.', 'Morgen. Ein kurzer Eintrag fürs Frühstück, ja?', 'Hallo, Frühaufsteher. Was gab es zum Start in den Tag?'],
+    noon: ['Mittagszeit. Was gab es bei dir?', 'Na, schon Pause? Trag dein Mittagessen kurz ein.', 'Zeit für einen Eintrag, ich bin neugierig.'],
     afternoon: ['Schon etwas gegessen? Ein kurzer Eintrag genügt.', 'Snack-Zeit? Ich merke mir alles für dich.', 'Kleiner Check: Fehlt noch ein Eintrag von heute?'],
-    evening: ['Abendessen dran? Dann trag den Tag gleich ein.', 'Guten Abend! Fehlt heute noch ein Eintrag?', 'Gleich ist Feierabend. Kurz alles eintragen?'],
+    evening: ['Abendessen dran? Dann trag den Tag gleich ein.', 'Guten Abend. Fehlt heute noch ein Eintrag?', 'Gleich ist Feierabend. Kurz alles eintragen?'],
   },
-  happy: ['Lecker, danke fürs Eintragen!', 'Das macht Spaß. Weiter so!', 'Notiert. Ich bin zufrieden.'],
-  proudStreak: ['{streak} Tage in Folge! Das Tracken sitzt.', '{streak} Tage am Stück, ich bin stolz auf dich!'],
-  proudWeight: ['Gewicht eingetragen, gut gemacht.', 'Danke fürs Wiegen und Eintragen!'],
-  miss: ['Schön, dass du da bist! Ich habe dich vermisst.', 'Willkommen zurück! Ein kleiner Eintrag reicht für den Neustart.', 'Da bist du ja wieder. Kein Stress, wir fangen einfach neu an.'],
-  sleepingLogged: ['Zzz … Gute Nacht!', 'Zzz … bis morgen!'],
-  sleepingMissing: ['Zzz … Falls noch ein Eintrag fehlt: kurz nachtragen, dann schlafe ich gut.', 'Zzz … Du kannst heute noch etwas nachtragen. Gute Nacht!'],
+  happy: ['Lecker, danke fürs Eintragen.', 'Das macht Spaß. Weiter so.', 'Notiert. Ich bin zufrieden.'],
+  proudStreak: ['{streak} Tage in Folge. Das Tracken sitzt.', '{streak} Tage am Stück, ich bin stolz auf dich.'],
+  proudWeight: ['Gewicht eingetragen, gut gemacht.', 'Danke fürs Wiegen und Eintragen.'],
+  miss: ['Schön, dass du da bist. Ich habe dich vermisst.', 'Willkommen zurück. Ein kleiner Eintrag reicht für den Neustart.', 'Da bist du ja wieder. Kein Stress, wir fangen einfach neu an.'],
+  sleepingLogged: ['Zzz … Gute Nacht.', 'Zzz … bis morgen.'],
+  sleepingMissing: ['Zzz … Falls noch ein Eintrag fehlt: kurz nachtragen, dann schlafe ich gut.', 'Zzz … Du kannst heute noch etwas nachtragen. Gute Nacht.'],
 };
 
 // Deterministisch: gleicher Tag und gleiche Tageszeit -> gleicher Spruch (kein Flackern beim Neuzeichnen).
