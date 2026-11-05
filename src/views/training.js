@@ -8,6 +8,7 @@ import {
 } from '../db.js';
 import { MUSCLES, DEFAULT_EXERCISES, trainingDaysThisWeek, progressCurve } from '../training.js';
 import { curveBlock } from './curve-chart.js';
+import { catalogSuggestions } from '../exercise-catalog.js';
 import { getSettings, saveSettings } from '../db.js';
 import { dayLabel } from '../state.js';
 import { openWorkout } from './workout.js';
@@ -125,11 +126,53 @@ function exerciseLibrary(exercises) {
       ...missing.map((d) => el('div', { class: 'row', style: 'margin-bottom:8px' },
         el('span', {}, el('b', {}, d.name), el('span', { class: 'muted' }, ` · ${d.muscle}`)),
         el('button', { class: 'small ghost', onClick: async (ev) => { ev.currentTarget.disabled = true; await addExercise(d); renderTraining(); } }, 'Hinzufügen'))),
+      el('button', { class: 'btn', style: 'width:100%;margin-top:8px', onClick: () => openCatalog(exercises) }, 'Alle Übungen im Katalog'),
       el('div', { class: 'actions' },
         el('button', { class: 'btn', onClick: add }, 'Eigene Übung'),
         el('button', { class: 'primary', onClick: async (ev) => { ev.currentTarget.disabled = true; for (const d of missing) await addExercise(d); renderTraining(); } }, 'Alle hinzufügen'))));
   }
-  return el('div', {}, exerciseGroups(exercises), el('button', { class: 'btn', style: 'width:100%', onClick: add }, '+ Übung anlegen'));
+  return el('div', {}, exerciseGroups(exercises),
+    el('button', { class: 'primary', style: 'width:100%', onClick: () => openCatalog(exercises) }, 'Übungen aus dem Katalog'),
+    el('button', { class: 'btn', style: 'width:100%;margin-top:8px', onClick: add }, '+ Eigene Übung anlegen'));
+}
+
+// Katalog-Einträge nach Muskelgruppe. Beim Tippen entscheidet onPick, was passiert.
+export function catalogRows(hits, onPick) {
+  const rows = [];
+  let muscle = null;
+  for (const hit of hits) {
+    if (hit.muscle !== muscle) {
+      muscle = hit.muscle;
+      rows.push(el('div', { class: 'muted', style: 'margin:10px 4px 6px;font-weight:700' }, muscle));
+    }
+    rows.push(el('button', { class: 'mrow', style: 'min-height:48px', onClick: () => onPick(hit) }, el('div', { class: 'mt' }, el('strong', {}, hit.name))));
+  }
+  return rows;
+}
+
+// Katalog durchsuchen und Übungen in die eigene Liste holen. Bleibt offen, damit man mehrere wählen kann.
+function openCatalog(exercises) {
+  const own = [...exercises];
+  const query = el('input', { placeholder: 'Übung suchen, z. B. Latzug', 'aria-label': 'Übung suchen' });
+  const list = el('div');
+  const fill = () => {
+    const hits = catalogSuggestions(own, query.value);
+    list.replaceChildren(...(hits.length ? catalogRows(hits, pick) : [el('div', { class: 'slotempty muted' }, 'Keine passende Übung. Du kannst sie selbst anlegen.')]));
+  };
+  async function pick(hit) {
+    const id = await addExercise(hit);
+    own.push({ ...hit, id });
+    fill();
+    renderTraining();
+    toast(`${hit.name} hinzugefügt`, null, null, 1800);
+  }
+  query.addEventListener('input', fill);
+  fill();
+  openSheet(
+    el('h1', {}, 'Übungen aus dem Katalog'),
+    el('div', { class: 'muted', style: 'margin:-8px 4px 12px' }, 'Tippe auf eine Übung, um sie deiner Liste hinzuzufügen.'),
+    query, list,
+    el('div', { class: 'actions' }, el('button', { class: 'primary', onClick: closeSheet }, 'Fertig')));
 }
 
 function exerciseGroups(exercises) {
