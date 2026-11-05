@@ -2,13 +2,14 @@ import { el, openSheet, closeSheet, toast, parseNum } from '../dom.js';
 import { localDateKey } from '../logic.js';
 import { refreshCurrent } from '../nav.js';
 import {
-  listExercises, listWorkouts, addWorkout, updateExercise, getSettings, getTrainingDraft, saveTrainingDraft, clearTrainingDraft,
+  listExercises, listWorkouts, addExercise, addWorkout, updateExercise, getSettings, getTrainingDraft, saveTrainingDraft, clearTrainingDraft,
 } from '../db.js';
 import { lastSetsFor, isNewRecord, restRemaining, draftToWorkout, epley1RM, repeatDraft, removeEntry, restoreEntry, removeSet, toggleLink, supersetNext } from '../training.js';
 import { dayHeading } from '../state.js';
 import { foxSvg } from './fox.js';
 import { prefersReducedMotion } from './motion.js';
-import { openExerciseForm } from './training.js';
+import { openExerciseForm, catalogRows } from './training.js';
+import { catalogSuggestions, matchesExercise } from '../exercise-catalog.js';
 
 const REST_MIN = 30;
 const REST_MAX = 300;
@@ -168,16 +169,24 @@ export async function openWorkout({ dateKey = null, template = null } = {}) {
 
   function pickExercise() {
     const query = el('input', { placeholder: 'Übung suchen', 'aria-label': 'Übung suchen' });
-    const list = el('div', { class: 'card slotlist' });
+    const list = el('div');
     const used = new Set(draft.entries.map((e) => e.exerciseId));
     const fill = () => {
-      const q = query.value.trim().toLowerCase();
-      const hits = exercises.filter((x) => !used.has(x.id) && x.name.toLowerCase().includes(q)).sort((a, b) => a.name.localeCompare(b.name, 'de'));
-      list.replaceChildren(...(hits.length
-        ? hits.map((x) => el('button', { class: 'mrow', style: 'min-height:48px', onClick: () => { closeSheet(); addExerciseToDraft(x); } },
-            el('div', { class: 'mt' }, el('strong', {}, x.name), el('div', { class: 'muted' }, x.muscle))))
-        : [el('div', { class: 'slotempty muted' }, exercises.length ? 'Keine passende Übung.' : 'Noch keine Übung. Lege unten eine an.')]));
+      const hits = exercises.filter((x) => !used.has(x.id) && matchesExercise(x, query.value)).sort((a, b) => a.name.localeCompare(b.name, 'de'));
+      const more = catalogSuggestions(exercises, query.value);
+      list.replaceChildren(
+        ...(hits.length ? [el('div', { class: 'card slotlist' }, ...hits.map((x) => el('button', { class: 'mrow', style: 'min-height:48px', onClick: () => { closeSheet(); addExerciseToDraft(x); } },
+          el('div', { class: 'mt' }, el('strong', {}, x.name), el('div', { class: 'muted' }, x.muscle)))))] : []),
+        ...(more.length ? [el('h2', {}, 'Aus dem Katalog'), ...catalogRows(more, pickFromCatalog)] : []),
+        ...(hits.length || more.length ? [] : [el('div', { class: 'slotempty muted' }, 'Keine passende Übung. Lege unten eine an.')]));
     };
+    // Eine Katalog-Übung kommt beim Wählen in die eigene Liste und direkt in die Einheit.
+    async function pickFromCatalog(hit) {
+      closeSheet();
+      const saved = { ...hit, id: await addExercise(hit) };
+      exercises.push(saved);
+      addExerciseToDraft(saved);
+    }
     query.addEventListener('input', fill);
     fill();
     openSheet(
