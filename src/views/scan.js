@@ -1,5 +1,5 @@
 import { el, openSheet, closeSheet, toast } from '../dom.js';
-import { analyzeFood, resizeImage, MAX_PHOTOS } from '../gemini.js';
+import { analyzeFood, lookupOnline, resizeImage, MAX_PHOTOS } from '../gemini.js';
 import { getSettings, addQueued, deleteQueued } from '../db.js';
 import { showView, refreshCurrent } from '../nav.js';
 import { viewedDateKey } from '../state.js';
@@ -82,9 +82,13 @@ function openScanSheet(state) {
   const runBtn = offline && state.queuedId == null
     ? el('button', { class: 'primary', disabled: !hasInput(), onClick: () => saveForLater(state) }, 'Für später speichern')
     : el('button', { class: 'primary', disabled: !hasInput(), onClick: () => run(state) }, 'Auswerten');
+  // Restaurantkette oder bekanntes Produkt: im Netz nach den veröffentlichten Werten suchen statt zu schätzen.
+  const canLookup = () => Boolean(state.barcode) || state.hint.trim().length >= 3;
+  const lookupBtn = offline ? null : el('button', { class: 'btn wide', disabled: !canLookup(), onClick: () => runLookup(state) }, 'Im Netz nachschlagen');
   hint.addEventListener('input', () => {
     state.hint = hint.value;
     runBtn.disabled = !hasInput();
+    if (lookupBtn) lookupBtn.disabled = !canLookup();
   });
 
   const add = (files) => {
@@ -118,7 +122,9 @@ function openScanSheet(state) {
     hint,
     el('div', { class: 'actions' },
       el('button', { class: 'btn', onClick: () => { releasePhotos(state); closeSheet(); } }, 'Abbrechen'),
-      runBtn));
+      runBtn,
+      lookupBtn),
+    lookupBtn ? el('div', { class: 'muted', style: 'margin:0 4px' }, 'Nachschlagen: Für Konbini-Produkte und Restaurantketten, z. B. „Lawson Lachs-Onigiri“ oder „Yoshinoya Gyudon Nami“. Sucht die veröffentlichten Werte.') : null);
   if (state.focusHint) {
     state.focusHint = false;
     hint.focus();
@@ -152,6 +158,38 @@ async function run(state) {
     },
     onCancel: () => releasePhotos(state),
   });
+}
+
+// Im Netz nachschlagen (Gemini mit Google-Suche). Ergebnis wie ein Etikett, aber als "aus dem Netz" markiert.
+async function runLookup(state) {
+  const { geminiKey, geminiModel } = await getSettings();
+  if (!geminiKey) return showKeyMissing();
+  openSheet(el('h1', {}, 'Suche im Netz …'), el('div', { class: 'muted' }, 'Das kann bis zu einer halben Minute dauern.'));
+  const result = await lookupOnline({ barcode: state.barcode ?? null, query: state.hint }, geminiKey, geminiModel || undefined);
+  if (!result.ok) {
+    return openSheet(
+      el('h1', {}, result.notFound ? 'Nichts gefunden' : 'Nachschlagen nicht möglich'),
+      el('div', { class: result.notFound ? 'note warn' : 'note bad' }, result.error),
+      el('div', { class: 'actions' },
+        el('button', { class: 'btn', onClick: () => { releasePhotos(state); closeSheet(); } }, 'Abbrechen'),
+        el('button', { class: 'primary', onClick: () => openScanSheet(state) }, 'Foto oder Beschreibung')));
+  }
+  closeSheet();
+  openMealForm(result.label, {
+    info: `Nachgeschlagen mit ${result.model} in ${result.seconds.toFixed(1).replace('.', ',')} s`,
+    web: { sources: result.sources },
+    dateKey: state.dateKey,
+    slot: state.slot,
+    barcode: state.barcode,
+    onSaved: async () => { releasePhotos(state); refreshCurrent(); },
+    onCancel: () => releasePhotos(state),
+  });
+  return undefined;
+}
+
+// Direkt nachschlagen, ohne vorher den Erfassen-Dialog (z. B. nach einem unbekannten Strichcode).
+export function startLookup({ barcode = null, query = '', dateKey = null, slot = null } = {}) {
+  return runLookup({ photos: [], hint: query, barcode, dateKey: dateKey ?? undefined, slot: slot ?? undefined });
 }
 
 // Ein in der Warteschlange gespeicherter Eintrag wird ausgewertet (online). Erst nach dem Speichern der Mahlzeit verschwindet er.

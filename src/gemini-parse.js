@@ -17,9 +17,19 @@ function extractJson(text) {
   try {
     return JSON.parse(raw);
   } catch {
-    return null;
+    // Mit Websuche antwortet Gemini oft mit Text um das JSON herum: das Objekt zwischen erster und letzter Klammer nehmen.
+    const start = raw.indexOf('{');
+    const end = raw.lastIndexOf('}');
+    if (start < 0 || end <= start) return null;
+    try {
+      return JSON.parse(raw.slice(start, end + 1));
+    } catch {
+      return null;
+    }
   }
 }
+
+const responseText = (apiJson) => apiJson?.candidates?.[0]?.content?.parts?.map((p) => p.text ?? '').join('') ?? '';
 
 export function parseLabelResponse(apiJson) {
   const block = apiJson?.promptFeedback?.blockReason;
@@ -62,4 +72,20 @@ export function parseLabelResponse(apiJson) {
       labelPhotoIndex: !estimate && Number.isInteger(obj.labelPhotoIndex) && obj.labelPhotoIndex >= 0 ? obj.labelPhotoIndex : null,
     },
   };
+}
+
+// Antwort auf "Im Netz nachschlagen" (Gemini mit Google-Suche). Die Werte gelten wie ein Etikett, bleiben aber als "aus dem Netz" markiert.
+// sources: Webseiten, auf die sich die Antwort stützt (Titel, meist die Domain), höchstens drei.
+export function parseLookupResponse(apiJson) {
+  const obj = extractJson(responseText(apiJson));
+  if (obj && typeof obj === 'object' && obj.found === false) {
+    return { ok: false, notFound: true, error: 'Im Netz habe ich dazu keine sicheren Nährwerte gefunden.' };
+  }
+  const parsed = parseLabelResponse(apiJson);
+  if (!parsed.ok) return parsed;
+  if (parsed.label.kcal == null) return { ok: false, notFound: true, error: 'Im Netz habe ich keine Kalorienangabe dazu gefunden.' };
+  const titles = (apiJson.candidates?.[0]?.groundingMetadata?.groundingChunks ?? [])
+    .map((c) => c?.web?.title)
+    .filter((t) => typeof t === 'string' && t.trim());
+  return { ok: true, label: { ...parsed.label, source: 'web', uncertain: [], labelPhotoIndex: null }, sources: [...new Set(titles)].slice(0, 3) };
 }

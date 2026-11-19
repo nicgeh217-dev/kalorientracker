@@ -14,7 +14,7 @@ const de = (n) => String(n).replace('.', ',');
 
 // prefill: {name, basis, servingGrams, kcal, protein, carbs, fat, fiber?, sugar?, productId?, amount?} oder null (manuell)
 // prefill.uncertain: Felder, die die KI nicht sicher lesen konnte (nur frisch nach einem Scan).
-// opts: {info?, meal? (Bearbeiten), dateKey?, slot? (Vorauswahl Abschnitt), estimate?, labelPhoto? (Beleg fürs Produkt), onSaved?, onCancel?, onRefine?}
+// opts: {info?, meal? (Bearbeiten), dateKey?, slot? (Vorauswahl Abschnitt), estimate?, labelPhoto? (Beleg fürs Produkt), web? ({sources}: Werte aus dem Netz), onSaved?, onCancel?, onRefine?}
 // Mit Vorgabe (Scan, Produkt, Bearbeiten) zeigt das Formular nur Name, Zusammenfassung und Menge. "Werte bearbeiten" klappt den Rest auf.
 export function openMealForm(prefill, opts = {}) {
   const p = prefill ?? {};
@@ -23,6 +23,7 @@ export function openMealForm(prefill, opts = {}) {
   const isEstimate = Boolean(estimate || p.estimated || meal?.estimated);
   const marked = new Set(isEstimate ? [] : (p.uncertain ?? [])); // noch nicht geprüfte, unsicher gelesene Felder
   const labelPhoto = opts.labelPhoto ?? p.labelPhoto ?? null;
+  const web = opts.web ?? null; // Werte aus dem Netz: vor dem Speichern mit der Packung vergleichen
   const dateKey = opts.dateKey ?? meal?.dateKey ?? viewedDateKey();
   const today = localDateKey(new Date());
   const val = (v) => (v == null ? '' : String(v));
@@ -108,6 +109,7 @@ export function openMealForm(prefill, opts = {}) {
     }
     if (!isEstimate) { // Schätzungen sind per Definition ungenau: keine zusätzliche Bestätigung nötig
       if (marked.size) issues.push(`Noch nicht geprüft: ${describeUncertain(marked)}.`);
+      if (web) issues.push('Die Werte stammen aus dem Netz. Vergleiche sie kurz mit der Packung oder Karte.');
       for (const [k, label] of FIELDS.slice(1)) {
         if (product[k] == null) issues.push(`${label.split(' (')[0]} fehlt und zählt als 0.`);
       }
@@ -242,6 +244,7 @@ export function openMealForm(prefill, opts = {}) {
     info ? el('div', { class: 'muted', style: 'margin:-8px 4px 8px' }, info) : null,
     estimate ? estimateBanner(estimate, onRefine) : (isEstimate ? el('div', { class: 'muted', style: 'margin:-8px 4px 8px' }, '~ Dieser Eintrag ist eine Schätzung.') : null),
     unsureNote,
+    web ? el('div', { class: 'note warn' }, `Aus dem Netz${web.sources.length ? ` (Quelle: ${web.sources.join(', ')})` : ''}. Vergleiche die Werte mit der Packung oder Karte, bevor du speicherst.`) : null,
     basisUnknown ? el('div', { class: 'note warn' }, 'Die Bezugsgröße (pro Portion oder pro 100 g) wurde nicht erkannt. Bitte am Etikett prüfen.') : null,
     el('label', {}, 'Name'), name,
     compact ? summary : null,
