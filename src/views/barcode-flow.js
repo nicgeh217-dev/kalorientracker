@@ -3,7 +3,7 @@ import { listProducts } from '../db.js';
 import { normalizeBarcode, findProductByBarcode, lookupOpenFoodFacts } from '../barcode.js';
 import { scanBarcode } from '../native-scanner.js';
 import { openMealForm } from './meal-form.js';
-import { startScanWithPicker, startDescribe } from './scan.js';
+import { startScanWithPicker, startDescribe, startLookup } from './scan.js';
 
 // Strichcode scannen und das Produkt eintragen. Reihenfolge: 1. eigene Produkte, 2. Open Food Facts, 3. Foto der Tabelle (der Code wird dann gemerkt).
 export async function startBarcodeScan() {
@@ -37,9 +37,10 @@ function showUnknown(code, found) {
     el('h1', {}, 'Produkt unbekannt'),
     el('div', { class: 'note warn' }, offline
       ? `${found.error} Strichcode: ${code}. Du kannst die Nährwerttabelle fotografieren, die App merkt sich den Code dazu.`
-      : `Dieses Produkt kenne ich noch nicht (Strichcode ${code}). Fotografiere die Nährwerttabelle, die App liest sie und merkt sich den Code. Beim nächsten Scan ist das Produkt sofort da.`),
+      : `Dieses Produkt kenne ich noch nicht (Strichcode ${code}). Schlag es im Netz nach oder fotografiere die Nährwerttabelle. Die App merkt sich den Code, beim nächsten Scan ist das Produkt sofort da.`),
     el('div', { class: 'actions' },
-      el('button', { class: 'primary wide', onClick: () => { closeSheet(); startScanWithPicker({ camera: true, barcode: code }); } }, 'Nährwerttabelle fotografieren'),
+      offline ? null : el('button', { class: 'primary wide', onClick: () => { closeSheet(); startLookup({ barcode: code }); } }, 'Im Netz nachschlagen'),
+      el('button', { class: offline ? 'primary wide' : 'btn wide', onClick: () => { closeSheet(); startScanWithPicker({ camera: true, barcode: code }); } }, 'Nährwerttabelle fotografieren'),
       el('button', { class: 'btn', onClick: () => { closeSheet(); startDescribe({ barcode: code }); } }, 'Beschreiben'),
       el('button', { class: 'btn', onClick: () => { closeSheet(); openMealForm(null, { barcode: code }); } }, 'Manuell'),
       el('button', { class: 'btn wide', onClick: closeSheet }, 'Abbrechen')));
