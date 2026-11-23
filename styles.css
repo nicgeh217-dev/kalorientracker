@@ -83,6 +83,8 @@ label { display: block; font-size: 14px; font-weight: 600; color: var(--muted); 
 input, select { width: 100%; min-height: 50px; padding: 0 16px; font: inherit; color: var(--text); background: var(--fill);
   border: 2px solid transparent; border-radius: 12px; outline: none; appearance: none; -webkit-appearance: none; }
 input:focus { border-color: var(--orange); background: var(--card); }
+/* Kontrollkästchen: Die Regel oben nimmt allen Feldern das Systemaussehen, an und aus wäre sonst nicht zu erkennen. */
+input[type="checkbox"] { appearance: auto; -webkit-appearance: checkbox; width: 22px; height: 22px; min-height: 22px; padding: 0; margin: 0; border: 0; background: none; accent-color: var(--orange); flex: none; }
 input::placeholder { color: var(--muted); }
 input.missing { background: var(--bad-bg); border-color: var(--red); }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
