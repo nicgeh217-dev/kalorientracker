@@ -451,3 +451,10 @@ input.unsure { background: var(--warn-bg); border-color: var(--orange); }
 .miniline { width: 120px; height: 32px; flex: none; color: var(--muted); }
 .pet-fox.nod .fox .head { animation: nod .8s ease-in-out 1; }
 @keyframes nod { 0%, 100% { transform: rotate(0) translateY(0); } 35% { transform: rotate(2deg) translateY(5px); } 65% { transform: rotate(-1deg) translateY(-1px); } }
+
+/* Werte aus Health Connect */
+.bodycard { padding: 16px 4px; }
+.bodyhead { margin: 0 12px 12px; font-size: 12px; color: var(--muted); }
+.bodyrow { display: grid; }
+.bodyval { display: grid; justify-items: center; gap: 2px; min-width: 0; text-align: center; }
+.bodyval .nval { margin-top: 0; white-space: nowrap; }

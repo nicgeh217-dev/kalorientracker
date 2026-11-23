@@ -4,8 +4,9 @@ import { addDays } from '../overview.js';
 import { weekOf } from '../week.js';
 import {
   listExercises, listWorkouts, addExercise, updateExercise, deleteExercise, deleteWorkout, restoreWorkout,
-  getTrainingDraft, setDayStatus, listDayStatuses,
+  getTrainingDraft, setDayStatus, listDayStatuses, listVitals,
 } from '../db.js';
+import { visibleFitbitWorkouts, fitbitTrainingDays } from '../vitals.js';
 import { MUSCLES, DEFAULT_EXERCISES, trainingDaysThisWeek, progressCurve } from '../training.js';
 import { curveBlock } from './curve-chart.js';
 import { catalogSuggestions } from '../exercise-catalog.js';
@@ -22,11 +23,13 @@ const shortDate = (dateKey) => {
 export async function renderTraining() {
   const root = document.getElementById('view-training');
   const todayKey = localDateKey(new Date());
-  const [exercises, workouts, draft, statuses, settings] = await Promise.all([listExercises(), listWorkouts(), getTrainingDraft(), listDayStatuses(), getSettings()]);
+  const [exercises, workouts, draft, statuses, settings, vitals] = await Promise.all([listExercises(), listWorkouts(), getTrainingDraft(), listDayStatuses(), getSettings(), listVitals()]);
   const lastWorkout = [...workouts].filter((w) => w.sets.length).sort((a, b) => b.dateKey.localeCompare(a.dateKey) || (b.startedAt ?? 0) - (a.startedAt ?? 0))[0] ?? null;
   const status = statuses.find((s) => s.dateKey === todayKey)?.status ?? null;
   const todays = workouts.filter((w) => w.dateKey === todayKey);
-  const recent = [...workouts].sort((a, b) => b.dateKey.localeCompare(a.dateKey) || (b.startedAt ?? 0) - (a.startedAt ?? 0)).slice(0, 10);
+  // Fitbit-Trainings aus Health Connect, ohne die, die sich mit einer Einheit aus der App überschneiden.
+  const fitbit = vitals.flatMap((d) => visibleFitbitWorkouts(d.workouts ?? [], workouts).map((w) => ({ ...w, dateKey: d.dateKey, fitbit: true, at: new Date(w.start).getTime() })));
+  const recent = [...workouts.map((w) => ({ ...w, at: w.startedAt ?? 0 })), ...fitbit].sort((a, b) => b.dateKey.localeCompare(a.dateKey) || b.at - a.at).slice(0, 10);
   const names = new Map(exercises.map((e) => [e.id, e]));
 
   const restToggle = el('button', {
@@ -44,7 +47,7 @@ export async function renderTraining() {
     !draft && lastWorkout ? el('button', { class: 'btn', style: 'width:100%;margin-top:8px', onClick: () => openWorkout({ template: lastWorkout }) }, `Letzte Einheit wiederholen (${lastWorkout.title})`) : null,
     el('div', { class: 'quick', style: 'margin-top:10px' }, restToggle,
       el('button', { type: 'button', class: 'chipbtn', onClick: openBackfill }, 'Nachtragen')),
-    weekCard(workouts, settings, todayKey),
+    weekCard(workouts, settings, todayKey, fitbitTrainingDays(vitals, workouts)),
     el('div', { class: 'card row' },
       el('div', {},
         el('b', {}, 'Heute'),
@@ -55,10 +58,17 @@ export async function renderTraining() {
       status === 'rest' && settings.pet && settings.pet.enabled !== false ? el('div', { class: 'restfox' }, foxSvg({ mood: 'sleeping', size: 56 })) : null),
     el('h2', {}, 'Letzte Einheiten'),
     recent.length
-      ? el('div', { class: 'card slotlist' }, ...recent.map((w) => workoutRow(w, names)))
+      ? el('div', { class: 'card slotlist' }, ...recent.map((w) => (w.fitbit ? fitbitRow(w) : workoutRow(w, names))))
       : el('div', { class: 'card muted' }, 'Noch keine Einheit. Starte deine erste.'),
     el('h2', {}, 'Übungen'),
     exerciseLibrary(exercises));
+}
+
+// Training aus der Fitbit: nur zum Ansehen, ohne Sätze.
+function fitbitRow(w) {
+  return el('div', { class: 'mrow' },
+    el('div', { class: 'mt' }, el('strong', {}, w.title), el('div', { class: 'muted' }, `Fitbit · ${dayLabel(w.dateKey) === 'Heute' ? 'Heute' : shortDate(w.dateKey)}${w.durationMin ? ` · ${w.durationMin} min` : ''}`)),
+    w.kcal != null ? el('div', { class: 'mk' }, String(w.kcal), el('small', {}, 'kcal')) : null);
 }
 
 function workoutRow(w, names) {
@@ -231,8 +241,8 @@ export function openExerciseForm(e, { onSaved = null } = {}) {
 const DAY_LETTERS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
 
 // Trainingstage dieser Woche. Das Ziel ist nur eine Zahl zum Mitzählen: nie Rot, nie ein Urteil, auch wenn man darüber oder darunter liegt.
-function weekCard(workouts, settings, todayKey) {
-  const { count, days } = trainingDaysThisWeek(workouts, todayKey);
+function weekCard(workouts, settings, todayKey, extraDays = []) {
+  const { count, days } = trainingDaysThisWeek(workouts, todayKey, extraDays);
   const goal = settings.trainingGoalDays ?? null;
   const monday = weekOf(todayKey);
   return el('button', { class: 'card weekgoal', 'aria-label': 'Wochenziel ändern', onClick: () => openGoalSheet(goal) },

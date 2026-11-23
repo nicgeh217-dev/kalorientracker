@@ -4,9 +4,11 @@ import { addDays, weekSummary } from '../overview.js';
 import { yearGrid } from '../calendar.js';
 import { shiftWeek, weekReview, weekTitle } from '../week.js';
 import { trackingDays, streak } from '../pet.js';
-import { mealsForDate, getSettings, listMeals, listDayStatuses, setDayStatus, listWorkouts, listExercises, listWeights } from '../db.js';
+import { mealsForDate, getSettings, listMeals, listDayStatuses, setDayStatus, listWorkouts, listExercises, listWeights, listVitals } from '../db.js';
+import { avgSteps, fitbitTrainingDays } from '../vitals.js';
+import { bodyLine, BODY_METRICS } from './body-card.js';
 import { MUSCLES, personalRecords, muscleDistribution, weeklySetSeries, progressCurve, daysSinceMuscle } from '../training.js';
-import { curveBlock, miniLine } from './curve-chart.js';
+import { curveBlock, curveChart, miniLine } from './curve-chart.js';
 import { openWorkout } from './workout.js';
 import { showView } from '../nav.js';
 import { setViewedDateKey, dayLabel, dayHeading } from '../state.js';
@@ -16,6 +18,7 @@ const BAR_AREA = 80; // px Höhe für Balken in der Wochenansicht
 
 let selected = null; // im Verlauf gewählter Tag; null = heute
 let curveExercise = null; // gewählte Übung im Kraft-Diagramm
+let bodyMetric = 'steps'; // gewählter Wert in der Karte "Körper"
 
 // Springt zu einem Tag auf "Heute".
 function openDay(dateKey) {
@@ -28,7 +31,7 @@ export async function renderHistory() {
   const root = document.getElementById('view-history');
   const todayKey = localDateKey(new Date());
   const weekKeys = Array.from({ length: 7 }, (_, i) => addDays(todayKey, i - 6));
-  const [settings, weekMeals, everyMeal, dayStatuses, workouts, exercises, weights] = await Promise.all([
+  const [settings, weekMeals, everyMeal, dayStatuses, workouts, exercises, weights, vitals] = await Promise.all([
     getSettings(),
     Promise.all(weekKeys.map((k) => mealsForDate(k))),
     listMeals(),
@@ -36,6 +39,7 @@ export async function renderHistory() {
     listWorkouts(),
     listExercises(),
     listWeights(),
+    listVitals(),
   ]);
   const days = weekKeys.map((k, i) => ({ dateKey: k, kcal: dayTotals(weekMeals[i]).kcal, meals: weekMeals[i].length }));
   const counts = {};
@@ -52,18 +56,20 @@ export async function renderHistory() {
   mount(root,
     el('h1', {}, 'Verlauf'),
     weekStrip({ selected: day, todayKey, counts, statuses, onSelect: pick, onShift: shift }),
-    dayCard({ day, meals: dayMeals, status: statuses[day] ?? null, workouts: workouts.filter((w) => w.dateKey === day) }),
+    dayCard({ day, meals: dayMeals, status: statuses[day] ?? null, workouts: workouts.filter((w) => w.dateKey === day), vitals: vitals.find((v) => v.dateKey === day) }),
     yearCard({ counts, statuses, todayKey, stk: streak(trackedDays, todayKey, sickDays), total: trackedDays.length }),
-    reviewCard(weekReview({ dateKey: day, meals: everyMeal, workouts, weights }), day),
+    reviewCard(weekReview({ dateKey: day, meals: everyMeal, workouts, weights, extraTrainingDays: fitbitTrainingDays(vitals, workouts) }), day, vitals),
     el('h2', {}, 'Letzte 7 Tage'),
     weekCard(days, settings.calorieGoal, day),
     el('h2', {}, 'Fortschritt'),
-    ...progressCards({ workouts, exercises, weights, todayKey }));
+    ...progressCards({ workouts, exercises, weights, todayKey }),
+    bodyChartCard(vitals, todayKey));
   const heat = root.querySelector('.heat-scroll');
   if (heat) heat.scrollLeft = heat.scrollWidth; // neueste Wochen rechts sichtbar
 }
 
-function dayCard({ day, meals, status, workouts }) {
+function dayCard({ day, meals, status, workouts, vitals }) {
+  const body = bodyLine(vitals);
   const kcal = dayTotals(meals).kcal;
   const toggle = (value, label) => el('button', {
     type: 'button', class: `chipbtn${status === value ? ' on' : ''}`, 'aria-pressed': status === value ? 'true' : 'false',
@@ -75,6 +81,7 @@ function dayCard({ day, meals, status, workouts }) {
         el('b', {}, dayHeading(day)),
         el('div', { class: 'muted' }, meals.length ? `${meals.length} ${meals.length === 1 ? 'Eintrag' : 'Einträge'} · ${kcal} kcal` : 'Keine Einträge')),
       el('button', { class: 'small ghost', onClick: () => openDay(day) }, 'Ansehen')),
+    body ? el('div', { class: 'muted', style: 'margin-top:8px' }, body) : null,
     workouts.length ? el('div', { style: 'margin-top:10px' }, ...workouts.map((w) => el('div', {}, el('b', {}, w.title), el('span', { class: 'muted' }, `${w.durationMin ? ` · ${w.durationMin} min` : ''} · ${w.sets.length} ${w.sets.length === 1 ? 'Satz' : 'Sätze'}`)))) : null,
     el('div', { class: 'quick', style: 'margin-top:12px' }, toggle('rest', 'Ruhetag'), toggle('sick', 'Krank')),
     el('button', { class: 'btn', style: 'width:100%;margin-top:8px', onClick: () => openWorkout({ dateKey: day }) }, 'Training nachtragen'),
@@ -125,7 +132,8 @@ const de1 = (n) => String(n).replace('.', ',');
 const invite = (text) => el('div', { class: 'muted' }, text);
 
 // Wochenrückblick: nur Zahlen, kein Soll und Ist, keine Farbe für gut oder schlecht.
-function reviewCard(r, day) {
+function reviewCard(r, day, vitals = []) {
+  const steps = avgSteps(vitals, r.days);
   const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
   const first = r.weights[0];
   const last = r.weights.at(-1);
@@ -137,7 +145,25 @@ function reviewCard(r, day) {
       ? el('div', { class: 'row', style: 'margin-top:2px' },
           el('span', {}, r.weights.length > 1 ? `Gewicht ${de1(first.kg)} → ${de1(last.kg)} kg` : `Gewicht ${de1(first.kg)} kg`),
           r.weights.length > 1 ? miniLine(r.weights.map((w) => w.kg)) : null)
-      : el('div', { class: 'muted' }, 'Kein Gewicht in dieser Woche'));
+      : el('div', { class: 'muted' }, 'Kein Gewicht in dieser Woche'),
+    steps != null ? el('div', {}, `Ø ${steps.toLocaleString('de-DE')} Schritte am Tag`) : null);
+}
+
+// Werte aus Health Connect über die letzten 8 Wochen. Nur der Verlauf, keine Bewertung. Ohne Werte keine Karte.
+function bodyChartCard(vitals, todayKey) {
+  const from = addDays(todayKey, -55);
+  const recent = vitals.filter((v) => v.dateKey >= from && v.dateKey <= todayKey);
+  const available = BODY_METRICS.filter((m) => recent.some((v) => Number.isFinite(m.value(v))));
+  if (!available.length) return null;
+  const metric = available.find((m) => m.id === bodyMetric) ?? available[0];
+  const points = recent.filter((v) => Number.isFinite(metric.value(v))).map((v) => ({ dateKey: v.dateKey, value: metric.value(v) }));
+  return el('div', { class: 'card' },
+    el('b', {}, 'Körper'),
+    el('div', { class: 'chips', style: 'margin:8px -16px 8px' }, ...available.map((m) => el('button', {
+      class: m.id === metric.id ? 'on' : '', 'aria-pressed': m.id === metric.id ? 'true' : 'false', onClick: () => { bodyMetric = m.id; renderHistory(); },
+    }, el('b', {}, m.label)))),
+    curveChart(points),
+    el('div', { class: 'muted' }, `${metric.caption} Aus Health Connect.`));
 }
 
 function progressCards({ workouts, exercises, weights, todayKey }) {

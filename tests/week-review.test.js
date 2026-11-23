@@ -56,3 +56,9 @@ test('weekTitle: innerhalb eines Monats und über den Monatswechsel', () => {
 test('weekTitle: über den Jahreswechsel', () => {
   assert.equal(weekTitle('2026-12-30'), 'Woche vom 28. Dezember bis 3. Januar');
 });
+
+test('weekReview: Fitbit-Tage zählen als Trainingstage, Sätze kommen nur aus der App', () => {
+  const r = weekReview({ ...base, dateKey: '2026-11-04', workouts: [{ dateKey: '2026-11-03', sets: [{}, {}] }], extraTrainingDays: ['2026-11-03', '2026-11-05', '2026-11-12'] });
+  assert.equal(r.trainingDays, 2);
+  assert.equal(r.sets, 2);
+});

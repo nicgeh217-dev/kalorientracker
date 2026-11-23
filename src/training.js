@@ -195,12 +195,14 @@ export function repeatDraft(workout, exercises, dateKey, startedAt, { today = da
 }
 
 // Trainingstage der laufenden Woche (Montag bis heute). Mehrere Einheiten am Tag zählen einmal, Einheiten ohne Sätze gar nicht.
-export function trainingDaysThisWeek(workouts, todayKey) {
+// extraDays: Tage mit einem Fitbit-Training aus Health Connect (siehe fitbitTrainingDays).
+export function trainingDaysThisWeek(workouts, todayKey, extraDays = []) {
   const week = weekOf(todayKey);
   const days = new Set();
   for (const w of workouts) {
     if (w.sets.length && w.dateKey >= week[0] && w.dateKey <= todayKey) days.add(w.dateKey);
   }
+  for (const d of extraDays) if (d >= week[0] && d <= todayKey) days.add(d);
   const list = [...days].sort();
   return { count: list.length, days: list };
 }
