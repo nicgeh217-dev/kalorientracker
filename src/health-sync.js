@@ -19,11 +19,12 @@ export async function syncHealth({ client, store, now, force = false }) {
 
   try {
     const range = syncWindow({ lastSyncAt: health.lastSyncAt ?? null, now });
-    // Nur eingeschaltete Werte lesen.
-    const raw = await client.readAll(range, hcTypesFor(enabledMetrics(settings)));
+    // Nur eingeschaltete Werte lesen. Sind alle aus, wird nichts gelesen, das Senden der Kalorien läuft trotzdem.
+    const types = hcTypesFor(enabledMetrics(settings));
+    const raw = types.length ? await client.readAll(range, types) : {};
     // null = nicht gelesen (Fehler oder kein Recht). Klappt gar nichts, zählt es nicht als Abgleich: Der Erstabgleich wird wiederholt.
     const read = VITAL_TYPES.filter((t) => raw[t] != null);
-    if (!read.length && raw.weights == null) return 'failed';
+    if (types.length && !read.length && raw.weights == null) return 'failed';
     const days = buildVitalsDays(raw, now);
     await store.putVitalsDays(mergeVitalsDays(await store.listVitals(), days, { read, from: dayKeyOf(range.start), to: dayKeyOf(range.end), now }));
     const weights = weightsToImport(raw.weights ?? [], await store.listWeights());
@@ -41,7 +42,9 @@ export async function syncHealth({ client, store, now, force = false }) {
       }
     }
     const fresh = await store.getSettings(); // Einstellungen können sich während des Abgleichs geändert haben
-    await store.saveSettings({ ...fresh, health: { ...fresh.health, lastSyncAt: now, written } });
+    // Wurde der Verlauf währenddessen zurückgesetzt (neue Rechte), bleibt er zurückgesetzt: Der nächste Abgleich lädt dann 90 Tage.
+    const resetMeanwhile = health.lastSyncAt != null && fresh.health?.lastSyncAt === null;
+    await store.saveSettings({ ...fresh, health: { ...fresh.health, lastSyncAt: resetMeanwhile ? null : now, written } });
     return 'done';
   } catch {
     return 'failed';

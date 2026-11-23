@@ -2,6 +2,7 @@ import { el, openSheet, closeSheet } from '../dom.js';
 import { getSettings, saveSettings } from '../db.js';
 import { askInsights } from '../gemini.js';
 import { computeFindings, allowedNumbers, checkHint, fallbackSentences } from '../insights.js';
+import { enabledMetrics } from '../health-metrics.js';
 
 // Karte "Zusammenhänge" im Verlauf. Nur auf Knopfdruck. Die App rechnet, Gemini formuliert freundlich (siehe insights.js).
 // Ergebnis bleibt im Gerätezustand settings.insights, nicht in der Sicherung.
@@ -32,7 +33,7 @@ async function find(data, button, rerender) {
   button.textContent = 'Wird gesucht …';
   try {
     const settings = await getSettings();
-    const findings = computeFindings(data);
+    const findings = computeFindings({ ...data, enabled: enabledMetrics(settings) });
     if (!findings.length) {
       await saveInsights({ at: Date.now(), observations: [], suggestions: [], fallback: [], note: EMPTY_TEXT });
       return;

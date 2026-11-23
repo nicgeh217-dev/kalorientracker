@@ -13,7 +13,9 @@ const dbStore = { getSettings, saveSettings, listWeights, putWeights, putVitalsD
 
 let running = null;
 export function runHealthSync({ force = false } = {}) {
-  if (running) return running;
+  // Läuft schon ein Abgleich (z. B. beim Zurückkehren aus Health Connect gestartet), wartet ein erzwungener auf ihn und läuft danach neu:
+  // Sonst würde der alte Abgleich den zurückgesetzten Verlauf überschreiben und neue Werte bekämen nur 3 statt 90 Tage.
+  if (running) return force ? running.then(() => runHealthSync({ force: true })) : running;
   running = syncHealth({ client: healthClient(), store: dbStore, now: Date.now(), force })
     .then((r) => { if (r === 'done') refreshCurrent(); return r; })
     .finally(() => { running = null; });
@@ -45,7 +47,8 @@ async function grant(client, types) {
   const s = await getSettings();
   const before = s.health?.granted ?? { read: [], write: [] };
   const granted = { read: [...new Set([...before.read, ...r.read])], write: [...new Set([...(before.write ?? []), ...r.write])] };
-  await saveHealth({ granted, lastSyncAt: null });
+  // Verlauf nur neu laden, wenn wirklich etwas freigegeben wurde.
+  await saveHealth({ granted, ...(r.read.length ? { lastSyncAt: null } : {}) });
   return r.read.length > 0;
 }
 

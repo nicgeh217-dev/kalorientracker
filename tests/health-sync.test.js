@@ -137,3 +137,26 @@ test('neue Werte zählen als gelesen und ersetzen ihre Felder', async () => {
   await syncHealth({ client: fakeClient({ raw }), store, now: NOW });
   assert.deepEqual(store.state.vitals.map((v) => [v.hrAvg, v.hrMin, v.hrMax]), [[80, 60, 150]]);
 });
+
+test('alle Werte aus: nichts lesen, aber gegessene Kalorien trotzdem senden', async () => {
+  let readCalled = false;
+  const c = { calls: { writeDay: [] }, readAll: async () => { readCalled = true; return {}; }, writeDay: async (d) => { c.calls.writeDay.push(d); } };
+  const store = fakeStore({ health: connected({ metrics: [] }), meals: yesterdayMeals });
+  assert.equal(await syncHealth({ client: c, store, now: NOW }), 'done');
+  assert.equal(readCalled, false);
+  assert.equal(c.calls.writeDay.length, 1);
+});
+
+test('wird der Verlauf während eines Abgleichs zurückgesetzt (neue Rechte), überschreibt der Abgleich das nicht', async () => {
+  const store = fakeStore({ health: connected({ lastSyncAt: NOW - 3600000, lastAttemptAt: NOW - 3600000 }) });
+  const client = {
+    readAll: async () => {
+      // währenddessen: neue Rechte erteilt, Verlauf soll neu geladen werden
+      store.state.settings = { ...store.state.settings, health: { ...store.state.settings.health, lastSyncAt: null } };
+      return { steps: [] };
+    },
+    writeDay: async () => {},
+  };
+  await syncHealth({ client, store, now: NOW });
+  assert.equal(store.state.settings.health.lastSyncAt, null);
+});

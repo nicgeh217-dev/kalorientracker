@@ -84,7 +84,8 @@ let mealsListener = null;
 export const onMealsChanged = (fn) => { mealsListener = fn; };
 
 export async function addMeal(m) {
-  const { id, ...rest } = m;
+  // createdAt: wann eingetragen (für Zusammenhänge mit der Uhrzeit, nachgetragene Mahlzeiten erkennen).
+  const { id, ...rest } = { createdAt: new Date().toISOString(), ...m };
   const newId = await wrap((await store('meals', 'readwrite')).add(rest));
   mealsListener?.();
   return newId;

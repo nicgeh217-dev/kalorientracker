@@ -29,8 +29,9 @@ function dayTable({ meals, vitals, workouts, days, todayKey }) {
     const key = addDays(todayKey, -i);
     if (sick.has(key)) continue;
     const list = mealsBy.get(key) ?? [];
-    // Uhrzeit nur von Mahlzeiten, die am selben Tag eingetragen wurden: Nachgetragene tragen die Uhrzeit des Nachtragens.
-    const sameDay = list.filter((m) => m.timestamp && localDateKey(new Date(m.timestamp)) === key);
+    // Uhrzeit nur von Mahlzeiten, die am selben Tag eingetragen wurden (createdAt): Nachgetragene tragen die Uhrzeit des Nachtragens.
+    // Alte Einträge ohne createdAt zählen hier nicht, weil sich das nicht unterscheiden lässt.
+    const sameDay = list.filter((m) => m.timestamp && m.createdAt && localDateKey(new Date(m.createdAt)) === key);
     const lastHour = sameDay.length ? Math.max(...sameDay.map((m) => { const t = new Date(m.timestamp); return t.getHours() + t.getMinutes() / 60; })) : null;
     const v = vit.get(key) ?? {};
     const next = vit.get(addDays(key, 1)) ?? {};
@@ -67,8 +68,17 @@ function compare(rows, { id, text, unit, thresholds, a, b, value, scale = 1 }) {
 
 const median = (xs) => { const s = [...xs].sort((x, y) => x - y); return s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2; };
 
-export function computeFindings({ meals, vitals, workouts, days, todayKey }) {
-  const rows = dayTable({ meals, vitals, workouts, days, todayKey });
+// enabled: eingeschaltete Health-Werte (enabledMetrics). Abgeschaltete Werte fließen nicht ein.
+export function computeFindings({ meals, vitals, workouts, days, todayKey, enabled = null }) {
+  const on = (id) => !enabled || enabled.includes(id);
+  const visible = vitals.map((v) => ({
+    dateKey: v.dateKey,
+    ...(on('sleep') ? { sleepMin: v.sleepMin } : {}),
+    ...(on('steps') ? { steps: v.steps } : {}),
+    ...(on('restingHr') ? { restingHr: v.restingHr } : {}),
+    ...(on('workouts') ? { workouts: v.workouts } : {}),
+  }));
+  const rows = dayTable({ meals, vitals: visible, workouts, days, todayKey });
   const short = { label: 'nach Nächten unter 6 h', when: (r) => r.sleep < SHORT_NIGHT };
   const long = { label: 'nach Nächten ab 7 h', when: (r) => r.sleep >= LONG_NIGHT };
   const withSteps = rows.filter((r) => r.steps != null && r.kcal != null).map((r) => r.steps);
@@ -93,13 +103,13 @@ export function computeFindings({ meals, vitals, workouts, days, todayKey }) {
 
 // Zahlen, die Gemini verwenden darf: alles Gelieferte, auch gerundet auf ganze Zahlen, Zehner und Hunderter.
 export function allowedNumbers(findings) {
-  const out = new Set([1, WINDOW_DAYS]);
+  const out = new Set([1, WINDOW_DAYS, WINDOW_DAYS / 7]); // 56 Tage = 8 Wochen
   const add = (x) => { if (!Number.isFinite(x)) return; for (const v of [x, Math.round(x), Math.round(x / 10) * 10, Math.round(x / 100) * 100]) out.add(v); };
   for (const f of findings) [f.a.mean, f.b.mean, f.a.n, f.b.n, f.diff, f.pct, ...f.thresholds].forEach(add);
   return out;
 }
 
-const FORBIDDEN = /solltest|musst|müssen|zu viel|zu wenig|schlecht|diät|abnehm|zunehm|gewicht|fehler|verboten/i;
+const FORBIDDEN = /sollte|sollst|musst|müssen|zu viel|zuviel|zu wenig|schlecht|diät|abnehm|zunehm|gewicht|fehler|verboten|vermeide|reduzier|defizit|darfst nicht/i;
 
 // "2.412" (Tausenderpunkt) und "7,5" (Komma) wie im Deutschen lesen.
 function numbersIn(text) {
