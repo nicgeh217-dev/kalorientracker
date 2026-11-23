@@ -53,5 +53,7 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <!-- Pausen-Timer: pünktliche Benachrichtigung auch bei gesperrtem Handy, ohne Umweg über die Einstellungen -->
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <!-- Health Connect: Werte älter als 30 Tage lesen (die übrigen Rechte bringt das Plugin mit) -->
+    <uses-permission android:name="android.permission.health.READ_HEALTH_DATA_HISTORY" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 </manifest>
