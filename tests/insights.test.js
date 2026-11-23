@@ -6,8 +6,10 @@ const TODAY = '2026-11-24';
 const key = (i) => { const d = new Date(2026, 10, 24 - i); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 const meal = (dateKey, kcal, { protein = 50, hour = 12, sameDay = true } = {}) => {
   const [y, m, d] = dateKey.split('-').map(Number);
-  const ts = new Date(y, m - 1, sameDay ? d : d + 1, hour).toISOString();
-  return { dateKey, kcal, protein, timestamp: ts };
+  // Nachgetragen: Zeitstempel trägt den Zieltag mit der Uhrzeit des Nachtragens (wie timestampFor), createdAt den echten Tag.
+  const ts = new Date(y, m - 1, d, hour).toISOString();
+  const createdAt = new Date(y, m - 1, sameDay ? d : d + 1, hour).toISOString();
+  return { dateKey, kcal, protein, timestamp: ts, createdAt };
 };
 const base = { meals: [], vitals: [], workouts: [], days: [], todayKey: TODAY };
 
@@ -111,4 +113,30 @@ test('fallbackSentences: schlichte Sätze aus den Ergebnissen', () => {
   assert.match(s, /2\.400 kcal/);
   assert.match(s, /1\.900 kcal/);
   assert.match(s, /6 und 6 Tage/);
+});
+
+test('late_sleep: Mahlzeiten ohne Eintragezeit (alte Einträge) zählen nicht', () => {
+  const meals = [];
+  const vitals = [];
+  for (let i = 2; i <= 13; i += 1) {
+    const { createdAt, ...old } = meal(key(i), 2000, { hour: i <= 7 ? 22 : 19 });
+    meals.push(old);
+    vitals.push({ dateKey: key(i - 1), sleepMin: i <= 7 ? 360 : 450 });
+  }
+  assert.equal(computeFindings({ ...base, meals, vitals }).some((x) => x.id === 'late_sleep'), false);
+});
+
+test('abgeschaltete Werte fließen nicht in die Zusammenhänge ein', () => {
+  const data = sleepData();
+  assert.equal(computeFindings({ ...base, ...data, enabled: ['steps'] }).some((x) => x.id === 'sleep_kcal'), false);
+  assert.equal(computeFindings({ ...base, ...data, enabled: ['sleep'] }).some((x) => x.id === 'sleep_kcal'), true);
+});
+
+test('checkHint: weitere Druck-Wörter, 8 Wochen ist erlaubt', () => {
+  const f = computeFindings({ ...base, ...sleepData() }).find((x) => x.id === 'sleep_kcal');
+  const allowed = allowedNumbers([f]);
+  for (const t of ['Du solltest früher essen.', 'Vermeide spätes Essen.', 'Reduziere die Portionen.', 'Ein Defizit hilft.', 'Iss nicht zuviel.', 'Das darfst nicht passieren.', 'Man sollte schlafen.']) {
+    assert.equal(checkHint(t, allowed), false, t);
+  }
+  assert.equal(checkHint('In den letzten 8 Wochen fällt auf, dass kurze Nächte und mehr Hunger zusammenhängen.', allowed), true);
 });

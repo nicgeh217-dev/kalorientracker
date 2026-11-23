@@ -80,7 +80,8 @@ export async function updateProduct(p) {
 }
 
 export async function addMeal(m) {
-  const { id, ...rest } = m;
+  // createdAt: wann eingetragen (für Zusammenhänge mit der Uhrzeit, nachgetragene Mahlzeiten erkennen).
+  const { id, ...rest } = { createdAt: new Date().toISOString(), ...m };
   return wrap((await store('meals', 'readwrite')).add(rest));
 }
 export async function mealsForDate(dateKey) {
