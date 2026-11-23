@@ -169,3 +169,39 @@ test('toFitbitWorkout: weitere Trainingsarten haben deutsche Namen', () => {
     assert.equal(toFitbitWorkout({ workoutType: type, duration: 60, startDate: at(2026, 11, 22), endDate: at(2026, 11, 22) }).title, title);
   }
 });
+
+test('buildVitalsDays: Puls je Tag aus Stundenwerten (Min, Max exakt, Ø gerundet)', () => {
+  const h = (hour, average, min, max) => ({ startDate: new Date(2026, 10, 22, hour).toISOString(), values: { average, min, max } });
+  const [d] = buildVitalsDays({ hr: [h(8, 70, 60, 90), h(9, 75, 55, 148), h(10, 72, 64, 80)] }, NOW);
+  assert.deepEqual([d.hrAvg, d.hrMin, d.hrMax], [72, 55, 148]);
+});
+
+test('buildVitalsDays: Strecke in Metern, Stockwerke summiert, HRV/Sauerstoff/Atemfrequenz als Tagesmittel, VO2max und Körperfett als letzter Wert', () => {
+  const s = (hour, value, day = 22) => ({ startDate: new Date(2026, 10, day, hour).toISOString(), value });
+  const [d] = buildVitalsDays({
+    distance: [s(8, 1200.4), s(17, 2000)], floors: [s(9, 3), s(18, 4)],
+    hrv: [s(2, 40), s(4, 45)], spo2: [s(2, 95), s(3, 97.4)], respRate: [s(2, 14), s(3, 15)],
+    vo2max: [s(7, 43), s(20, 44.2)], bodyFat: [s(7, 18.44), s(21, 18.2)],
+  }, NOW);
+  assert.equal(d.distanceM, 3200);
+  assert.equal(d.floors, 7);
+  assert.deepEqual([d.hrv, d.spo2, d.respRate], [43, 96, 15]);
+  assert.equal(d.vo2max, 44);
+  assert.equal(d.bodyFat, 18.2);
+});
+
+test('sleepByDay: Phasen in Minuten, nur wenn es Phasen gibt', () => {
+  const t = (h, m) => new Date(2026, 10, 23, h, m).toISOString();
+  const st = (a, b, stage) => ({ startDate: a, endDate: b, stage, durationMinutes: 0 });
+  const withStages = { startDate: t(0, 0), endDate: t(3, 0), value: 170, sleepState: 'asleep', stages: [st(t(0, 0), t(1, 20), 'deep'), st(t(1, 20), t(2, 0), 'rem'), st(t(2, 0), t(2, 50), 'light'), st(t(2, 50), t(3, 0), 'awake')] };
+  const d = sleepByDay([withStages])['2026-11-23'];
+  assert.deepEqual([d.sleepDeep, d.sleepRem, d.sleepLight, d.sleepAwake], [80, 40, 50, 10]);
+  const plain = sleepByDay([{ startDate: t(0, 0), endDate: t(6, 0), value: 360, sleepState: 'asleep' }])['2026-11-23'];
+  assert.equal('sleepDeep' in plain, false);
+});
+
+test('mergeVitalsDays: nur die Felder des gelesenen Typs werden ersetzt', () => {
+  const existing = [{ dateKey: '2026-11-22', hrAvg: 70, hrMin: 50, hrMax: 140, steps: 5000, syncedAt: 1 }];
+  const out = mergeVitalsDays(existing, [], { read: ['hr'], from: '2026-11-20', to: '2026-11-23', now: 2 });
+  assert.deepEqual(out, [{ dateKey: '2026-11-22', steps: 5000, syncedAt: 2 }]);
+});
