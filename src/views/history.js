@@ -8,6 +8,7 @@ import { mealsForDate, getSettings, listMeals, listDayStatuses, setDayStatus, li
 import { avgSteps, fitbitTrainingDays } from '../vitals.js';
 import { bodyLine, bodyCharts } from './body-card.js';
 import { enabledMetrics } from '../health-metrics.js';
+import { insightsCard } from './insights-card.js';
 import { MUSCLES, personalRecords, muscleDistribution, weeklySetSeries, progressCurve, daysSinceMuscle } from '../training.js';
 import { curveBlock, curveChart, miniLine } from './curve-chart.js';
 import { openWorkout } from './workout.js';
@@ -64,7 +65,8 @@ export async function renderHistory() {
     weekCard(days, settings.calorieGoal, day),
     el('h2', {}, 'Fortschritt'),
     ...progressCards({ workouts, exercises, weights, todayKey }),
-    bodyChartCard(vitals, todayKey, enabledMetrics(settings)));
+    bodyChartCard(vitals, todayKey, enabledMetrics(settings)),
+    insightsCard(settings, { meals: everyMeal, vitals, workouts, days: dayStatuses, todayKey }, renderHistory));
   const heat = root.querySelector('.heat-scroll');
   if (heat) heat.scrollLeft = heat.scrollWidth; // neueste Wochen rechts sichtbar
 }
