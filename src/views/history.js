@@ -6,7 +6,9 @@ import { shiftWeek, weekReview, weekTitle } from '../week.js';
 import { trackingDays, streak } from '../pet.js';
 import { mealsForDate, getSettings, listMeals, listDayStatuses, setDayStatus, listWorkouts, listExercises, listWeights, listVitals } from '../db.js';
 import { avgSteps, fitbitTrainingDays } from '../vitals.js';
-import { bodyLine, BODY_METRICS } from './body-card.js';
+import { bodyLine, bodyCharts } from './body-card.js';
+import { enabledMetrics } from '../health-metrics.js';
+import { insightsCard } from './insights-card.js';
 import { MUSCLES, personalRecords, muscleDistribution, weeklySetSeries, progressCurve, daysSinceMuscle } from '../training.js';
 import { curveBlock, curveChart, miniLine } from './curve-chart.js';
 import { openWorkout } from './workout.js';
@@ -18,7 +20,7 @@ const BAR_AREA = 80; // px Höhe für Balken in der Wochenansicht
 
 let selected = null; // im Verlauf gewählter Tag; null = heute
 let curveExercise = null; // gewählte Übung im Kraft-Diagramm
-let bodyMetric = 'steps'; // gewählter Wert in der Karte "Körper"
+let bodyMetric = null; // gewählte Kurve in der Karte "Körper"
 
 // Springt zu einem Tag auf "Heute".
 function openDay(dateKey) {
@@ -56,20 +58,21 @@ export async function renderHistory() {
   mount(root,
     el('h1', {}, 'Verlauf'),
     weekStrip({ selected: day, todayKey, counts, statuses, onSelect: pick, onShift: shift }),
-    dayCard({ day, meals: dayMeals, status: statuses[day] ?? null, workouts: workouts.filter((w) => w.dateKey === day), vitals: vitals.find((v) => v.dateKey === day) }),
+    dayCard({ day, meals: dayMeals, status: statuses[day] ?? null, workouts: workouts.filter((w) => w.dateKey === day), vitals: vitals.find((v) => v.dateKey === day), enabled: enabledMetrics(settings) }),
     yearCard({ counts, statuses, todayKey, stk: streak(trackedDays, todayKey, sickDays), total: trackedDays.length }),
     reviewCard(weekReview({ dateKey: day, meals: everyMeal, workouts, weights, extraTrainingDays: fitbitTrainingDays(vitals, workouts) }), day, vitals),
     el('h2', {}, 'Letzte 7 Tage'),
     weekCard(days, settings.calorieGoal, day),
     el('h2', {}, 'Fortschritt'),
     ...progressCards({ workouts, exercises, weights, todayKey }),
-    bodyChartCard(vitals, todayKey));
+    bodyChartCard(vitals, todayKey, enabledMetrics(settings)),
+    insightsCard(settings, { meals: everyMeal, vitals, workouts, days: dayStatuses, todayKey }, renderHistory));
   const heat = root.querySelector('.heat-scroll');
   if (heat) heat.scrollLeft = heat.scrollWidth; // neueste Wochen rechts sichtbar
 }
 
-function dayCard({ day, meals, status, workouts, vitals }) {
-  const body = bodyLine(vitals);
+function dayCard({ day, meals, status, workouts, vitals, enabled }) {
+  const body = bodyLine(vitals, enabled);
   const kcal = dayTotals(meals).kcal;
   const toggle = (value, label) => el('button', {
     type: 'button', class: `chipbtn${status === value ? ' on' : ''}`, 'aria-pressed': status === value ? 'true' : 'false',
@@ -150,10 +153,10 @@ function reviewCard(r, day, vitals = []) {
 }
 
 // Werte aus Health Connect über die letzten 8 Wochen. Nur der Verlauf, keine Bewertung. Ohne Werte keine Karte.
-function bodyChartCard(vitals, todayKey) {
+function bodyChartCard(vitals, todayKey, enabled) {
   const from = addDays(todayKey, -55);
   const recent = vitals.filter((v) => v.dateKey >= from && v.dateKey <= todayKey);
-  const available = BODY_METRICS.filter((m) => recent.some((v) => Number.isFinite(m.value(v))));
+  const available = bodyCharts(enabled).filter((m) => recent.some((v) => Number.isFinite(m.value(v))));
   if (!available.length) return null;
   const metric = available.find((m) => m.id === bodyMetric) ?? available[0];
   const points = recent.filter((v) => Number.isFinite(metric.value(v))).map((v) => ({ dateKey: v.dateKey, value: metric.value(v) }));

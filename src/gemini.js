@@ -108,6 +108,69 @@ export async function lookupOnline({ barcode = null, query = '' }, apiKey, model
   }
 }
 
+// Zusammenhänge freundlich formulieren. Gemini bekommt nur die Ergebnisse der App (insights.js), keine Tageswerte.
+export const INSIGHTS_PROMPT = `Du formulierst für eine private Ernährungs- und Trainings-App Hinweise auf Deutsch, in der du-Form.
+Du bekommst Ergebnisse, die die App aus den letzten Wochen berechnet hat: je zwei Gruppen von Tagen mit Mittelwert, Zahl der Tage, Unterschied und Schwellen.
+Schreibe daraus bis zu 3 Beobachtungen (kurzer Titel und ein bis zwei Sätze) und bis zu 3 Vorschläge (je ein Satz).
+Regeln:
+- Sei freundlich, warm und ohne Druck. Vorschläge sind Einladungen, z. B. "Wenn du magst, …" oder "Vielleicht hilft es, …".
+- Nie "solltest", "musst", "zu viel", "zu wenig", "schlecht", keine Verbote, keine Diätsprache.
+- Keine Aussagen über Gewicht oder Körperform. Keine medizinischen Aussagen oder Diagnosen.
+- Ein Zusammenhang ist keine Ursache: formuliere vorsichtig ("fällt auf", "hängt bei dir oft zusammen") und erwähne das bei Bedarf.
+- Verwende nur Zahlen aus den gelieferten Ergebnissen (gerundet ist in Ordnung). Erfinde keine Zahlen, keine Daten, keine Uhrzeiten.
+- Keine Emojis, keine Ausrufezeichen.`;
+
+const INSIGHTS_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    observations: { type: 'ARRAY', items: { type: 'OBJECT', properties: { title: { type: 'STRING' }, text: { type: 'STRING' } }, required: ['title', 'text'] } },
+    suggestions: { type: 'ARRAY', items: { type: 'OBJECT', properties: { text: { type: 'STRING' } }, required: ['text'] } },
+  },
+  required: ['observations', 'suggestions'],
+};
+
+export function insightsRequestBody(findings) {
+  const data = findings.map(({ id, text, unit, thresholds, a, b, diff, pct }) => ({ id, text, unit, thresholds, a, b, diff, pct }));
+  return {
+    contents: [{ parts: [{ text: INSIGHTS_PROMPT }, { text: `Ergebnisse:\n${JSON.stringify(data)}` }] }],
+    generationConfig: { responseMimeType: 'application/json', responseSchema: INSIGHTS_SCHEMA, temperature: 0.4 },
+  };
+}
+
+const MAX_HINTS = 3;
+const clean = (s) => (typeof s === 'string' ? s.trim() : '');
+
+export function parseInsightsResponse(apiJson) {
+  if (apiJson?.promptFeedback?.blockReason) return { ok: false, error: 'Gemini hat die Anfrage blockiert.' };
+  const text = apiJson?.candidates?.[0]?.content?.parts?.map((p) => p.text ?? '').join('') ?? '';
+  let obj;
+  try { obj = JSON.parse(text); } catch { return { ok: false, error: 'Die Antwort von Gemini konnte nicht gelesen werden.' }; }
+  const observations = (Array.isArray(obj?.observations) ? obj.observations : [])
+    .map((o) => ({ title: clean(o?.title), text: clean(o?.text) })).filter((o) => o.text).slice(0, MAX_HINTS);
+  const suggestions = (Array.isArray(obj?.suggestions) ? obj.suggestions : [])
+    .map((s) => ({ text: clean(s?.text) })).filter((s) => s.text).slice(0, MAX_HINTS);
+  return { ok: true, observations, suggestions };
+}
+
+// Wirft nie: {ok, observations, suggestions} oder {ok:false, error}.
+export async function askInsights(findings, apiKey, model = DEFAULT_MODEL) {
+  if (!apiKey) return { ok: false, error: 'Kein Gemini-Key hinterlegt.' };
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return { ok: false, error: 'Du bist offline.' };
+  const primary = model || DEFAULT_MODEL;
+  const body = JSON.stringify(insightsRequestBody(findings));
+  try {
+    const call = async (m) => {
+      const res = await fetch(endpoint(m), { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey }, body });
+      return { status: res.status, json: res.ok ? await res.json() : undefined };
+    };
+    const r = await runWithFallback([primary, fallbackFor(primary)], call);
+    if (!r.ok) return { ok: false, error: httpError(r.status, r.model) };
+    return parseInsightsResponse(r.json);
+  } catch {
+    return { ok: false, error: 'Gemini war nicht erreichbar.' };
+  }
+}
+
 export async function resizeImage(file, maxEdge = 1600, quality = 0.85) {
   const bmp = await createImageBitmap(file);
   const scale = Math.min(1, maxEdge / Math.max(bmp.width, bmp.height));

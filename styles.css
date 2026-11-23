@@ -458,3 +458,10 @@ input.unsure { background: var(--warn-bg); border-color: var(--orange); }
 .bodyrow { display: grid; }
 .bodyval { display: grid; justify-items: center; gap: 2px; min-width: 0; text-align: center; }
 .bodyval .nval { margin-top: 0; white-space: nowrap; }
+.bodyrow { grid-template-columns: repeat(4, minmax(0, 1fr)); row-gap: 16px; }
+.bodyphases { margin: 12px 12px 0; font-size: 12px; color: var(--muted); }
+
+/* Zusammenhänge */
+.insight { margin-top: 12px; }
+.insight b { display: block; margin-bottom: 2px; }
+.insight-head { margin-top: 16px; font-size: 12px; color: var(--muted); }

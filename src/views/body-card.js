@@ -1,42 +1,32 @@
 import { el } from '../dom.js';
-import { formatSleep } from '../vitals.js';
+import { METRICS, sleepPhasesText } from '../health-metrics.js';
 
 // Werte aus Health Connect (Fitbit, Google Health). Nur Zahlen, kein Ziel und keine Farbe für gut oder schlecht.
-const fmt = (n) => n.toLocaleString('de-DE');
-const burned = (day) => day.totalKcal ?? day.activeKcal;
+// enabled: die in den Einstellungen eingeschalteten Werte (enabledMetrics).
 
-function items(day) {
-  if (!day) return [];
-  return [
-    Number.isFinite(day.steps) ? { label: 'Schritte', value: fmt(day.steps), text: `${fmt(day.steps)} Schritte` } : null,
-    // Gesamt wie in Google Health. Liefert Health Connect nur die aktiven Kalorien, steht das dabei.
-    Number.isFinite(burned(day)) ? { label: day.totalKcal != null ? 'verbrannt' : 'aktiv verbrannt', value: fmt(burned(day)), unit: 'kcal', text: `${fmt(burned(day))} kcal ${day.totalKcal != null ? 'verbrannt' : 'aktiv verbrannt'}` } : null,
-    Number.isFinite(day.restingHr) ? { label: 'Ruhepuls', value: String(day.restingHr), unit: 'bpm', text: `Ruhepuls ${day.restingHr}` } : null,
-    day.sleepMin > 0 ? { label: 'Schlaf', value: formatSleep(day.sleepMin), text: `Schlaf ${formatSleep(day.sleepMin)}` } : null,
-  ].filter(Boolean);
-}
+const chosen = (enabled) => METRICS.filter((m) => enabled.includes(m.id));
 
-// Karte auf "Heute". null, wenn es für den Tag keine Werte gibt.
-export function bodyCard(day) {
-  const list = items(day);
-  if (!list.length) return null;
+// Karte auf "Heute": Kacheln in Reihen zu je 4, darunter die Schlafphasen. null, wenn es für den Tag keine Werte gibt.
+export function bodyCard(day, enabled) {
+  if (!day) return null;
+  const tiles = chosen(enabled).map((m) => m.tile(day)).filter(Boolean);
+  const phases = enabled.includes('sleep') ? sleepPhasesText(day) : null;
+  if (!tiles.length) return null;
   return el('div', { class: 'card bodycard' },
     el('div', { class: 'bodyhead' }, 'Körper'),
-    el('div', { class: 'bodyrow', style: `grid-template-columns:repeat(${list.length}, minmax(0, 1fr))` },
-      ...list.map((i) => el('div', { class: 'bodyval' },
-        el('div', { class: 'nval num' }, i.value, i.unit ? el('small', {}, i.unit) : null),
-        el('div', { class: 'nname' }, i.label)))));
+    el('div', { class: 'bodyrow' },
+      ...tiles.map((t) => el('div', { class: 'bodyval' },
+        el('div', { class: 'nval num' }, t.value, t.unit ? el('small', {}, t.unit) : null),
+        el('div', { class: 'nname' }, t.label)))),
+    phases ? el('div', { class: 'bodyphases' }, `Schlafphasen: ${phases}`) : null);
 }
 
 // Eine Zeile für die Tageskarte im Verlauf. null ohne Werte.
-export function bodyLine(day) {
-  const list = items(day);
-  return list.length ? list.map((i) => i.text).join(' · ') : null;
+export function bodyLine(day, enabled) {
+  if (!day) return null;
+  const parts = chosen(enabled).map((m) => m.text(day)).filter(Boolean);
+  return parts.length ? parts.join(' · ') : null;
 }
 
-export const BODY_METRICS = [
-  { id: 'steps', label: 'Schritte', caption: 'Schritte pro Tag.', value: (d) => d.steps },
-  { id: 'kcal', label: 'Kalorien', caption: 'Verbrannte Kalorien pro Tag.', value: burned },
-  { id: 'hr', label: 'Ruhepuls', caption: 'Ruhepuls in Schlägen pro Minute.', value: (d) => d.restingHr },
-  { id: 'sleep', label: 'Schlaf', caption: 'Schlaf pro Nacht in Stunden.', value: (d) => (d.sleepMin > 0 ? Math.round(d.sleepMin / 6) / 10 : undefined) },
-];
+// Kurven für die Karte "Körper" im Verlauf.
+export const bodyCharts = (enabled) => chosen(enabled).flatMap((m) => m.chart.map((c) => ({ ...c, id: `${m.id}:${c.label}` })));

@@ -32,6 +32,34 @@ export function averageByDay(samples) {
   return Object.fromEntries(Object.entries(acc).map(([k, v]) => [k, Math.round(v.reduce((a, b) => a + b, 0) / v.length)]));
 }
 
+// Letzter Wert je Tag mit digits Nachkommastellen (z. B. Körperfett).
+export function lastByDay(samples, digits = 0) {
+  const f = 10 ** digits;
+  const out = {};
+  const sorted = [...(samples ?? [])].filter((s) => Number.isFinite(s?.value)).sort((a, b) => a.startDate.localeCompare(b.startDate));
+  for (const s of sorted) out[dayKeyOf(s.startDate)] = Math.round(s.value * f) / f;
+  return out;
+}
+
+// Puls aus Stundenwerten: Min und Max des Tages exakt, Ø als Mittel der Stundenmittel.
+export function heartRateByDay(samples) {
+  const acc = {};
+  for (const s of samples ?? []) {
+    const v = s?.values ?? {};
+    if (!Number.isFinite(v.average)) continue;
+    const d = (acc[dayKeyOf(s.startDate)] ??= { sum: 0, n: 0, min: Infinity, max: -Infinity });
+    d.sum += v.average;
+    d.n += 1;
+    if (Number.isFinite(v.min)) d.min = Math.min(d.min, v.min);
+    if (Number.isFinite(v.max)) d.max = Math.max(d.max, v.max);
+  }
+  return Object.fromEntries(Object.entries(acc).map(([k, d]) => [k, {
+    hrAvg: Math.round(d.sum / d.n),
+    ...(Number.isFinite(d.min) ? { hrMin: Math.round(d.min) } : {}),
+    ...(Number.isFinite(d.max) ? { hrMax: Math.round(d.max) } : {}),
+  }]));
+}
+
 // Letzter Wert je Tag, gerundet.
 export function valueByDay(samples) {
   const out = {};
@@ -41,6 +69,7 @@ export function valueByDay(samples) {
 }
 
 const NOT_SLEEP = new Set(['awake', 'inBed']);
+const PHASES = { deep: 'sleepDeep', rem: 'sleepRem', light: 'sleepLight', awake: 'sleepAwake' };
 // Aus Start und Ende rechnen: Das Plugin rundet durationMinutes je Phase ab, bei vielen Phasen fehlen sonst 10 bis 20 Minuten.
 const stageMinutes = (st) => {
   const ms = new Date(st.endDate).getTime() - new Date(st.startDate).getTime();
@@ -57,10 +86,18 @@ export function sleepByDay(samples) {
       ? s.stages.filter((st) => !NOT_SLEEP.has(st.stage)).reduce((sum, st) => sum + stageMinutes(st), 0)
       : (NOT_SLEEP.has(s.sleepState) ? 0 : (s.value ?? 0));
     day.sleepMin += minutes;
+    // Phasen nur, wenn die Fitbit sie liefert (Tief, REM, Leicht, Wach).
+    for (const st of Array.isArray(s.stages) ? s.stages : []) {
+      const field = PHASES[st.stage];
+      if (field) day[field] = (day[field] ?? 0) + stageMinutes(st);
+    }
     if (s.startDate < day.sleepStart) day.sleepStart = s.startDate;
     if (s.endDate > day.sleepEnd) day.sleepEnd = s.endDate;
   }
-  for (const day of Object.values(out)) day.sleepMin = Math.round(day.sleepMin);
+  for (const day of Object.values(out)) {
+    for (const f of ['sleepMin', ...Object.values(PHASES)]) if (f in day) day[f] = Math.round(day[f]);
+    if (!['sleepDeep', 'sleepRem', 'sleepLight'].some((f) => f in day)) delete day.sleepAwake;
+  }
   return out;
 }
 
@@ -84,7 +121,9 @@ export function toFitbitWorkout(w) {
 }
 
 // Ein Datensatz je Tag, an dem irgendein Wert existiert. Fehlende Werte bleiben weg.
-export function buildVitalsDays({ steps = [], activeKcal = [], totalKcal = [], restingHr = [], sleep = [], workouts = [] }, now) {
+export function buildVitalsDays({
+  steps, activeKcal, totalKcal, restingHr, sleep, workouts, distance, floors, hr, hrv, spo2, respRate, vo2max, bodyFat,
+}, now) {
   const days = new Map();
   const day = (key) => days.get(key) ?? days.set(key, { dateKey: key }).get(key);
   const put = (field, byDay) => { for (const [key, v] of Object.entries(byDay)) day(key)[field] = Math.round(v); };
@@ -92,6 +131,14 @@ export function buildVitalsDays({ steps = [], activeKcal = [], totalKcal = [], r
   put('activeKcal', sumByDay(activeKcal));
   put('totalKcal', sumByDay(totalKcal));
   put('restingHr', averageByDay(restingHr));
+  put('distanceM', sumByDay(distance));
+  put('floors', sumByDay(floors));
+  put('hrv', averageByDay(hrv));
+  put('spo2', averageByDay(spo2));
+  put('respRate', averageByDay(respRate));
+  put('vo2max', lastByDay(vo2max));
+  for (const [key, v] of Object.entries(lastByDay(bodyFat, 1))) day(key).bodyFat = v;
+  for (const [key, v] of Object.entries(heartRateByDay(hr))) Object.assign(day(key), v);
   for (const [key, s] of Object.entries(sleepByDay(sleep))) Object.assign(day(key), s);
   for (const w of (workouts ?? []).map(toFitbitWorkout)) (day(dayKeyOf(w.start)).workouts ??= []).push(w);
   return [...days.values()].map((d) => ({ ...d, syncedAt: now })).sort((a, b) => a.dateKey.localeCompare(b.dateKey));
@@ -100,7 +147,9 @@ export function buildVitalsDays({ steps = [], activeKcal = [], totalKcal = [], r
 // Welche Felder gehören zu welchem gelesenen Typ (siehe native-health.js, readAll).
 const FIELDS = {
   steps: ['steps'], activeKcal: ['activeKcal'], totalKcal: ['totalKcal'], restingHr: ['restingHr'],
-  sleep: ['sleepMin', 'sleepStart', 'sleepEnd'], workouts: ['workouts'],
+  sleep: ['sleepMin', 'sleepStart', 'sleepEnd', 'sleepDeep', 'sleepRem', 'sleepLight', 'sleepAwake'], workouts: ['workouts'],
+  distance: ['distanceM'], floors: ['floors'], hr: ['hrAvg', 'hrMin', 'hrMax'], hrv: ['hrv'], spo2: ['spo2'], respRate: ['respRate'],
+  vo2max: ['vo2max'], bodyFat: ['bodyFat'],
 };
 
 // Neue Werte in die gespeicherten einarbeiten. Nur Typen, die erfolgreich gelesen wurden (read), ersetzen ihre Felder,
