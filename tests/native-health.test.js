@@ -55,7 +55,7 @@ test('readAll: Tagessummen, Schlaf, Gewicht und alle Seiten der Trainings', asyn
   assert.equal(r.sleep.length, 1);
   assert.equal(r.weights.length, 1);
   assert.deepEqual(r.workouts.map((w) => w.workoutType), ['running', 'cycling']);
-  const agg = f.calls.filter(([m]) => m === 'queryAggregated').map(([, o]) => [o.dataType, o.aggregation, o.bucket]);
+  const agg = f.calls.filter(([m, o]) => m === 'queryAggregated' && ['steps', 'calories', 'restingHeartRate'].includes(o.dataType)).map(([, o]) => [o.dataType, o.aggregation, o.bucket]);
   // Stundenwerte: Das Plugin zählt 'day' als 24 Stunden ab Start, nicht als Kalendertag.
   assert.deepEqual(agg, [['steps', 'sum', 'hour'], ['calories', 'sum', 'hour'], ['restingHeartRate', 'average', 'hour']]);
   // Gesamt-Kalorien lassen sich nicht aggregieren: Einzelwerte lesen.
@@ -126,4 +126,31 @@ test('readAll: Gesamt-Kalorien wochenweise als Einzelwerte, bei langem Zeitraum 
   assert.equal(chunks.at(-1).endDate, new Date(2026, 10, 23, 15).toISOString());
   for (let i = 1; i < chunks.length; i += 1) assert.equal(chunks[i].startDate, chunks[i - 1].endDate);
   assert.equal(r.totalKcal.length, 13);
+});
+
+test('readAll: nur angefragte Typen, nicht angefragte bleiben weg (undefined)', async () => {
+  const f = fakeCap({ queryAggregated: { samples: [] }, readSamples: { samples: [] }, queryWorkouts: { workouts: [] } });
+  const r = await healthClient({ cap: f.cap }).readAll({ start: 'a', end: 'b' }, ['steps', 'sleep']);
+  assert.deepEqual(Object.keys(r).filter((k) => r[k] !== undefined).sort(), ['sleep', 'steps']);
+  assert.deepEqual(f.calls.map(([m, o]) => `${m}:${o.dataType ?? ''}`), ['queryAggregated:steps', 'readSamples:sleep']);
+});
+
+test('readAll: Puls stündlich mit Ø, Min und Max; neue Werte auf dem richtigen Weg', async () => {
+  const f = fakeCap({ queryAggregated: { samples: [] }, readSamples: { samples: [] }, queryWorkouts: { workouts: [] } });
+  const range = { start: new Date(2026, 10, 20).toISOString(), end: new Date(2026, 10, 23).toISOString() };
+  const r = await healthClient({ cap: f.cap }).readAll(range, ['heartRate', 'distance', 'flightsClimbed', 'heartRateVariability', 'oxygenSaturation', 'respiratoryRate', 'vo2Max', 'bodyFat']);
+  const hr = f.calls.find(([m, o]) => m === 'queryAggregated' && o.dataType === 'heartRate')[1];
+  assert.deepEqual([hr.bucket, hr.aggregation], ['hour', ['average', 'min', 'max']]);
+  const dist = f.calls.find(([m, o]) => m === 'queryAggregated' && o.dataType === 'distance')[1];
+  assert.deepEqual([dist.bucket, dist.aggregation], ['hour', 'sum']);
+  for (const t of ['flightsClimbed', 'heartRateVariability', 'oxygenSaturation', 'respiratoryRate', 'vo2Max', 'bodyFat']) {
+    assert.ok(f.calls.some(([m, o]) => m === 'readSamples' && o.dataType === t), t);
+  }
+  assert.deepEqual(Object.keys(r).filter((k) => r[k] !== undefined).sort(), ['bodyFat', 'distance', 'floors', 'hr', 'hrv', 'respRate', 'spo2', 'vo2max']);
+});
+
+test('connect: fragt nur nach den genannten Typen', async () => {
+  const f = fakeCap({ requestAuthorization: { readAuthorized: ['heartRate'] } });
+  await healthClient({ cap: f.cap }).connect(['heartRate']);
+  assert.deepEqual(f.calls[0][1].read, ['heartRate']);
 });

@@ -5,6 +5,7 @@ import {
 } from '../db.js';
 import { healthClient } from '../native-health.js';
 import { syncHealth } from '../health-sync.js';
+import { METRICS, enabledMetrics, hcTypesFor } from '../health-metrics.js';
 
 // Health Connect in der Android-App: Abgleich beim Start und bei der Rückkehr, dazu der Abschnitt in den Einstellungen.
 
@@ -19,10 +20,6 @@ export function runHealthSync({ force = false } = {}) {
   return running;
 }
 
-const LABELS = {
-  steps: 'Schritte', calories: 'aktive Kalorien', totalCalories: 'Kalorien gesamt', restingHeartRate: 'Ruhepuls',
-  sleep: 'Schlaf', weight: 'Gewicht', workouts: 'Trainings',
-};
 
 const when = (ms) => new Date(ms).toLocaleString('de-DE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
@@ -37,6 +34,60 @@ export function healthCard(s, rerender) {
   const client = healthClient();
   client.available().then((ok) => { if (ok) box.replaceChildren(card(s, client, rerender)); });
   return box;
+}
+
+// Fehlt ein Recht für diesen Wert? Bei Kalorien genügt eines der beiden (aktiv oder gesamt).
+const missingRight = (m, granted) => (m.id === 'kcal' ? !m.hc.some((t) => granted.includes(t)) : !m.hc.every((t) => granted.includes(t)));
+
+// Rechte nur für bestimmte Typen anfragen und zu den bisherigen hinzufügen. Danach den Verlauf neu laden.
+async function grant(client, types) {
+  const r = await client.connect(types);
+  const s = await getSettings();
+  const before = s.health?.granted ?? { read: [], write: [] };
+  const granted = { read: [...new Set([...before.read, ...r.read])], write: [...new Set([...(before.write ?? []), ...r.write])] };
+  await saveHealth({ granted, lastSyncAt: null });
+  return r.read.length > 0;
+}
+
+// Liste der Werte mit Schalter. Aus: nicht lesen, nicht zeigen. An ohne Recht: Health Connect fragt nur nach diesem Wert.
+function metricList(s, client, rerender) {
+  const granted = s.health?.granted?.read ?? [];
+  const enabled = enabledMetrics(s);
+  const missing = METRICS.filter((m) => enabled.includes(m.id) && missingRight(m, granted));
+  const setEnabled = async (ids) => saveHealth({ metrics: METRICS.map((m) => m.id).filter((id) => ids.includes(id)) });
+
+  const rows = METRICS.map((m) => {
+    const box = el('input', { type: 'checkbox', checked: enabled.includes(m.id), 'aria-label': m.label });
+    box.style.cssText = 'width:22px;min-height:22px;height:22px;flex:none';
+    box.addEventListener('change', async () => {
+      const ids = box.checked ? [...enabled, m.id] : enabled.filter((id) => id !== m.id);
+      await setEnabled(ids);
+      if (box.checked && missingRight(m, granted)) {
+        try { await grant(client, m.hc); } catch { toast('Health Connect konnte nicht geöffnet werden.'); }
+        runHealthSync({ force: true }).then(() => rerender());
+      }
+      rerender();
+    });
+    return el('label', { class: 'checkrow', style: 'margin:8px 4px' }, box,
+      el('span', {}, m.label, enabled.includes(m.id) && missingRight(m, granted) ? el('span', { class: 'muted' }, ' · Recht fehlt') : null));
+  });
+
+  return el('div', {},
+    el('h2', { style: 'margin:16px 0 4px' }, 'Werte'),
+    el('div', { class: 'muted' }, 'Was du ausschaltest, wird nicht gelesen und nicht angezeigt.'),
+    missing.length ? el('button', {
+      class: 'primary', style: 'width:100%;margin-top:12px',
+      onClick: async () => {
+        try {
+          if (await grant(client, hcTypesFor(missing.map((m) => m.id)))) {
+            toast('Freigegeben. Die Werte werden geladen.');
+            await runHealthSync({ force: true });
+          }
+        } catch { toast('Health Connect konnte nicht geöffnet werden.'); }
+        rerender();
+      },
+    }, missing.length === 1 ? 'Neuen Wert freigeben' : 'Neue Werte freigeben') : null,
+    ...rows);
 }
 
 function card(s, client, rerender) {
@@ -77,14 +128,14 @@ function card(s, client, rerender) {
   const send = el('input', { type: 'checkbox', checked: h.sendNutrition !== false });
   send.style.cssText = 'width:22px;min-height:22px;height:22px;flex:none';
   send.addEventListener('change', async () => { await saveHealth({ sendNutrition: send.checked }); });
-  const read = (h.granted?.read ?? []).map((t) => LABELS[t]).filter(Boolean);
 
   return el('div', { class: 'card' },
     el('h2', { style: 'margin:0 0 6px' }, 'Health Connect'),
-    el('div', {}, read.length ? `Verbunden. Freigegeben: ${read.join(', ')}.` : 'Verbunden.'),
+    el('div', {}, 'Verbunden.'),
     el('div', { class: 'muted', style: 'margin-top:4px' }, h.lastSyncAt ? `Letzter Abgleich: ${when(h.lastSyncAt)}` : 'Noch kein Abgleich.'),
     hint,
     el('label', { class: 'checkrow' }, send, el('span', {}, 'Gegessene Kalorien und Protein an Health Connect senden (einmal pro abgeschlossenem Tag)')),
+    metricList(s, client, rerender),
     msg,
     el('div', { class: 'actions' },
       el('button', {

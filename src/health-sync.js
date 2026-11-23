@@ -1,9 +1,11 @@
 import { localDateKey } from './logic.js';
 import { addDays } from './overview.js';
 import { buildVitalsDays, mergeVitalsDays, weightsToImport, dayToWrite, syncWindow, shouldSync, dayKeyOf } from './vitals.js';
+import { enabledMetrics, hcTypesFor } from './health-metrics.js';
 
 const KEEP_WRITTEN = 14;
-const VITAL_TYPES = ['steps', 'activeKcal', 'totalKcal', 'restingHr', 'sleep', 'workouts'];
+// Ergebnis-Schlüssel von readAll, die in die Tageswerte gehen (Gewicht wird getrennt übernommen).
+const VITAL_TYPES = ['steps', 'activeKcal', 'totalKcal', 'restingHr', 'sleep', 'workouts', 'distance', 'floors', 'hr', 'hrv', 'spo2', 'respRate', 'vo2max', 'bodyFat'];
 
 // Abgleich mit Health Connect: Werte lesen, Gewichte übernehmen, den abgeschlossenen Vortag zurückschreiben.
 // Wirft nie. Ergebnis: 'skipped' (nicht verbunden oder zu früh), 'done' oder 'failed' (still, der nächste Versuch holt es nach).
@@ -17,7 +19,8 @@ export async function syncHealth({ client, store, now, force = false }) {
 
   try {
     const range = syncWindow({ lastSyncAt: health.lastSyncAt ?? null, now });
-    const raw = await client.readAll(range);
+    // Nur eingeschaltete Werte lesen.
+    const raw = await client.readAll(range, hcTypesFor(enabledMetrics(settings)));
     // null = nicht gelesen (Fehler oder kein Recht). Klappt gar nichts, zählt es nicht als Abgleich: Der Erstabgleich wird wiederholt.
     const read = VITAL_TYPES.filter((t) => raw[t] != null);
     if (!read.length && raw.weights == null) return 'failed';

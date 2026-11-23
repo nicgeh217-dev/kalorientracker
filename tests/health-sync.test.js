@@ -121,3 +121,19 @@ test('ein Typ schlägt fehl: seine alten Werte bleiben, die anderen werden erneu
   assert.equal(await syncHealth({ client: fakeClient({ raw }), store, now: NOW }), 'done');
   assert.deepEqual(store.state.vitals.map((v) => [v.dateKey, v.steps, v.sleepMin]), [['2026-11-22', 9000, 420]]);
 });
+
+test('nur eingeschaltete Werte werden gelesen', async () => {
+  let types = null;
+  const client = { readAll: async (range, t) => { types = t; return { steps: [] }; }, writeDay: async () => {} };
+  const store = fakeStore({ health: connected({ metrics: ['steps', 'hr'] }) });
+  assert.equal(await syncHealth({ client, store, now: NOW }), 'done');
+  assert.deepEqual(types, ['steps', 'heartRate']);
+});
+
+test('neue Werte zählen als gelesen und ersetzen ihre Felder', async () => {
+  const store = fakeStore({ health: connected({ lastSyncAt: NOW - 3600000, lastAttemptAt: NOW - 3600000 }) });
+  store.state.vitals = [{ dateKey: '2026-11-22', hrAvg: 70, hrMin: 50, hrMax: 140, syncedAt: 1 }];
+  const raw = { hr: [{ startDate: iso(22, 9), values: { average: 80, min: 60, max: 150 } }] };
+  await syncHealth({ client: fakeClient({ raw }), store, now: NOW });
+  assert.deepEqual(store.state.vitals.map((v) => [v.hrAvg, v.hrMin, v.hrMax]), [[80, 60, 150]]);
+});

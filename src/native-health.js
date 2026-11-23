@@ -1,12 +1,14 @@
 // Health Connect in der Android-App (Plugin @capgo/capacitor-health, Name "Health").
 // Im Browser (PWA) passiert nichts. Fehler einzelner Werte bleiben hier: Fehlt ein Recht, ist nur dieser Wert null (nicht gelesen).
+// Nicht angefragte Werte fehlen im Ergebnis ganz (undefined).
+import { METRICS } from './health-metrics.js';
 
-export const READ_TYPES = ['steps', 'calories', 'totalCalories', 'restingHeartRate', 'sleep', 'weight', 'workouts'];
+export const READ_TYPES = METRICS.flatMap((m) => m.hc);
 export const WRITE_TYPES = ['dietaryEnergyConsumed', 'dietaryProtein'];
 const MAX_WORKOUT_PAGES = 10;
 const WEEK_MS = 7 * 24 * 3600 * 1000;
 
-const EMPTY = () => ({ steps: null, activeKcal: null, totalKcal: null, restingHr: null, sleep: null, weights: null, workouts: null });
+const EMPTY = () => ({});
 
 export function healthClient({ cap = globalThis.Capacitor } = {}) {
   const native = Boolean(cap?.isNativePlatform?.());
@@ -46,26 +48,45 @@ export function healthClient({ cap = globalThis.Capacitor } = {}) {
     });
   }
 
+  // Health-Connect-Typ, Schlüssel im Ergebnis, Art des Lesens.
+  const READERS = [
+    ['steps', 'steps', (r) => aggregated('steps', 'sum', r)],
+    ['distance', 'distance', (r) => aggregated('distance', 'sum', r)],
+    ['flightsClimbed', 'floors', (r) => weeklySamples('flightsClimbed', r)],
+    ['calories', 'activeKcal', (r) => aggregated('calories', 'sum', r)],
+    ['totalCalories', 'totalKcal', (r) => weeklySamples('totalCalories', r)],
+    ['restingHeartRate', 'restingHr', (r) => aggregated('restingHeartRate', 'average', r)],
+    ['heartRate', 'hr', (r) => aggregated('heartRate', ['average', 'min', 'max'], r)],
+    ['heartRateVariability', 'hrv', (r) => weeklySamples('heartRateVariability', r)],
+    ['oxygenSaturation', 'spo2', (r) => weeklySamples('oxygenSaturation', r)],
+    ['respiratoryRate', 'respRate', (r) => weeklySamples('respiratoryRate', r)],
+    ['vo2Max', 'vo2max', (r) => weeklySamples('vo2Max', r)],
+    ['sleep', 'sleep', (r) => samples('sleep', r)],
+    ['bodyFat', 'bodyFat', (r) => weeklySamples('bodyFat', r)],
+    ['weight', 'weights', (r) => samples('weight', r)],
+    ['workouts', 'workouts', (r) => workouts(r)],
+  ];
+
   return {
     async available() {
       if (!native) return false;
       try { return Boolean((await call('isAvailable')).available); } catch { return false; }
     },
-    async connect() {
-      const r = await call('requestAuthorization', { read: READ_TYPES, write: WRITE_TYPES, requestHistoryAccess: true });
+    async connect(types = READ_TYPES) {
+      const r = await call('requestAuthorization', { read: types, write: WRITE_TYPES, requestHistoryAccess: true });
       return { read: r.readAuthorized ?? [], write: r.writeAuthorized ?? [] };
     },
-    async readAll(range) {
+    // types: Health-Connect-Typen der eingeschalteten Werte (hcTypesFor). Ergebnis-Schlüssel wie in buildVitalsDays.
+    async readAll(range, types = READ_TYPES) {
       if (!native) return EMPTY();
+      const out = {};
       // Nacheinander statt gleichzeitig: Health Connect drosselt viele gleichzeitige Anfragen.
       // Stundenwerte statt 'day': Das Plugin zählt 'day' als 24 Stunden ab Start, nicht als Kalendertag.
-      const steps = await aggregated('steps', 'sum', range);
-      const activeKcal = await aggregated('calories', 'sum', range);
-      const totalKcal = await weeklySamples('totalCalories', range);
-      const restingHr = await aggregated('restingHeartRate', 'average', range);
-      const sleep = await samples('sleep', range);
-      const weights = await samples('weight', range);
-      return { steps, activeKcal, totalKcal, restingHr, sleep, weights, workouts: await workouts(range) };
+      for (const type of READERS.filter(([t]) => types.includes(t))) {
+        const [, key, read] = type;
+        out[key] = await read(range);
+      }
+      return out;
     },
     // Ein abgeschlossener Tag: Kalorien und Protein als je ein Eintrag über den ganzen Tag (Ortszeit).
     async writeDay({ dateKey, kcal, protein }) {
