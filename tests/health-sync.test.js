@@ -13,19 +13,21 @@ function fakeStore({ health, meals = [], days = [], weights = [] } = {}) {
     saveSettings: async (s) => { state.settings = structuredClone(s); },
     listWeights: async () => state.weights,
     putWeights: async (list) => { for (const w of list) { state.weights = state.weights.filter((x) => x.date !== w.date).concat(w); } },
-    putVitalsDays: async (list) => { state.vitals.push(...list); },
+    listVitals: async () => state.vitals,
+    putVitalsDays: async (list) => { for (const d of list) { state.vitals = state.vitals.filter((x) => x.dateKey !== d.dateKey).concat(d); } },
     listMeals: async () => state.meals,
     listDayStatuses: async () => state.days,
   };
 }
 
-function fakeClient({ fail = false } = {}) {
+function fakeClient({ fail = false, raw = null } = {}) {
   const calls = { readAll: [], writeDay: [] };
   return {
     calls,
     readAll: async (range) => {
       calls.readAll.push(range);
       if (fail) throw new Error('Health Connect fehlt');
+      if (raw) return raw;
       return {
         steps: [{ startDate: iso(22), value: 8000 }], activeKcal: [], totalKcal: [], restingHr: [], sleep: [],
         weights: [{ startDate: iso(22, 7), value: 74.2 }], workouts: [],
@@ -54,7 +56,7 @@ test('Erstabgleich: 90 Tage, speichert Tage, übernimmt Gewicht, schreibt den Vo
   const c = fakeClient();
   const store = fakeStore({ health: connected(), meals: yesterdayMeals });
   assert.equal(await syncHealth({ client: c, store, now: NOW }), 'done');
-  assert.equal(Math.round((NOW - new Date(c.calls.readAll[0].start).getTime()) / 86400000), 90);
+  assert.equal(c.calls.readAll[0].start, new Date(2026, 7, 25).toISOString());
   assert.deepEqual(store.state.vitals.map((v) => [v.dateKey, v.steps]), [['2026-11-22', 8000]]);
   assert.deepEqual(store.state.weights, [{ date: '2026-11-22', kg: 74.2, source: 'health' }]);
   assert.deepEqual(c.calls.writeDay, [{ dateKey: '2026-11-22', kcal: 1800, protein: 90 }]);
@@ -103,4 +105,19 @@ test('geschriebene Tage: nur die letzten 14 bleiben gemerkt', async () => {
   assert.equal(h.length, 14);
   assert.equal(h.at(-1), '2026-11-22');
   assert.equal(h.includes('2026-11-01'), false);
+});
+
+test('alles fehlgeschlagen: gilt als Fehlschlag, damit der 90-Tage-Abgleich wiederholt wird', async () => {
+  const none = { steps: null, activeKcal: null, totalKcal: null, restingHr: null, sleep: null, weights: null, workouts: null };
+  const store = fakeStore({ health: connected() });
+  assert.equal(await syncHealth({ client: fakeClient({ raw: none }), store, now: NOW }), 'failed');
+  assert.equal(store.state.settings.health.lastSyncAt, undefined);
+});
+
+test('ein Typ schlägt fehl: seine alten Werte bleiben, die anderen werden erneuert', async () => {
+  const store = fakeStore({ health: connected({ lastSyncAt: NOW - 3600000, lastAttemptAt: NOW - 3600000 }) });
+  store.state.vitals = [{ dateKey: '2026-11-22', steps: 5000, sleepMin: 420, syncedAt: 1 }];
+  const raw = { steps: [{ startDate: iso(22), value: 9000 }], activeKcal: [], totalKcal: [], restingHr: [], sleep: null, weights: [], workouts: [] };
+  assert.equal(await syncHealth({ client: fakeClient({ raw }), store, now: NOW }), 'done');
+  assert.deepEqual(store.state.vitals.map((v) => [v.dateKey, v.steps, v.sleepMin]), [['2026-11-22', 9000, 420]]);
 });

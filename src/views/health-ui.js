@@ -1,14 +1,14 @@
 import { el, toast } from '../dom.js';
 import { refreshCurrent } from '../nav.js';
 import {
-  getSettings, saveSettings, listWeights, putWeights, putVitalsDays, listMeals, listDayStatuses,
+  getSettings, saveSettings, listWeights, putWeights, putVitalsDays, listVitals, listMeals, listDayStatuses,
 } from '../db.js';
 import { healthClient } from '../native-health.js';
 import { syncHealth } from '../health-sync.js';
 
 // Health Connect in der Android-App: Abgleich beim Start und bei der Rückkehr, dazu der Abschnitt in den Einstellungen.
 
-const dbStore = { getSettings, saveSettings, listWeights, putWeights, putVitalsDays, listMeals, listDayStatuses };
+const dbStore = { getSettings, saveSettings, listWeights, putWeights, putVitalsDays, listVitals, listMeals, listDayStatuses };
 
 let running = null;
 export function runHealthSync({ force = false } = {}) {
@@ -52,7 +52,9 @@ function card(s, client, rerender) {
         msg.replaceChildren(el('div', { class: 'note warn' }, 'Es wurden keine Werte freigegeben. Du kannst es jederzeit erneut versuchen.'));
         return;
       }
-      await saveHealth({ connected: true, granted });
+      // Neue oder andere Rechte: den Verlauf von vorn laden, sonst fehlen die neu freigegebenen Werte für die letzten 90 Tage.
+      const before = JSON.stringify((await getSettings()).health?.granted ?? null);
+      await saveHealth({ connected: true, granted, ...(before !== JSON.stringify(granted) ? { lastSyncAt: null } : {}) });
       toast('Verbunden. Die Werte werden geladen.');
       rerender();
       const r = await runHealthSync({ force: true });

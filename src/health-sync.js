@@ -1,8 +1,9 @@
 import { localDateKey } from './logic.js';
 import { addDays } from './overview.js';
-import { buildVitalsDays, weightsToImport, dayToWrite, syncWindow, shouldSync } from './vitals.js';
+import { buildVitalsDays, mergeVitalsDays, weightsToImport, dayToWrite, syncWindow, shouldSync, dayKeyOf } from './vitals.js';
 
 const KEEP_WRITTEN = 14;
+const VITAL_TYPES = ['steps', 'activeKcal', 'totalKcal', 'restingHr', 'sleep', 'workouts'];
 
 // Abgleich mit Health Connect: Werte lesen, Gewichte übernehmen, den abgeschlossenen Vortag zurückschreiben.
 // Wirft nie. Ergebnis: 'skipped' (nicht verbunden oder zu früh), 'done' oder 'failed' (still, der nächste Versuch holt es nach).
@@ -15,8 +16,13 @@ export async function syncHealth({ client, store, now, force = false }) {
   await store.saveSettings({ ...settings, health: { ...health, lastAttemptAt: now } });
 
   try {
-    const raw = await client.readAll(syncWindow({ lastSyncAt: health.lastSyncAt ?? null, now }));
-    await store.putVitalsDays(buildVitalsDays(raw, now));
+    const range = syncWindow({ lastSyncAt: health.lastSyncAt ?? null, now });
+    const raw = await client.readAll(range);
+    // null = nicht gelesen (Fehler oder kein Recht). Klappt gar nichts, zählt es nicht als Abgleich: Der Erstabgleich wird wiederholt.
+    const read = VITAL_TYPES.filter((t) => raw[t] != null);
+    if (!read.length && raw.weights == null) return 'failed';
+    const days = buildVitalsDays(raw, now);
+    await store.putVitalsDays(mergeVitalsDays(await store.listVitals(), days, { read, from: dayKeyOf(range.start), to: dayKeyOf(range.end), now }));
     const weights = weightsToImport(raw.weights ?? [], await store.listWeights());
     if (weights.length) await store.putWeights(weights);
 

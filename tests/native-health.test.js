@@ -56,21 +56,24 @@ test('readAll: Tagessummen, Schlaf, Gewicht und alle Seiten der Trainings', asyn
   assert.equal(r.weights.length, 1);
   assert.deepEqual(r.workouts.map((w) => w.workoutType), ['running', 'cycling']);
   const agg = f.calls.filter(([m]) => m === 'queryAggregated').map(([, o]) => [o.dataType, o.aggregation, o.bucket]);
-  assert.deepEqual(agg, [['steps', 'sum', 'day'], ['calories', 'sum', 'day'], ['totalCalories', 'sum', 'day'], ['restingHeartRate', 'average', 'day']]);
+  // Stundenwerte: Das Plugin zählt 'day' als 24 Stunden ab Start, nicht als Kalendertag.
+  assert.deepEqual(agg, [['steps', 'sum', 'hour'], ['calories', 'sum', 'hour'], ['restingHeartRate', 'average', 'hour']]);
+  // Gesamt-Kalorien lassen sich nicht aggregieren: Einzelwerte lesen.
+  assert.equal(r.totalKcal.length, 1);
   const second = f.calls.filter(([m]) => m === 'queryWorkouts')[1][1];
   assert.equal(second.anchor, 'next');
 });
 
-test('readAll: ein Typ, der fehlschlägt, liefert leer, die anderen kommen trotzdem', async () => {
+test('readAll: ein Typ, der fehlschlägt, ist null (nicht gelesen), die anderen kommen trotzdem', async () => {
   const f = fakeCap({
     queryAggregated: (o) => { if (o.dataType === 'steps') throw new Error('kein Recht'); return { samples: [{ value: 5 }] }; },
     readSamples: { samples: [] },
     queryWorkouts: new Error('kein Recht'),
   });
   const r = await healthClient({ cap: f.cap }).readAll({ start: 'a', end: 'b' });
-  assert.deepEqual(r.steps, []);
-  assert.equal(r.totalKcal.length, 1);
-  assert.deepEqual(r.workouts, []);
+  assert.equal(r.steps, null);
+  assert.equal(r.activeKcal.length, 1);
+  assert.equal(r.workouts, null);
 });
 
 test('readAll: höchstens 10 Seiten Trainings', async () => {
@@ -88,6 +91,16 @@ test('writeDay: Kalorien und Protein über den ganzen Tag in Ortszeit', async ()
   assert.equal(saves[0].endDate, new Date(2026, 10, 22, 23, 59, 59).toISOString());
 });
 
+test('writeDay: scheitert nur das Protein, gilt der Tag trotzdem als geschrieben (keine doppelten Kalorien)', async () => {
+  const f = fakeCap({ saveSample: (o) => { if (o.dataType === 'dietaryProtein') throw new Error('kein Recht'); return {}; } });
+  await healthClient({ cap: f.cap }).writeDay({ dateKey: '2026-11-22', kcal: 500, protein: 30 });
+});
+
+test('writeDay: scheitern die Kalorien, wird der Fehler weitergegeben', async () => {
+  const f = fakeCap({ saveSample: new Error('kein Recht') });
+  await assert.rejects(() => healthClient({ cap: f.cap }).writeDay({ dateKey: '2026-11-22', kcal: 500, protein: 30 }));
+});
+
 test('writeDay: Protein 0 wird nicht geschrieben', async () => {
   const f = fakeCap();
   await healthClient({ cap: f.cap }).writeDay({ dateKey: '2026-11-22', kcal: 500, protein: 0 });
@@ -102,4 +115,15 @@ test('im Browser passiert nichts', async () => {
   await c.readAll({ start: 'a', end: 'b' });
   await c.writeDay({ dateKey: '2026-11-22', kcal: 1, protein: 1 });
   assert.equal(called, false);
+});
+
+test('readAll: Gesamt-Kalorien wochenweise als Einzelwerte, bei langem Zeitraum mehrere Abfragen', async () => {
+  const f = fakeCap({ queryAggregated: { samples: [] }, readSamples: (o) => ({ samples: o.dataType === 'totalCalories' ? [{ startDate: o.startDate, value: 10 }] : [] }), queryWorkouts: { workouts: [] } });
+  const r = await healthClient({ cap: f.cap }).readAll({ start: new Date(2026, 7, 25).toISOString(), end: new Date(2026, 10, 23, 15).toISOString() });
+  const chunks = f.calls.filter(([m, o]) => m === 'readSamples' && o.dataType === 'totalCalories').map(([, o]) => o);
+  assert.equal(chunks.length, 13);
+  assert.equal(chunks[0].startDate, new Date(2026, 7, 25).toISOString());
+  assert.equal(chunks.at(-1).endDate, new Date(2026, 10, 23, 15).toISOString());
+  for (let i = 1; i < chunks.length; i += 1) assert.equal(chunks[i].startDate, chunks[i - 1].endDate);
+  assert.equal(r.totalKcal.length, 13);
 });
