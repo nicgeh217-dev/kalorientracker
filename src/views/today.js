@@ -24,8 +24,9 @@ import { openOnlineRestore } from './online-backup-ui.js';
 import { openKeySetup } from './key-setup.js';
 import { addDays, pickRecent, rollingAverage, fastLossWarning } from '../overview.js';
 import {
-  mealsForDate, deleteMeal, updateMeal, getSettings, listProducts, replaceAll, listDayStatuses, addMeal, listMeals, getProduct, listQueued, deleteQueued, addQueued, listWeights, saveSettings,
+  mealsForDate, deleteMeal, updateMeal, getSettings, listProducts, replaceAll, listDayStatuses, addMeal, listMeals, getProduct, listQueued, deleteQueued, addQueued, listWeights, saveSettings, vitalsForDate,
 } from '../db.js';
+import { bodyCard } from './body-card.js';
 import { showView } from '../nav.js';
 import { viewedDateKey, isViewingToday, setViewedDateKey, dayLabel, longDate, timestampFor } from '../state.js';
 import { openMealForm } from './meal-form.js';
@@ -70,7 +71,7 @@ export async function renderToday() {
   const seq = ++renderSeq;
   const dateKey = viewedDateKey();
   const isToday = isViewingToday();
-  const [settings, meals, everyMeal, queued, weights, products, dayStatuses] = await Promise.all([
+  const [settings, meals, everyMeal, queued, weights, products, dayStatuses, vitals] = await Promise.all([
     getSettings(),
     mealsForDate(dateKey),
     listMeals(),
@@ -78,6 +79,7 @@ export async function renderToday() {
     listWeights(),
     listProducts(),
     listDayStatuses(),
+    vitalsForDate(dateKey),
   ]);
   if (seq !== renderSeq) return;
   const todayKey = localDateKey(new Date());
@@ -166,6 +168,7 @@ export async function renderToday() {
             : el('div', { class: 'note warn', style: 'margin:0' }, 'Noch kein Ziel. ',
                 el('a', { href: '#', onClick: (e) => { e.preventDefault(); showView('settings'); } }, 'Jetzt festlegen'))))),
     el('div', { class: 'ntiles' }, ...NUTRIENTS.map((n) => nutrientTile({ nutrient: n, value: nutrientValue(n.id), target: targets?.[n.id] ?? null, from: logged ? (before.nutrients[n.id] ?? 0) : undefined }))),
+    bodyCard(vitals),
     queued.length ? el('h2', {}, 'Wartet auf Auswertung') : null,
     ...queued.map(queueCard),
     recent.length ? el('div', { class: 'chips' }, ...recent.map((m) => recentChip(m, dateKey))) : null,

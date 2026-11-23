@@ -332,3 +332,10 @@ test('repeatDraft: übernimmt Kopplungen, eine gelöschte Spitze macht die näch
   const plain = repeatDraft({ sets: [{ exerciseId: 1, kg: 1, reps: 1 }] }, known, '2026-10-25', 1);
   assert.equal('linked' in plain.entries[0], false);
 });
+
+test('trainingDaysThisWeek: Fitbit-Tage zählen mit, ein Tag zählt einmal', () => {
+  const w = [{ dateKey: '2026-10-20', sets: [{}] }];
+  const r = trainingDaysThisWeek(w, '2026-10-22', ['2026-10-20', '2026-10-21', '2026-10-13']);
+  assert.deepEqual(r.days, ['2026-10-20', '2026-10-21']);
+  assert.equal(r.count, 2);
+});

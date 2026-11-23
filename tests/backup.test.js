@@ -138,3 +138,24 @@ test('buildBackup: Etikettenfotos bleiben lokal und stehen nicht in der Sicherun
   assert.deepEqual(b.products, [{ id: 1, name: 'Kimbap', kcal: 200 }, { id: 2, name: 'Riegel', kcal: 380 }]);
   assert.equal(d.products[0].labelPhoto, photo, 'Quelldaten bleiben unverändert');
 });
+
+test('buildBackup: Vitaldaten ohne Abgleichzeit, Gerätezustand von Health Connect bleibt draußen', () => {
+  const d = { ...data, settings: { ...data.settings, health: { connected: true, written: ['2026-10-05'] } }, vitals: [{ dateKey: '2026-10-06', steps: 8412, syncedAt: 123 }] };
+  const b = buildBackup(d, now);
+  assert.deepEqual(b.vitals, [{ dateKey: '2026-10-06', steps: 8412 }]);
+  assert.equal('health' in b.settings, false);
+});
+
+test('parseBackup: ältere Sicherung ohne Vitaldaten bleibt gültig', () => {
+  const r = parseBackup(JSON.stringify(buildBackup(data, now)));
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.data.vitals, []);
+  const withVitals = parseBackup(JSON.stringify({ ...buildBackup(data, now), vitals: [{ dateKey: '2026-10-06', steps: 1 }] }));
+  assert.deepEqual(withVitals.data.vitals, [{ dateKey: '2026-10-06', steps: 1 }]);
+});
+
+test('parseBackup: ungültige Vitaldaten -> Fehler', () => {
+  for (const vitals of [{}, [{ steps: 1 }], [null]]) {
+    assert.equal(parseBackup(JSON.stringify({ ...buildBackup(data, now), vitals })).ok, false);
+  }
+});

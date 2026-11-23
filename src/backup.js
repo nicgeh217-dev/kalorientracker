@@ -2,7 +2,7 @@ import { localDateKey } from './logic.js';
 
 // Gerätezustand (Key, letzte Sicherung, Snooze) gehört nicht in die Sicherungsdatei.
 export function buildBackup(data, now) {
-  const { geminiKey, lastBackupAt, backupSnoozedUntil, trainingDraft, onlineBackup, ...settings } = data.settings ?? {};
+  const { geminiKey, lastBackupAt, backupSnoozedUntil, trainingDraft, onlineBackup, health, ...settings } = data.settings ?? {};
   return {
     version: 2,
     exportedAt: now.toISOString(),
@@ -12,6 +12,8 @@ export function buildBackup(data, now) {
     days: data.days ?? [],
     exercises: data.exercises ?? [],
     workouts: data.workouts ?? [],
+    // Vitaldaten aus Health Connect: Werte älter als 30 Tage ließen sich sonst nicht wiederherstellen. Ohne Abgleichzeit, damit nicht jeder Abgleich eine neue Sicherung auslöst.
+    vitals: (data.vitals ?? []).map(({ syncedAt, ...d }) => d),
     settings,
   };
 }
@@ -44,7 +46,8 @@ export function parseBackup(text) {
   const days = b.days ?? [];
   const exercises = b.exercises ?? [];
   const workouts = b.workouts ?? [];
-  for (const [k, v] of [['days', days], ['exercises', exercises], ['workouts', workouts]]) {
+  const vitals = b.vitals ?? [];
+  for (const [k, v] of [['days', days], ['exercises', exercises], ['workouts', workouts], ['vitals', vitals]]) {
     if (!Array.isArray(v)) return { ok: false, error: `Feld "${k}" fehlt oder ist ungültig.` };
   }
   if (!days.every((d) => isObj(d) && typeof d.dateKey === 'string' && (d.status === 'rest' || d.status === 'sick'))) {
@@ -54,7 +57,8 @@ export function parseBackup(text) {
   if (!workouts.every((w) => isObj(w) && typeof w.dateKey === 'string' && Array.isArray(w.sets))) {
     return { ok: false, error: 'Eine Trainingseinheit in der Datei ist ungültig.' };
   }
-  return { ok: true, data: { products: b.products, meals: b.meals, weights: b.weights, days, exercises, workouts, settings: b.settings } };
+  if (!vitals.every((d) => isObj(d) && typeof d.dateKey === 'string')) return { ok: false, error: 'Ein Tag mit Vitaldaten in der Datei ist ungültig.' };
+  return { ok: true, data: { products: b.products, meals: b.meals, weights: b.weights, days, exercises, workouts, vitals, settings: b.settings } };
 }
 
 const dayNumber = (key) => {

@@ -23,14 +23,15 @@ export function weekTitle(dateKey) {
 }
 
 // Rückblick auf eine Woche: nur Zahlen zum Mitzählen. Bewusst ohne Ziel, Prozent oder Vergleich, damit nichts bewertet wird.
-export function weekReview({ dateKey, meals, workouts, weights }) {
+// extraTrainingDays: Tage mit einem Fitbit-Training. Sätze kommen nur aus der App.
+export function weekReview({ dateKey, meals, workouts, weights, extraTrainingDays = [] }) {
   const days = weekOf(dateKey);
   const inWeek = (key) => key >= days[0] && key <= days[6];
   const trained = workouts.filter((w) => w.sets.length && inWeek(w.dateKey));
   return {
     days,
     loggedDays: new Set(meals.filter((m) => inWeek(m.dateKey)).map((m) => m.dateKey)).size,
-    trainingDays: new Set(trained.map((w) => w.dateKey)).size,
+    trainingDays: new Set([...trained.map((w) => w.dateKey), ...extraTrainingDays.filter(inWeek)]).size,
     sets: trained.reduce((n, w) => n + w.sets.length, 0),
     weights: weights.filter((w) => inWeek(w.date)).sort((a, b) => a.date.localeCompare(b.date)),
   };
