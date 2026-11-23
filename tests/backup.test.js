@@ -159,3 +159,8 @@ test('parseBackup: ungültige Vitaldaten -> Fehler', () => {
     assert.equal(parseBackup(JSON.stringify({ ...buildBackup(data, now), vitals })).ok, false);
   }
 });
+
+test('replaceAll behält Health Connect (Gerätezustand) – im Code: kept.health', async () => {
+  const src = (await import('node:fs')).readFileSync(new URL('../src/db.js', import.meta.url), 'utf8');
+  assert.match(src, /kept\.health/);
+});

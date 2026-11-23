@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  dayKeyOf, sumByDay, valueByDay, sleepByDay, toFitbitWorkout, buildVitalsDays, visibleFitbitWorkouts,
+  dayKeyOf, sumByDay, valueByDay, averageByDay, sleepByDay, mergeVitalsDays, toFitbitWorkout, buildVitalsDays, visibleFitbitWorkouts,
   fitbitTrainingDays, weightsToImport, dayToWrite, syncWindow, shouldSync, formatSleep, avgSteps,
 } from '../src/vitals.js';
 
@@ -107,10 +107,10 @@ test('dayToWrite: nur der Vortag, einmal, nicht leer und nicht krank', () => {
   assert.equal(dayToWrite({ todayKey: '2026-11-23', meals: [{ dateKey: '2026-11-23', kcal: 500 }], status: null, written: [] }), null);
 });
 
-test('syncWindow: erst 90 Tage, danach die letzten 3 Tage ab Tagesbeginn', () => {
+test('syncWindow: erst 90 Tage ab Tagesbeginn, danach die letzten 3 Tage ab Tagesbeginn', () => {
   const first = syncWindow({ lastSyncAt: null, now: NOW });
   assert.equal(first.end, new Date(NOW).toISOString());
-  assert.equal(Math.round((NOW - new Date(first.start).getTime()) / 86400000), 90);
+  assert.equal(first.start, new Date(2026, 7, 25, 0, 0).toISOString(), 'Mitternacht vor 90 Tagen, sonst landen Stunden auf dem falschen Tag');
   const later = syncWindow({ lastSyncAt: NOW - 3600000, now: NOW });
   assert.equal(later.start, new Date(2026, 10, 20, 0, 0).toISOString());
 });
@@ -128,4 +128,44 @@ test('formatSleep und avgSteps', () => {
   const v = [{ dateKey: '2026-11-17', steps: 8000 }, { dateKey: '2026-11-18', steps: 9000 }, { dateKey: '2026-11-19' }];
   assert.equal(avgSteps(v, ['2026-11-16', '2026-11-17', '2026-11-18', '2026-11-19']), 8500);
   assert.equal(avgSteps(v, ['2026-11-30']), null);
+});
+
+test('sumByDay: Stundenwerte werden zum Kalendertag zusammengezählt', () => {
+  const hours = Array.from({ length: 30 }, (_, i) => ({ startDate: new Date(2026, 10, 22, 0 + i).toISOString(), value: 100 }));
+  assert.deepEqual(sumByDay(hours), { '2026-11-22': 2400, '2026-11-23': 600 });
+});
+
+test('averageByDay: Ruhepuls als Tagesmittel der Stundenwerte', () => {
+  assert.deepEqual(averageByDay([{ startDate: at(2026, 11, 22, 2), value: 55 }, { startDate: at(2026, 11, 22, 3), value: 58 }, { startDate: at(2026, 11, 23, 2), value: 60 }]), { '2026-11-22': 57, '2026-11-23': 60 });
+});
+
+test('sleepByDay: Phasen nach Start und Ende gerechnet, nicht abgerundet', () => {
+  const s = (h, m, min, stage) => ({ startDate: new Date(2026, 10, 23, h, m).toISOString(), endDate: new Date(new Date(2026, 10, 23, h, m).getTime() + min * 60000).toISOString(), stage, durationMinutes: Math.floor(min) });
+  const night = { startDate: at(2026, 11, 23, 1), endDate: at(2026, 11, 23, 2), value: 59, sleepState: 'asleep', stages: [s(1, 0, 20.5, 'light'), s(1, 20, 20.5, 'deep'), s(1, 41, 19, 'awake')] };
+  assert.equal(sleepByDay([night])['2026-11-23'].sleepMin, 41);
+});
+
+test('buildVitalsDays: nicht gelesene Werte (null) erzeugen nichts', () => {
+  assert.deepEqual(buildVitalsDays({ steps: null, activeKcal: null, totalKcal: null, restingHr: null, sleep: null, workouts: null }, NOW), []);
+});
+
+test('mergeVitalsDays: gelesene Werte ersetzen, fehlgeschlagene bleiben, Tage außerhalb bleiben unberührt', () => {
+  const existing = [
+    { dateKey: '2026-11-21', steps: 5000, sleepMin: 400, syncedAt: 1 },
+    { dateKey: '2026-11-22', steps: 7000, sleepMin: 420, sleepStart: 'a', sleepEnd: 'b', workouts: [{ type: 'running' }], syncedAt: 1 },
+    { dateKey: '2026-11-15', steps: 1, syncedAt: 1 },
+  ];
+  const fresh = [{ dateKey: '2026-11-22', steps: 8000, syncedAt: 2 }, { dateKey: '2026-11-23', steps: 900, syncedAt: 2 }];
+  const out = mergeVitalsDays(existing, fresh, { read: ['steps', 'workouts'], from: '2026-11-20', to: '2026-11-23', now: 2 });
+  assert.deepEqual(out, [
+    { dateKey: '2026-11-21', sleepMin: 400, syncedAt: 2 },
+    { dateKey: '2026-11-22', steps: 8000, sleepMin: 420, sleepStart: 'a', sleepEnd: 'b', syncedAt: 2 },
+    { dateKey: '2026-11-23', steps: 900, syncedAt: 2 },
+  ]);
+});
+
+test('toFitbitWorkout: weitere Trainingsarten haben deutsche Namen', () => {
+  for (const [type, title] of [['weightlifting', 'Krafttraining'], ['runningTreadmill', 'Laufband'], ['bikingStationary', 'Ergometer'], ['other', 'Training']]) {
+    assert.equal(toFitbitWorkout({ workoutType: type, duration: 60, startDate: at(2026, 11, 22), endDate: at(2026, 11, 22) }).title, title);
+  }
 });
