@@ -9,7 +9,8 @@ function items(day) {
   if (!day) return [];
   return [
     Number.isFinite(day.steps) ? { label: 'Schritte', value: fmt(day.steps), text: `${fmt(day.steps)} Schritte` } : null,
-    Number.isFinite(burned(day)) ? { label: 'verbrannt', value: fmt(burned(day)), unit: 'kcal', text: `${fmt(burned(day))} kcal verbrannt` } : null,
+    // Gesamt wie in Google Health. Liefert Health Connect nur die aktiven Kalorien, steht das dabei.
+    Number.isFinite(burned(day)) ? { label: day.totalKcal != null ? 'verbrannt' : 'aktiv verbrannt', value: fmt(burned(day)), unit: 'kcal', text: `${fmt(burned(day))} kcal ${day.totalKcal != null ? 'verbrannt' : 'aktiv verbrannt'}` } : null,
     Number.isFinite(day.restingHr) ? { label: 'Ruhepuls', value: String(day.restingHr), unit: 'bpm', text: `Ruhepuls ${day.restingHr}` } : null,
     day.sleepMin > 0 ? { label: 'Schlaf', value: formatSleep(day.sleepMin), text: `Schlaf ${formatSleep(day.sleepMin)}` } : null,
   ].filter(Boolean);

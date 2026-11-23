@@ -4,16 +4,16 @@ import { addDays } from './overview.js';
 // Werte aus Health Connect (Fitbit, Google Health) als Tageszusammenfassungen.
 // Nur Zahlen zum Ansehen: keine Ziele, keine Bewertung, kein Einfluss auf Kalorienziel, Fuchs oder Serie.
 
-const DAY_MS = 24 * 3600 * 1000;
 const SYNC_EVERY_MS = 5 * 60 * 1000;
 const FIRST_SYNC_DAYS = 90;
 const RESYNC_DAYS = 3; // Fitbit liefert oft verspätet nach
 
 export const dayKeyOf = (iso) => localDateKey(new Date(iso));
 
+// Stundenwerte (Health Connect, bucket 'hour') zum Kalendertag nach Ortszeit zusammenzählen.
 export function sumByDay(samples) {
   const out = {};
-  for (const s of samples) {
+  for (const s of samples ?? []) {
     if (!Number.isFinite(s?.value)) continue;
     const key = dayKeyOf(s.startDate);
     out[key] = (out[key] ?? 0) + s.value;
@@ -21,24 +21,40 @@ export function sumByDay(samples) {
   return out;
 }
 
-// Letzter Wert je Tag (z. B. Ruhepuls), gerundet.
+// Mittelwert je Tag (Ruhepuls aus Stundenwerten), gerundet.
+export function averageByDay(samples) {
+  const acc = {};
+  for (const s of samples ?? []) {
+    if (!Number.isFinite(s?.value)) continue;
+    const key = dayKeyOf(s.startDate);
+    (acc[key] ??= []).push(s.value);
+  }
+  return Object.fromEntries(Object.entries(acc).map(([k, v]) => [k, Math.round(v.reduce((a, b) => a + b, 0) / v.length)]));
+}
+
+// Letzter Wert je Tag, gerundet.
 export function valueByDay(samples) {
   const out = {};
-  const sorted = [...samples].filter((s) => Number.isFinite(s?.value)).sort((a, b) => a.startDate.localeCompare(b.startDate));
+  const sorted = [...(samples ?? [])].filter((s) => Number.isFinite(s?.value)).sort((a, b) => a.startDate.localeCompare(b.startDate));
   for (const s of sorted) out[dayKeyOf(s.startDate)] = Math.round(s.value);
   return out;
 }
 
 const NOT_SLEEP = new Set(['awake', 'inBed']);
+// Aus Start und Ende rechnen: Das Plugin rundet durationMinutes je Phase ab, bei vielen Phasen fehlen sonst 10 bis 20 Minuten.
+const stageMinutes = (st) => {
+  const ms = new Date(st.endDate).getTime() - new Date(st.startDate).getTime();
+  return Number.isFinite(ms) && ms > 0 ? ms / 60000 : (st.durationMinutes ?? 0);
+};
 
 // Schlaf zählt für den Tag, an dem er endet. Wach- und Im-Bett-Phasen zählen nicht.
 export function sleepByDay(samples) {
   const out = {};
-  for (const s of samples) {
+  for (const s of samples ?? []) {
     const key = dayKeyOf(s.endDate);
     const day = out[key] ?? (out[key] = { sleepMin: 0, sleepStart: s.startDate, sleepEnd: s.endDate });
     const minutes = Array.isArray(s.stages) && s.stages.length
-      ? s.stages.filter((st) => !NOT_SLEEP.has(st.stage)).reduce((sum, st) => sum + (st.durationMinutes ?? 0), 0)
+      ? s.stages.filter((st) => !NOT_SLEEP.has(st.stage)).reduce((sum, st) => sum + stageMinutes(st), 0)
       : (NOT_SLEEP.has(s.sleepState) ? 0 : (s.value ?? 0));
     day.sleepMin += minutes;
     if (s.startDate < day.sleepStart) day.sleepStart = s.startDate;
@@ -53,6 +69,7 @@ export const WORKOUT_LABELS = {
   swimming: 'Schwimmen', swimmingPool: 'Schwimmen', hiking: 'Wandern', yoga: 'Yoga', elliptical: 'Crosstrainer', rowing: 'Rudern',
   stairClimbing: 'Treppensteigen', pilates: 'Pilates', dance: 'Tanzen', boxing: 'Boxen', soccer: 'Fußball', basketball: 'Basketball',
   badminton: 'Badminton', climbing: 'Klettern', jumpRope: 'Seilspringen', martialArts: 'Kampfsport', crossTraining: 'Cross-Training',
+  weightlifting: 'Krafttraining', runningTreadmill: 'Laufband', bikingStationary: 'Ergometer', other: 'Training',
 };
 
 export function toFitbitWorkout(w) {
@@ -74,10 +91,35 @@ export function buildVitalsDays({ steps = [], activeKcal = [], totalKcal = [], r
   put('steps', sumByDay(steps));
   put('activeKcal', sumByDay(activeKcal));
   put('totalKcal', sumByDay(totalKcal));
-  put('restingHr', valueByDay(restingHr));
+  put('restingHr', averageByDay(restingHr));
   for (const [key, s] of Object.entries(sleepByDay(sleep))) Object.assign(day(key), s);
-  for (const w of workouts.map(toFitbitWorkout)) (day(dayKeyOf(w.start)).workouts ??= []).push(w);
+  for (const w of (workouts ?? []).map(toFitbitWorkout)) (day(dayKeyOf(w.start)).workouts ??= []).push(w);
   return [...days.values()].map((d) => ({ ...d, syncedAt: now })).sort((a, b) => a.dateKey.localeCompare(b.dateKey));
+}
+
+// Welche Felder gehören zu welchem gelesenen Typ (siehe native-health.js, readAll).
+const FIELDS = {
+  steps: ['steps'], activeKcal: ['activeKcal'], totalKcal: ['totalKcal'], restingHr: ['restingHr'],
+  sleep: ['sleepMin', 'sleepStart', 'sleepEnd'], workouts: ['workouts'],
+};
+
+// Neue Werte in die gespeicherten einarbeiten. Nur Typen, die erfolgreich gelesen wurden (read), ersetzen ihre Felder,
+// und nur für Tage im Abgleich-Zeitraum (from bis to). Fehlgeschlagene Typen behalten ihre alten Werte.
+export function mergeVitalsDays(existing, fresh, { read, from, to, now }) {
+  const byDay = new Map(existing.map((d) => [d.dateKey, { ...d }]));
+  for (const [key, d] of byDay) {
+    if (key < from || key > to) continue;
+    for (const type of read) for (const f of FIELDS[type] ?? []) delete d[f];
+    d.syncedAt = now;
+  }
+  for (const f of fresh) {
+    const d = byDay.get(f.dateKey) ?? { dateKey: f.dateKey };
+    byDay.set(f.dateKey, { ...d, ...f, syncedAt: now });
+  }
+  return [...byDay.values()]
+    .filter((d) => d.dateKey >= from && d.dateKey <= to)
+    .filter((d) => Object.keys(d).some((k) => k !== 'dateKey' && k !== 'syncedAt'))
+    .sort((a, b) => a.dateKey.localeCompare(b.dateKey));
 }
 
 // Fitbit-Trainings, die sich zeitlich mit einer Einheit aus der App überschneiden, gelten als dieselbe Einheit: die App gewinnt.
@@ -128,9 +170,9 @@ export function dayToWrite({ todayKey, meals, status, written }) {
 }
 
 export function syncWindow({ lastSyncAt, now }) {
-  if (lastSyncAt == null) return { start: new Date(now - FIRST_SYNC_DAYS * DAY_MS).toISOString(), end: new Date(now).toISOString() };
+  // Immer ab Mitternacht (Ortszeit): Die Stundenwerte sollen ganze Kalendertage ergeben.
   const today = new Date(now);
-  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate() - RESYNC_DAYS);
+  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate() - (lastSyncAt == null ? FIRST_SYNC_DAYS : RESYNC_DAYS));
   return { start: start.toISOString(), end: today.toISOString() };
 }
 

@@ -208,7 +208,7 @@ export async function clearTrainingDraft() {
 // Ersetzt alles in einer Transaktion; bei Fehler wird nichts verändert.
 export async function replaceAll(data) {
   const db = await open();
-  const kept = await getSettings(); // Gerätezustand (Key, Online-Sicherung) überlebt das Einspielen einer Sicherung
+  const kept = await getSettings(); // Gerätezustand (Key, Online-Sicherung, Health Connect) überlebt das Einspielen einer Sicherung
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORES, 'readwrite');
     tx.oncomplete = () => { mealsListener?.(); resolve(); };
@@ -223,7 +223,7 @@ export async function replaceAll(data) {
       for (const x of data.exercises ?? []) tx.objectStore('exercises').put(x);
       for (const w of data.workouts ?? []) tx.objectStore('workouts').put(w);
       for (const v of data.vitals ?? []) tx.objectStore('vitals').put(v);
-      tx.objectStore('settings').put({ calorieGoal: null, ...data.settings, geminiKey: kept.geminiKey, ...(kept.onlineBackup ? { onlineBackup: kept.onlineBackup } : {}) }, 'main');
+      tx.objectStore('settings').put({ calorieGoal: null, ...data.settings, geminiKey: kept.geminiKey, ...(kept.onlineBackup ? { onlineBackup: kept.onlineBackup } : {}), ...(kept.health ? { health: kept.health } : {}) }, 'main');
     } catch (e) {
       tx.abort();
       reject(e);
