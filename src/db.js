@@ -1,11 +1,11 @@
 const DB_NAME = 'kalorientracker';
-const STORES = ['products', 'meals', 'weights', 'settings', 'days', 'exercises', 'workouts'];
+const STORES = ['products', 'meals', 'weights', 'settings', 'days', 'exercises', 'workouts', 'vitals'];
 let dbPromise = null;
 
 function open() {
   if (dbPromise) return dbPromise;
   dbPromise = new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 3);
+    const req = indexedDB.open(DB_NAME, 4);
     req.onupgradeneeded = (e) => {
       const db = req.result;
       if (e.oldVersion < 1) {
@@ -25,6 +25,10 @@ function open() {
         db.createObjectStore('exercises', { keyPath: 'id', autoIncrement: true });
         db.createObjectStore('workouts', { keyPath: 'id', autoIncrement: true }).createIndex('dateKey', 'dateKey');
       }
+      if (e.oldVersion < 4) {
+        // Tageszusammenfassungen aus Health Connect (Schritte, Kalorien, Ruhepuls, Schlaf, Fitbit-Trainings).
+        db.createObjectStore('vitals', { keyPath: 'dateKey' });
+      }
     };
     req.onsuccess = () => {
       document.getElementById('db-blocked-banner')?.remove();
@@ -42,6 +46,13 @@ function open() {
 const wrap = (req) => new Promise((resolve, reject) => {
   req.onsuccess = () => resolve(req.result);
   req.onerror = () => reject(req.error);
+});
+
+// Wartet, bis eine Transaktion mit mehreren Schreibvorgängen fertig ist.
+const txDone = (tx) => new Promise((resolve, reject) => {
+  tx.oncomplete = () => resolve();
+  tx.onerror = () => reject(tx.error);
+  tx.onabort = () => reject(tx.error ?? new Error('Abgebrochen'));
 });
 
 async function store(name, mode = 'readonly') {
@@ -95,6 +106,12 @@ export async function deleteMeal(id) {
 export async function setWeight(dateKey, kg) {
   await wrap((await store('weights', 'readwrite')).put({ date: dateKey, kg }));
 }
+// Gewichte aus Health Connect (mit source: 'health'). Einträge aus der App werden vorher ausgefiltert, siehe weightsToImport.
+export async function putWeights(list) {
+  const s = await store('weights', 'readwrite');
+  for (const w of list) s.put(w);
+  await txDone(s.transaction);
+}
 export async function listWeights() {
   const list = await getAll('weights');
   return list.sort((a, b) => a.date.localeCompare(b.date));
@@ -109,10 +126,23 @@ export async function saveSettings(s) {
 }
 
 export async function exportAll() {
-  const [products, meals, weights, settings, days, exercises, workouts] = await Promise.all([
-    getAll('products'), getAll('meals'), getAll('weights'), getSettings(), getAll('days'), getAll('exercises'), getAll('workouts'),
+  const [products, meals, weights, settings, days, exercises, workouts, vitals] = await Promise.all([
+    getAll('products'), getAll('meals'), getAll('weights'), getSettings(), getAll('days'), getAll('exercises'), getAll('workouts'), getAll('vitals'),
   ]);
-  return { products, meals, weights, settings, days, exercises, workouts };
+  return { products, meals, weights, settings, days, exercises, workouts, vitals };
+}
+
+// ---------- Vitaldaten (Health Connect) ----------
+export async function putVitalsDays(days) {
+  const s = await store('vitals', 'readwrite');
+  for (const d of days) s.put(d);
+  await txDone(s.transaction);
+}
+export async function listVitals() {
+  return (await getAll('vitals')).sort((a, b) => a.dateKey.localeCompare(b.dateKey));
+}
+export async function vitalsForDate(dateKey) {
+  return wrap((await store('vitals')).get(dateKey));
 }
 
 export async function setDayStatus(dateKey, status) {
@@ -183,6 +213,7 @@ export async function replaceAll(data) {
       for (const d of data.days ?? []) tx.objectStore('days').put(d);
       for (const x of data.exercises ?? []) tx.objectStore('exercises').put(x);
       for (const w of data.workouts ?? []) tx.objectStore('workouts').put(w);
+      for (const v of data.vitals ?? []) tx.objectStore('vitals').put(v);
       tx.objectStore('settings').put({ calorieGoal: null, ...data.settings, geminiKey: kept.geminiKey, ...(kept.onlineBackup ? { onlineBackup: kept.onlineBackup } : {}) }, 'main');
     } catch (e) {
       tx.abort();
