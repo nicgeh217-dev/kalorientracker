@@ -1,0 +1,131 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {
+  dayKeyOf, sumByDay, valueByDay, sleepByDay, toFitbitWorkout, buildVitalsDays, visibleFitbitWorkouts,
+  fitbitTrainingDays, weightsToImport, dayToWrite, syncWindow, shouldSync, formatSleep, avgSteps,
+} from '../src/vitals.js';
+
+// Ortszeit wie auf dem Handy: Tage werden nach lokaler Uhrzeit zugeordnet.
+const at = (y, m, d, h = 12, min = 0) => new Date(y, m - 1, d, h, min).toISOString();
+const NOW = new Date(2026, 10, 23, 15, 0).getTime();
+
+test('dayKeyOf: lokaler Kalendertag', () => {
+  assert.equal(dayKeyOf(at(2026, 11, 22, 23, 50)), '2026-11-22');
+  assert.equal(dayKeyOf(at(2026, 11, 23, 0, 10)), '2026-11-23');
+});
+
+test('sumByDay und valueByDay', () => {
+  const s = [{ startDate: at(2026, 11, 22, 8), value: 4000 }, { startDate: at(2026, 11, 22, 18), value: 1200 }, { startDate: at(2026, 11, 23, 9), value: 300 }];
+  assert.deepEqual(sumByDay(s), { '2026-11-22': 5200, '2026-11-23': 300 });
+  assert.deepEqual(valueByDay([{ startDate: at(2026, 11, 22, 1), value: 58 }, { startDate: at(2026, 11, 22, 3), value: 56.6 }]), { '2026-11-22': 57 });
+});
+
+test('sleepByDay: Nacht über Mitternacht zählt zum End-Tag, Wachphasen zählen nicht, Nickerchen werden addiert', () => {
+  const night = {
+    startDate: at(2026, 11, 22, 23, 30), endDate: at(2026, 11, 23, 7, 0), value: 450, sleepState: 'asleep',
+    stages: [
+      { stage: 'light', durationMinutes: 200 }, { stage: 'deep', durationMinutes: 90 },
+      { stage: 'rem', durationMinutes: 100 }, { stage: 'awake', durationMinutes: 40 }, { stage: 'inBed', durationMinutes: 20 },
+    ],
+  };
+  const nap = { startDate: at(2026, 11, 23, 14, 0), endDate: at(2026, 11, 23, 14, 30), value: 30, sleepState: 'asleep' };
+  const awakeOnly = { startDate: at(2026, 11, 23, 15, 0), endDate: at(2026, 11, 23, 15, 10), value: 10, sleepState: 'awake' };
+  const r = sleepByDay([night, nap, awakeOnly]);
+  assert.equal(r['2026-11-23'].sleepMin, 390 + 30);
+  assert.equal(r['2026-11-23'].sleepStart, night.startDate);
+  assert.equal(r['2026-11-23'].sleepEnd, awakeOnly.endDate);
+  assert.equal(r['2026-11-22'], undefined);
+});
+
+test('toFitbitWorkout: deutscher Titel, Minuten, Kalorien', () => {
+  const w = toFitbitWorkout({ workoutType: 'running', duration: 1925, totalEnergyBurned: 281.6, startDate: at(2026, 11, 22, 7), endDate: at(2026, 11, 22, 7, 32) });
+  assert.deepEqual(w, { type: 'running', title: 'Laufen', start: at(2026, 11, 22, 7), end: at(2026, 11, 22, 7, 32), durationMin: 32, kcal: 282 });
+  assert.equal(toFitbitWorkout({ workoutType: 'curling', duration: 60, startDate: at(2026, 11, 22), endDate: at(2026, 11, 22) }).title, 'Training');
+  assert.equal(toFitbitWorkout({ workoutType: 'walking', duration: 60, startDate: at(2026, 11, 22), endDate: at(2026, 11, 22) }).kcal, null);
+});
+
+test('buildVitalsDays: nur vorhandene Felder, ein Datensatz je Tag', () => {
+  const days = buildVitalsDays({
+    steps: [{ startDate: at(2026, 11, 22), value: 8412 }],
+    activeKcal: [], totalKcal: [{ startDate: at(2026, 11, 23), value: 2310.4 }],
+    restingHr: [], sleep: [], workouts: [],
+  }, NOW);
+  assert.deepEqual(days, [
+    { dateKey: '2026-11-22', steps: 8412, syncedAt: NOW },
+    { dateKey: '2026-11-23', totalKcal: 2310, syncedAt: NOW },
+  ]);
+});
+
+const fit = (type, h, min, durationMin = 30) => ({ type, title: type, start: at(2026, 11, 22, h, min), end: new Date(new Date(at(2026, 11, 22, h, min)).getTime() + durationMin * 60000).toISOString(), durationMin, kcal: 100 });
+
+test('visibleFitbitWorkouts: überschneidet sich mit einer App-Einheit, wird ausgeblendet', () => {
+  const app = [{ dateKey: '2026-11-22', startedAt: new Date(2026, 10, 22, 18, 0).getTime(), durationMin: 60, sets: [{}] }];
+  const list = [fit('strengthTraining', 18, 20), fit('running', 7, 0)];
+  assert.deepEqual(visibleFitbitWorkouts(list, app).map((w) => w.type), ['running']);
+});
+
+test('visibleFitbitWorkouts: nachgetragene Einheit ohne Dauer überschneidet nie', () => {
+  const app = [{ dateKey: '2026-11-22', startedAt: new Date(2026, 10, 22, 18, 0).getTime(), durationMin: null, sets: [{}] }];
+  assert.equal(visibleFitbitWorkouts([fit('running', 18, 10)], app).length, 1);
+});
+
+test('fitbitTrainingDays: Gehen zählt nicht, überschneidende Trainings auch nicht', () => {
+  const vitals = [
+    { dateKey: '2026-11-21', workouts: [fit('walking', 9, 0)] },
+    { dateKey: '2026-11-22', workouts: [fit('running', 7, 0)] },
+    { dateKey: '2026-11-23', workouts: [{ ...fit('cycling', 18, 0), start: at(2026, 11, 23, 18), end: at(2026, 11, 23, 18, 30) }] },
+  ];
+  const app = [{ dateKey: '2026-11-23', startedAt: new Date(2026, 10, 23, 18, 10).getTime(), durationMin: 40, sets: [{}] }];
+  assert.deepEqual(fitbitTrainingDays(vitals, app), ['2026-11-22']);
+});
+
+test('weightsToImport: frühestes am Tag, App-Gewicht gewinnt, Korrektur eines übernommenen wird übernommen', () => {
+  const samples = [
+    { startDate: at(2026, 11, 20, 7), value: 74.04 }, { startDate: at(2026, 11, 20, 20), value: 75 },
+    { startDate: at(2026, 11, 21, 7), value: 73.8 },
+    { startDate: at(2026, 11, 22, 7), value: 73.5 },
+    { startDate: at(2026, 11, 23, 7), value: 73.2 },
+  ];
+  const app = [
+    { date: '2026-11-21', kg: 74.5 },
+    { date: '2026-11-22', kg: 73.4, source: 'health' },
+    { date: '2026-11-23', kg: 73.2, source: 'health' },
+  ];
+  assert.deepEqual(weightsToImport(samples, app), [
+    { date: '2026-11-20', kg: 74, source: 'health' },
+    { date: '2026-11-22', kg: 73.5, source: 'health' },
+  ]);
+});
+
+test('dayToWrite: nur der Vortag, einmal, nicht leer und nicht krank', () => {
+  const meals = [{ dateKey: '2026-11-22', kcal: 640.4, protein: 24.2 }, { dateKey: '2026-11-22', kcal: 320, protein: null }];
+  assert.deepEqual(dayToWrite({ todayKey: '2026-11-23', meals, status: null, written: [] }), { dateKey: '2026-11-22', kcal: 960, protein: 24 });
+  assert.equal(dayToWrite({ todayKey: '2026-11-23', meals, status: null, written: ['2026-11-22'] }), null);
+  assert.equal(dayToWrite({ todayKey: '2026-11-23', meals: [], status: null, written: [] }), null);
+  assert.equal(dayToWrite({ todayKey: '2026-11-23', meals, status: 'sick', written: [] }), null);
+  assert.equal(dayToWrite({ todayKey: '2026-11-23', meals, status: 'rest', written: [] }).kcal, 960);
+  assert.equal(dayToWrite({ todayKey: '2026-11-23', meals: [{ dateKey: '2026-11-23', kcal: 500 }], status: null, written: [] }), null);
+});
+
+test('syncWindow: erst 90 Tage, danach die letzten 3 Tage ab Tagesbeginn', () => {
+  const first = syncWindow({ lastSyncAt: null, now: NOW });
+  assert.equal(first.end, new Date(NOW).toISOString());
+  assert.equal(Math.round((NOW - new Date(first.start).getTime()) / 86400000), 90);
+  const later = syncWindow({ lastSyncAt: NOW - 3600000, now: NOW });
+  assert.equal(later.start, new Date(2026, 10, 20, 0, 0).toISOString());
+});
+
+test('shouldSync: höchstens alle 5 Minuten', () => {
+  assert.equal(shouldSync(null, NOW), true);
+  assert.equal(shouldSync(NOW - 4 * 60000, NOW), false);
+  assert.equal(shouldSync(NOW - 5 * 60000, NOW), true);
+});
+
+test('formatSleep und avgSteps', () => {
+  assert.equal(formatSleep(432), '7 h 12 min');
+  assert.equal(formatSleep(45), '45 min');
+  assert.equal(formatSleep(480), '8 h');
+  const v = [{ dateKey: '2026-11-17', steps: 8000 }, { dateKey: '2026-11-18', steps: 9000 }, { dateKey: '2026-11-19' }];
+  assert.equal(avgSteps(v, ['2026-11-16', '2026-11-17', '2026-11-18', '2026-11-19']), 8500);
+  assert.equal(avgSteps(v, ['2026-11-30']), null);
+});
