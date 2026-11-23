@@ -12,6 +12,7 @@ import { parseWeight } from '../weight-input.js';
 import { minHealthyWeight } from '../calorie.js';
 import { openCalculator } from './calculator.js';
 import { onlineBackupCard } from './online-backup-ui.js';
+import { healthCard } from './health-ui.js';
 
 export async function renderSettings() {
   const root = document.getElementById('view-settings');
@@ -132,7 +133,8 @@ export async function renderSettings() {
         exportBtn,
         el('button', { class: 'btn', onClick: () => importInput.click() }, 'Sicherung importieren'),
         importInput)),
-    onlineBackupCard(s, renderSettings));
+    onlineBackupCard(s, renderSettings),
+    healthCard(s, renderSettings));
 }
 
 function calcInfo(s) {
