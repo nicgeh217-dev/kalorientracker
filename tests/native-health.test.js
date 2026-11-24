@@ -82,28 +82,28 @@ test('readAll: höchstens 10 Seiten Trainings', async () => {
   assert.equal(r.workouts.length, 10);
 });
 
-test('writeDay: Kalorien und Protein über den ganzen Tag in Ortszeit', async () => {
+test('writeMeal: Kalorien und Protein mit der Uhrzeit der Mahlzeit', async () => {
   const f = fakeCap();
-  await healthClient({ cap: f.cap }).writeDay({ dateKey: '2026-11-22', kcal: 1830, protein: 92 });
+  const start = new Date(2026, 10, 22, 12, 30).toISOString();
+  const end = new Date(2026, 10, 22, 12, 31).toISOString();
+  await healthClient({ cap: f.cap }).writeMeal({ kcal: 640, protein: 24, startDate: start, endDate: end });
   const saves = f.calls.filter(([m]) => m === 'saveSample').map(([, o]) => o);
-  assert.deepEqual(saves.map((s) => [s.dataType, s.value]), [['dietaryEnergyConsumed', 1830], ['dietaryProtein', 92]]);
-  assert.equal(saves[0].startDate, new Date(2026, 10, 22, 0, 0, 0).toISOString());
-  assert.equal(saves[0].endDate, new Date(2026, 10, 22, 23, 59, 59).toISOString());
+  assert.deepEqual(saves.map((s) => [s.dataType, s.value, s.startDate, s.endDate]), [['dietaryEnergyConsumed', 640, start, end], ['dietaryProtein', 24, start, end]]);
 });
 
-test('writeDay: scheitert nur das Protein, gilt der Tag trotzdem als geschrieben (keine doppelten Kalorien)', async () => {
+test('writeMeal: scheitert nur das Protein, gilt die Mahlzeit trotzdem als gesendet', async () => {
   const f = fakeCap({ saveSample: (o) => { if (o.dataType === 'dietaryProtein') throw new Error('kein Recht'); return {}; } });
-  await healthClient({ cap: f.cap }).writeDay({ dateKey: '2026-11-22', kcal: 500, protein: 30 });
+  await healthClient({ cap: f.cap }).writeMeal({ kcal: 500, protein: 30, startDate: 'a', endDate: 'b' });
 });
 
-test('writeDay: scheitern die Kalorien, wird der Fehler weitergegeben', async () => {
+test('writeMeal: scheitern die Kalorien, wird der Fehler weitergegeben', async () => {
   const f = fakeCap({ saveSample: new Error('kein Recht') });
-  await assert.rejects(() => healthClient({ cap: f.cap }).writeDay({ dateKey: '2026-11-22', kcal: 500, protein: 30 }));
+  await assert.rejects(() => healthClient({ cap: f.cap }).writeMeal({ kcal: 500, protein: 30, startDate: 'a', endDate: 'b' }));
 });
 
-test('writeDay: Protein 0 wird nicht geschrieben', async () => {
+test('writeMeal: Protein 0 wird nicht geschrieben', async () => {
   const f = fakeCap();
-  await healthClient({ cap: f.cap }).writeDay({ dateKey: '2026-11-22', kcal: 500, protein: 0 });
+  await healthClient({ cap: f.cap }).writeMeal({ kcal: 500, protein: 0, startDate: 'a', endDate: 'b' });
   assert.equal(f.calls.filter(([m]) => m === 'saveSample').length, 1);
 });
 
@@ -113,7 +113,7 @@ test('im Browser passiert nichts', async () => {
   const c = healthClient({ cap });
   assert.equal(await c.available(), false);
   await c.readAll({ start: 'a', end: 'b' });
-  await c.writeDay({ dateKey: '2026-11-22', kcal: 1, protein: 1 });
+  await c.writeMeal({ kcal: 1, protein: 1, startDate: 'a', endDate: 'b' });
   assert.equal(called, false);
 });
 

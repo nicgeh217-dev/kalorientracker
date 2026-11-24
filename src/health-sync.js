@@ -1,16 +1,15 @@
-import { localDateKey } from './logic.js';
-import { addDays } from './overview.js';
-import { buildVitalsDays, mergeVitalsDays, weightsToImport, dayToWrite, syncWindow, shouldSync, dayKeyOf } from './vitals.js';
+import { buildVitalsDays, mergeVitalsDays, weightsToImport, syncWindow, shouldSync, dayKeyOf } from './vitals.js';
+import { mealsToSend, changedSince, trimSent } from './health-send.js';
 import { enabledMetrics, hcTypesFor } from './health-metrics.js';
 
-const KEEP_WRITTEN = 14;
 // Ergebnis-Schlüssel von readAll, die in die Tageswerte gehen (Gewicht wird getrennt übernommen).
 const VITAL_TYPES = ['steps', 'activeKcal', 'totalKcal', 'restingHr', 'sleep', 'workouts', 'distance', 'floors', 'hr', 'hrv', 'spo2', 'respRate', 'vo2max', 'bodyFat'];
 
 // Abgleich mit Health Connect: Werte lesen, Gewichte übernehmen, den abgeschlossenen Vortag zurückschreiben.
 // Wirft nie. Ergebnis: 'skipped' (nicht verbunden oder zu früh), 'done' oder 'failed' (still, der nächste Versuch holt es nach).
 // store kapselt die Datenbank, client den Plugin-Adapter (native-health.js), damit beides in Tests gefälscht werden kann.
-export async function syncHealth({ client, store, now, force = false }) {
+// sendNow: auch Mahlzeiten unter 3 Stunden senden (Knopf "Jetzt senden").
+export async function syncHealth({ client, store, now, force = false, sendNow = false }) {
   const settings = await store.getSettings();
   const health = settings.health;
   if (!health?.connected) return 'skipped';
@@ -30,21 +29,35 @@ export async function syncHealth({ client, store, now, force = false }) {
     const weights = weightsToImport(raw.weights ?? [], await store.listWeights());
     if (weights.length) await store.putWeights(weights);
 
-    let written = health.written ?? [];
+    // Gegessenes senden: jede Mahlzeit einzeln, einmal. Ein Fehler wird gemerkt (lastSend), damit er in den Einstellungen sichtbar ist.
+    let sentMeals = health.sentMeals;
+    let lastSend = health.lastSend;
     if (health.sendNutrition !== false) {
-      const todayKey = localDateKey(new Date(now));
-      const yesterday = addDays(todayKey, -1);
-      const status = (await store.listDayStatuses()).find((d) => d.dateKey === yesterday)?.status ?? null;
-      const target = dayToWrite({ todayKey, meals: await store.listMeals(), status, written });
-      if (target) {
-        await client.writeDay(target);
-        written = [...written, target.dateKey].slice(-KEEP_WRITTEN);
+      const meals = await store.listMeals();
+      const todo = mealsToSend({ meals, now, sent: sentMeals ?? {}, days: await store.listDayStatuses(), writtenDays: health.written ?? [], immediately: sendNow });
+      const done = {};
+      let failed = false;
+      for (const m of todo) {
+        try {
+          await client.writeMeal(m);
+          done[m.key] = m.signature;
+        } catch {
+          failed = true;
+          break; // fehlt das Recht, scheitern alle: nicht jede einzeln versuchen
+        }
       }
+      if (Object.keys(done).length) sentMeals = trimSent({ ...(sentMeals ?? {}), ...done });
+      if (todo.length || failed) {
+        lastSend = failed
+          ? { at: now, ok: false, count: Object.keys(done).length, error: 'Recht fehlt oder Health Connect nicht erreichbar' }
+          : { at: now, ok: true, count: Object.keys(done).length };
+      }
+      lastSend = { ...(lastSend ?? {}), changed: changedSince(meals, sentMeals ?? {}).length };
     }
     const fresh = await store.getSettings(); // Einstellungen können sich während des Abgleichs geändert haben
     // Wurde der Verlauf währenddessen zurückgesetzt (neue Rechte), bleibt er zurückgesetzt: Der nächste Abgleich lädt dann 90 Tage.
     const resetMeanwhile = health.lastSyncAt != null && fresh.health?.lastSyncAt === null;
-    await store.saveSettings({ ...fresh, health: { ...fresh.health, lastSyncAt: resetMeanwhile ? null : now, written } });
+    await store.saveSettings({ ...fresh, health: { ...fresh.health, lastSyncAt: resetMeanwhile ? null : now, ...(sentMeals ? { sentMeals } : {}), ...(lastSend ? { lastSend } : {}) } });
     return 'done';
   } catch {
     return 'failed';

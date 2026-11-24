@@ -88,14 +88,11 @@ export function healthClient({ cap = globalThis.Capacitor } = {}) {
       }
       return out;
     },
-    // Ein abgeschlossener Tag: Kalorien und Protein als je ein Eintrag über den ganzen Tag (Ortszeit).
-    async writeDay({ dateKey, kcal, protein }) {
+    // Eine Mahlzeit: Kalorien und Protein mit ihrer eigenen Uhrzeit (start/end als ISO-Zeit).
+    async writeMeal({ kcal, protein, startDate, endDate }) {
       if (!native) return;
-      const [y, m, d] = dateKey.split('-').map(Number);
-      const startDate = new Date(y, m - 1, d, 0, 0, 0).toISOString();
-      const endDate = new Date(y, m - 1, d, 23, 59, 59).toISOString();
       await call('saveSample', { dataType: 'dietaryEnergyConsumed', value: kcal, startDate, endDate });
-      // Scheitert nur das Protein, gilt der Tag trotzdem als geschrieben: sonst kämen die Kalorien beim nächsten Mal doppelt an.
+      // Scheitert nur das Protein, gilt die Mahlzeit trotzdem als gesendet: sonst kämen die Kalorien beim nächsten Mal doppelt an.
       if (protein > 0) await call('saveSample', { dataType: 'dietaryProtein', value: protein, startDate, endDate }).catch(() => {});
     },
     openSettings: () => (native ? call('openHealthConnectSettings') : undefined),

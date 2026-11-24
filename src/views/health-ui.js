@@ -12,11 +12,11 @@ import { METRICS, enabledMetrics, hcTypesFor } from '../health-metrics.js';
 const dbStore = { getSettings, saveSettings, listWeights, putWeights, putVitalsDays, listVitals, listMeals, listDayStatuses };
 
 let running = null;
-export function runHealthSync({ force = false } = {}) {
+export function runHealthSync({ force = false, sendNow = false } = {}) {
   // Läuft schon ein Abgleich (z. B. beim Zurückkehren aus Health Connect gestartet), wartet ein erzwungener auf ihn und läuft danach neu:
   // Sonst würde der alte Abgleich den zurückgesetzten Verlauf überschreiben und neue Werte bekämen nur 3 statt 90 Tage.
-  if (running) return force ? running.then(() => runHealthSync({ force: true })) : running;
-  running = syncHealth({ client: healthClient(), store: dbStore, now: Date.now(), force })
+  if (running) return force ? running.then(() => runHealthSync({ force: true, sendNow })) : running;
+  running = syncHealth({ client: healthClient(), store: dbStore, now: Date.now(), force, sendNow })
     .then((r) => { if (r === 'done') refreshCurrent(); return r; })
     .finally(() => { running = null; });
   return running;
@@ -93,6 +93,38 @@ function metricList(s, client, rerender) {
     ...rows);
 }
 
+// Was beim Senden an Health Connect los ist, in Worten. So sieht man, ob etwas ankommt.
+const plural = (n) => (n === 1 ? 'Mahlzeit' : 'Mahlzeiten');
+
+function sendStatus(h) {
+  const canWrite = (h.granted?.write ?? []).includes('dietaryEnergyConsumed');
+  const last = h.lastSend;
+  const lines = [];
+  lines.push(canWrite ? 'Senden ist erlaubt.' : 'Senden ist nicht erlaubt. Tippe unten auf „Rechte anfragen“ und erlaube das Schreiben von Ernährung.');
+  if (last?.ok) lines.push('Zuletzt gesendet: ' + when(last.at) + ', ' + last.count + ' ' + plural(last.count) + '.');
+  else if (last && !last.ok) lines.push('Letzter Versuch ' + when(last.at) + ' hat nicht geklappt: ' + last.error + '.');
+  else lines.push('Noch nichts gesendet. Mahlzeiten gehen 3 Stunden nach dem Eintragen raus.');
+  if (last?.changed > 0) lines.push(last.changed + ' ' + (last.changed === 1 ? 'Mahlzeit wurde' : 'Mahlzeiten wurden') + ' nach dem Senden geändert. Bei Google steht noch der alte Wert.');
+  return { lines, bad: !canWrite || last?.ok === false };
+}
+
+function sendBlock(h, rerender) {
+  const st = sendStatus(h);
+  return [
+    el('div', { class: st.bad ? 'note warn' : 'note', style: 'margin:8px 0' }, ...st.lines.map((l) => el('div', {}, l))),
+    el('button', {
+      class: 'btn', style: 'width:100%',
+      onClick: async (ev) => {
+        ev.currentTarget.disabled = true;
+        await runHealthSync({ force: true, sendNow: true });
+        const last = (await getSettings()).health?.lastSend;
+        toast(last?.ok ? last.count + ' ' + plural(last.count) + ' gesendet.' : last ? 'Senden hat nicht geklappt. Prüfe das Recht für Ernährung.' : 'Es gibt nichts zu senden.');
+        rerender();
+      },
+    }, 'Jetzt senden'),
+  ];
+}
+
 function card(s, client, rerender) {
   const h = s.health ?? {};
   const msg = el('div');
@@ -137,7 +169,8 @@ function card(s, client, rerender) {
     el('div', {}, 'Verbunden.'),
     el('div', { class: 'muted', style: 'margin-top:4px' }, h.lastSyncAt ? `Letzter Abgleich: ${when(h.lastSyncAt)}` : 'Noch kein Abgleich.'),
     hint,
-    el('label', { class: 'checkrow' }, send, el('span', {}, 'Gegessene Kalorien und Protein an Health Connect senden (einmal pro abgeschlossenem Tag)')),
+    el('label', { class: 'checkrow' }, send, el('span', {}, 'Gegessene Kalorien und Protein an Health Connect senden (jede Mahlzeit einzeln, 3 Stunden nach dem Eintragen)')),
+    ...sendBlock(h, rerender),
     metricList(s, client, rerender),
     msg,
     el('div', { class: 'actions' },
