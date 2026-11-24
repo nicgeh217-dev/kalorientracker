@@ -75,3 +75,10 @@ test('widgetPayload: Ziele kommen aus nutrientTargets, wie in der App', async ()
   const p = widgetPayload({ dateKey: 'd', meals: [], vitals: [], settings: { calorieGoal: 2000, targets: { fat: 60 } } });
   assert.equal(p.proteinGoal, 100); assert.equal(p.carbsGoal, 250); assert.equal(p.fatGoal, 60);
 });
+
+test('pushToWidget: reicht alle Widget-Werte weiter, nicht nur kcal und Datum', async () => {
+  const f = fakeCap();
+  const payload = { dateKey: '2026-11-24', kcal: 1112, goal: 2200, protein: 50, carbs: 156, fat: 29, proteinGoal: 110, carbsGoal: 275, fatGoal: 73, steps: 5500, sleepMin: 372, restingHr: 54 };
+  await pushToWidget(payload, { cap: f.cap });
+  assert.deepEqual(f.calls[0][2], payload);
+});

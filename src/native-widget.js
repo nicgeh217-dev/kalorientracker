@@ -5,10 +5,10 @@ const isNative = (cap) => Boolean(cap?.isNativePlatform?.());
 
 export const widgetKcal = (meals) => Math.round(meals.reduce((sum, m) => sum + (m.kcal ?? 0), 0));
 
-export async function pushToWidget({ kcal, dateKey }, { cap = globalThis.Capacitor } = {}) {
+export async function pushToWidget(payload, { cap = globalThis.Capacitor } = {}) {
   if (!isNative(cap)) return;
   try {
-    await cap.nativePromise(PLUGIN, 'update', { kcal, dateKey });
+    await cap.nativePromise(PLUGIN, 'update', payload);
   } catch {
     // Das Widget zeigt dann den letzten Stand. Die App selbst läuft weiter.
   }
