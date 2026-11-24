@@ -28,5 +28,9 @@ export function bodyLine(day, enabled) {
   return parts.length ? parts.join(' · ') : null;
 }
 
+// Farbe je Bereich, wie bei den Karten auf Heute: Schlaf, Bewegung, Herz. Alles andere bleibt orange.
+const GROUP = { sleep: 'var(--c-sleep)', steps: 'var(--c-move)', distance: 'var(--c-move)', floors: 'var(--c-move)', kcal: 'var(--c-move)', restingHr: 'var(--c-heart)', hr: 'var(--c-heart)', hrv: 'var(--c-heart)', spo2: 'var(--c-heart)', respRate: 'var(--c-heart)' };
+export const accentFor = (chartId) => GROUP[String(chartId).split(':')[0]] ?? 'var(--orange)';
+
 // Kurven für die Karte "Körper" im Verlauf.
 export const bodyCharts = (enabled) => chosen(enabled).flatMap((m) => m.chart.map((c) => ({ ...c, id: `${m.id}:${c.label}` })));

@@ -469,7 +469,8 @@ input.unsure { background: var(--warn-bg); border-color: var(--orange); }
 .insight-head { margin-top: 16px; font-size: 12px; color: var(--muted); }
 
 /* Karten Schlaf, Bewegung, Herz (nur Android-App): ruhige Flächen, eine Farbe je Bereich als Akzent. Zahlen ohne Wertung. */
-:root { --c-sleep: #7b8cff; --c-move: #3ccf7a; --c-heart: #ff7a8a; }
+:root { --c-sleep: #5b6df0; --c-move: #1f9d55; --c-heart: #e5485b; --ph-deep: #4455d8; --ph-rem: #7482f5; --ph-light: #aab3ff; }
+@media (prefers-color-scheme: dark) { :root { --c-sleep: #7b8cff; --c-move: #3ccf7a; --c-heart: #ff7a8a; --ph-deep: #5566e6; --ph-rem: #9aa6ff; --ph-light: #c6ccff; } }
 .bodydashwrap { display: grid; gap: 12px; margin-bottom: 12px; }
 .bodydash { display: block; width: 100%; margin: 0; text-align: left; color: var(--text); font-weight: 400; }
 .bodydash:active { transform: scale(.99); }
@@ -491,8 +492,12 @@ input.unsure { background: var(--warn-bg); border-color: var(--orange); }
 .phaselegend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
 .phaselegend span { display: inline-flex; align-items: center; gap: 4px; }
 .phaselegend i { width: 8px; height: 8px; border-radius: 50%; }
-.ph-deep { background: #5566e6; } .ph-rem { background: #9aa6ff; } .ph-light { background: #c6ccff; } .ph-awake { background: color-mix(in srgb, var(--text) 30%, transparent); }
+.ph-deep { background: var(--ph-deep); } .ph-rem { background: var(--ph-rem); } .ph-light { background: var(--ph-light); } .ph-awake { background: color-mix(in srgb, var(--text) 30%, transparent); }
 .bdtiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 16px 12px; }
 .bdtile .nval { font-size: 16px; margin: 0; white-space: nowrap; }
 .bdtile .rtrack { margin: 8px 0 0; }
 .bdother { font-size: 12px; color: var(--muted); margin: -4px 4px 0; }
+
+/* Kurven: graue Spanne (dein üblicher Bereich) und sanfte Fläche unter der Linie */
+.curve .crange { fill: color-mix(in srgb, var(--text) 12%, transparent); }
+.curve .carea { opacity: .12; }

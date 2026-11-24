@@ -6,7 +6,8 @@ import { shiftWeek, weekReview, weekTitle } from '../week.js';
 import { trackingDays, streak } from '../pet.js';
 import { mealsForDate, getSettings, listMeals, listDayStatuses, setDayStatus, listWorkouts, listExercises, listWeights, listVitals } from '../db.js';
 import { avgSteps, fitbitTrainingDays } from '../vitals.js';
-import { bodyLine, bodyCharts } from './body-card.js';
+import { bodyLine, bodyCharts, accentFor } from './body-card.js';
+import { typicalRange } from '../vitals-view.js';
 import { enabledMetrics } from '../health-metrics.js';
 import { insightsCard } from './insights-card.js';
 import { MUSCLES, personalRecords, muscleDistribution, weeklySetSeries, progressCurve, daysSinceMuscle } from '../training.js';
@@ -163,10 +164,12 @@ function bodyChartCard(vitals, todayKey, enabled) {
   return el('div', { class: 'card' },
     el('b', {}, 'Körper'),
     el('div', { class: 'chips', style: 'margin:8px -16px 8px' }, ...available.map((m) => el('button', {
-      class: m.id === metric.id ? 'on' : '', 'aria-pressed': m.id === metric.id ? 'true' : 'false', onClick: () => { bodyMetric = m.id; renderHistory(); },
+      class: m.id === metric.id ? 'on' : '', 'aria-pressed': m.id === metric.id ? 'true' : 'false',
+      ...(m.id === metric.id ? { style: `border-color:${accentFor(m.id)};box-shadow:inset 0 0 0 1px ${accentFor(m.id)}` } : {}),
+      onClick: () => { bodyMetric = m.id; renderHistory(); },
     }, el('b', {}, m.label)))),
-    curveChart(points),
-    el('div', { class: 'muted' }, `${metric.caption} Aus Health Connect.`));
+    curveChart(points, { accent: accentFor(metric.id), range: typicalRange(vitals, metric.value, todayKey) }),
+    el('div', { class: 'muted' }, `${metric.caption} Aus Health Connect. Graue Spanne: dein üblicher Bereich der letzten 30 Tage.`));
 }
 
 function progressCards({ workouts, exercises, weights, todayKey }) {
