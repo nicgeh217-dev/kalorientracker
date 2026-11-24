@@ -15,7 +15,12 @@ export function parseRelease(json) {
 // current 0 = Entwicklungsstand ohne Nummer (lokal gebaut): meldet nie.
 export const isNewer = (latestBuild, current) => current > 0 && latestBuild > current;
 
-export const shouldCheck = (lastCheckAt, now) => lastCheckAt == null || now - lastCheckAt >= CHECK_EVERY_MS;
+// Nach einem Fehler (z. B. Limit bei GitHub) eine Stunde Pause, sonst würde jede Rückkehr in die App erneut fragen.
+const RETRY_AFTER_FAIL_MS = 3600 * 1000;
+export const shouldCheck = (lastCheckAt, now, lastFailAt = null) => {
+  if (lastFailAt != null && now - lastFailAt < RETRY_AFTER_FAIL_MS) return false;
+  return lastCheckAt == null || now - lastCheckAt >= CHECK_EVERY_MS;
+};
 
 // Eine Version, die weggeklickt wurde, kommt nicht wieder. Eine noch neuere schon.
 export const shouldShow = (update, dismissedBuild) => Boolean(update) && update.build !== dismissedBuild;

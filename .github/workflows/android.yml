@@ -5,6 +5,11 @@ on:
     branches: [native]
   workflow_dispatch:
 
+# Pushes kurz hintereinander laufen nacheinander, damit die neuere Version zuletzt veröffentlicht wird und "latest" bleibt.
+concurrency:
+  group: apk
+  cancel-in-progress: false
+
 jobs:
   apk:
     runs-on: ubuntu-latest
@@ -38,6 +43,10 @@ jobs:
           if [ -n "$KEYSTORE_B64" ]; then
             echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/debug-fest.p12"
             echo "DEBUG_KEYSTORE_FILE=$RUNNER_TEMP/debug-fest.p12" >> "$GITHUB_ENV"
+          elif [ "${{ github.event_name }}" = "push" ]; then
+            # Ohne den festen Schlüssel würde ein zufällig signierter APK veröffentlicht, den Android nicht über die installierte App lässt.
+            echo "::error::Das Secret DEBUG_KEYSTORE_B64 fehlt. Es wird nichts veröffentlicht."
+            exit 1
           fi
       - name: Debug-APK bauen
         working-directory: android
@@ -57,4 +66,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           cp android/app/build/outputs/apk/debug/app-debug.apk Kalorientracker.apk
-          gh release create "app-${{ github.run_number }}" Kalorientracker.apk --title "Version ${{ github.run_number }}" --notes "$(git log -1 --pretty=%s)" --latest
+          TAG="app-${{ github.run_number }}"
+          # Ein erneuter Lauf derselben Nummer (Re-run) darf nicht scheitern, weil das Release schon da ist.
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            echo "Release $TAG gibt es schon, nichts zu tun."
+          else
+            gh release create "$TAG" Kalorientracker.apk --target "$GITHUB_SHA" --title "Version ${{ github.run_number }}" --notes "$(git log -1 --pretty=%s)" --latest
+          fi

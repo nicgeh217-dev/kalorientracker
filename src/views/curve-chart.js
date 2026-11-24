@@ -12,7 +12,7 @@ const shortDay = (dateKey) => dateKey.slice(5).split('-').reverse().map(Number).
 // Verlauf einer Übung oder eines Körperwerts. Zeigt nur den Verlauf, keine Farbe sagt "besser" oder "schlechter".
 // opts.accent: Farbe der Linie (CSS-Wert, z. B. var(--c-sleep)), dazu eine sanfte Fläche darunter. Ohne bleibt es orange wie bisher.
 // opts.range: {lo, hi}, dein üblicher Bereich als graue Spanne hinter der Kurve.
-export function curveChart(points, { accent = null, range = null } = {}) {
+export function curveChart(points, { accent = null, range = null, label = 'Verlauf der Übung' } = {}) {
   const W = 320;
   const H = 120;
   const pad = { l: 34, r: 10, t: 10, b: 20 };
@@ -25,7 +25,7 @@ export function curveChart(points, { accent = null, range = null } = {}) {
   if (range) { lo = Math.min(lo, range.lo); hi = Math.max(hi, range.hi); }
   const x = (i) => pad.l + (points.length === 1 ? (W - pad.l - pad.r) / 2 : (i / (points.length - 1)) * (W - pad.l - pad.r));
   const y = (v) => pad.t + (1 - (v - lo) / (hi - lo)) * (H - pad.t - pad.b);
-  const svg = sv('svg', { viewBox: `0 0 ${W} ${H}`, class: 'curve', role: 'img', 'aria-label': 'Verlauf der Übung' });
+  const svg = sv('svg', { viewBox: `0 0 ${W} ${H}`, class: 'curve', role: 'img', 'aria-label': label });
   const color = accent ? { style: `stroke:${accent}` } : { stroke: '#f2711c' };
   const dot = accent ? { style: `fill:${accent}` } : { fill: '#f2711c' };
   const line = points.map((p, i) => `${x(i)},${y(p.value)}`).join(' ');

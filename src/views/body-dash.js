@@ -141,7 +141,7 @@ function openDetail(title, keys, vitals, dateKey, accent) {
       keys.length > 1 ? el('div', { class: 'chips', style: 'margin:8px -16px 12px' }, ...keys.map((k) => el('button', {
         class: k === current ? 'on' : '', 'aria-pressed': k === current ? 'true' : 'false', onClick: () => { current = k; draw(); },
       }, el('b', {}, V[k].label)))) : null,
-      points.length ? curveChart(points, { accent, range: chartRange }) : el('div', { class: 'muted' }, 'Noch keine Werte.'),
+      points.length ? curveChart(points, { accent, range: chartRange, label: `Verlauf ${v.label}` }) : el('div', { class: 'muted' }, 'Noch keine Werte.'),
       el('div', { class: 'muted' }, `${v.caption} Letzte 30 Tage, aus Health Connect.`),
       range ? el('div', { style: 'margin-top:12px' }, `Dein üblicher Bereich: ${v.show(range.lo)} bis ${v.show(range.hi)} (Mitte ${v.show(range.median)}), aus ${range.n} Tagen.`) : el('div', { class: 'muted', style: 'margin-top:12px' }, 'Dein üblicher Bereich erscheint ab 7 Tagen mit Werten.'));
   };

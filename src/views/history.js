@@ -168,7 +168,7 @@ function bodyChartCard(vitals, todayKey, enabled) {
       ...(m.id === metric.id ? { style: `border-color:${accentFor(m.id)};box-shadow:inset 0 0 0 1px ${accentFor(m.id)}` } : {}),
       onClick: () => { bodyMetric = m.id; renderHistory(); },
     }, el('b', {}, m.label)))),
-    curveChart(points, { accent: accentFor(metric.id), range: typicalRange(vitals, metric.value, todayKey) }),
+    curveChart(points, { accent: accentFor(metric.id), range: typicalRange(vitals, metric.value, todayKey), label: `Verlauf ${metric.label}` }),
     el('div', { class: 'muted' }, `${metric.caption} Aus Health Connect. Graue Spanne: dein üblicher Bereich der letzten 30 Tage.`));
 }
 

@@ -21,7 +21,7 @@ function openLink(url) {
 
 function showBanner(update) {
   document.getElementById('app-update-banner')?.remove();
-  const banner = el('div', { id: 'app-update-banner', class: 'toast', role: 'status', style: 'bottom:calc(env(safe-area-inset-bottom) + 96px)' },
+  const banner = el('div', { id: 'app-update-banner', class: 'toast', role: 'status', style: 'bottom:calc(env(safe-area-inset-bottom) + 160px)' },
     el('span', {}, `${update.name} ist da`),
     el('button', { onClick: () => { openLink(update.apkUrl); banner.remove(); } }, 'Laden'),
     el('button', { onClick: async () => { await saveUpdate({ dismissedBuild: update.build }); banner.remove(); } }, 'Später'));
@@ -31,9 +31,9 @@ function showBanner(update) {
 // still: nur anzeigen, wenn es etwas Neues gibt. Sonst (Knopf in den Einstellungen) kommt immer eine Rückmeldung.
 export async function runUpdateCheck({ force = false, now = Date.now(), current = BUILD } = {}) {
   const s = await getSettings();
-  if (!force && !shouldCheck(s.update?.lastCheckAt ?? null, now)) return { ok: true, skipped: true };
+  if (!force && !shouldCheck(s.update?.lastCheckAt ?? null, now, s.update?.lastFailAt ?? null)) return { ok: true, skipped: true };
   const r = await checkForUpdate({ current });
-  if (r.ok) await saveUpdate({ lastCheckAt: now });
+  await saveUpdate(r.ok ? { lastCheckAt: now, lastFailAt: null } : { lastFailAt: now });
   if (r.ok && r.update && (force || shouldShow(r.update, s.update?.dismissedBuild ?? null))) showBanner(r.update);
   return r;
 }

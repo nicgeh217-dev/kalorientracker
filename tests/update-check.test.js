@@ -38,6 +38,13 @@ test('shouldCheck: höchstens alle 12 Stunden', () => {
   assert.equal(shouldCheck(now - 12 * 3600000, now), true);
 });
 
+test('shouldCheck: nach einem Fehler eine Stunde Pause, damit GitHub nicht bei jeder Rückkehr gefragt wird', () => {
+  const now = Date.UTC(2026, 10, 24, 12);
+  assert.equal(shouldCheck(null, now, now - 30 * 60000), false);
+  assert.equal(shouldCheck(null, now, now - 61 * 60000), true);
+  assert.equal(shouldCheck(now - 13 * 3600000, now, now - 10 * 60000), false);
+});
+
 test('shouldShow: nicht, wenn diese Version schon weggeklickt wurde', () => {
   assert.equal(shouldShow({ build: 17 }, 17), false);
   assert.equal(shouldShow({ build: 18 }, 17), true);
