@@ -9,6 +9,7 @@
   <link rel="preload" href="fonts/barlow-condensed-800i.woff2" as="font" type="font/woff2" crossorigin>
   <title>Kalorientracker</title>
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles-app.css"> <!-- nur Android-App: ruhigeres Layout -->
 </head>
 <body>
   <div id="splash" aria-hidden="true" style="position:fixed;inset:0;z-index:100;background:#0e0e10"></div>
@@ -35,20 +36,22 @@
   </main>
   <div id="dialog-root"></div>
   <nav id="nav">
+   <div class="navpill">
     <button data-view="today">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.2"/></svg>Heute
     </button>
     <button data-view="training">
       <svg viewBox="0 0 24 24"><path d="M3.5 9.5v5M6.5 7v10M17.5 7v10M20.5 9.5v5M6.5 12h11"/></svg>Training
     </button>
-    <button id="fab" aria-label="Eintragen">
-      <svg viewBox="0 0 24 24"><path d="M4 8.5h3l1.5-2h7l1.5 2h3V19H4z"/><circle cx="12" cy="13.5" r="3.6"/></svg>
-    </button>
     <button data-view="history">
       <svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="3.5"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>Verlauf
     </button>
     <button data-view="more">
       <svg viewBox="0 0 24 24"><circle cx="6" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18" cy="12" r="1.6"/></svg>Mehr
+    </button>
+   </div>
+    <button id="fab" aria-label="Eintragen">
+      <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
     </button>
   </nav>
   <script type="module" src="src/app.js"></script>

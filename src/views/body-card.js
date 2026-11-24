@@ -22,9 +22,9 @@ export function bodyCard(day, enabled) {
 }
 
 // Eine Zeile für die Tageskarte im Verlauf. null ohne Werte.
-export function bodyLine(day, enabled) {
+export function bodyLine(day, enabled, limit = Infinity) {
   if (!day) return null;
-  const parts = chosen(enabled).map((m) => m.text(day)).filter(Boolean);
+  const parts = chosen(enabled).map((m) => m.text(day)).filter(Boolean).slice(0, limit);
   return parts.length ? parts.join(' · ') : null;
 }
 

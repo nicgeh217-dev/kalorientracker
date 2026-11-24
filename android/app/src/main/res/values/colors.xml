@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="widget_card">#FFFFFF</color>
+    <color name="widget_fill">#EEF0F5</color>
+    <color name="widget_text">#14151A</color>
+    <color name="widget_muted">#6B6F7B</color>
+    <color name="widget_orange">#F27A1A</color>
+    <color name="widget_protein">#E8584F</color>
+    <color name="widget_carbs">#F2A81D</color>
+    <color name="widget_fat">#4C8DF6</color>
+</resources>

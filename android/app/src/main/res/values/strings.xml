@@ -7,4 +7,10 @@
     <string name="widget_today">Heute</string>
     <string name="widget_kcal_value">%1$d kcal</string>
     <string name="widget_description">Heutige Kalorien, ein Tipp öffnet die Kamera</string>
+    <string name="widget_left">kcal übrig</string>
+    <string name="widget_over">kcal drüber</string>
+    <string name="widget_add">Mahlzeit fotografieren</string>
+    <string name="widget_nutrition_description">Kalorien übrig und Eiweiß, Kohlenhydrate, Fett von heute</string>
+    <string name="widget_body_description">Schlaf, Schritte und Ruhepuls von heute</string>
+    <string name="widget_quick_description">Vier Knöpfe: Foto, Scan, Training, Gewicht</string>
 </resources>

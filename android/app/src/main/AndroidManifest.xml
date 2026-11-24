@@ -32,6 +32,28 @@
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_kalorien_info" />
         </receiver>
 
+        <!-- Weitere Widgets: Ernährung, Körper, Schnellzugriff -->
+        <receiver android:name=".NutritionWidgetProvider" android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_nutrition_info" />
+        </receiver>
+
+        <receiver android:name=".BodyWidgetProvider" android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_body_info" />
+        </receiver>
+
+        <receiver android:name=".QuickWidgetProvider" android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_quick_info" />
+        </receiver>
+
         <!-- ML Kit: Strichcode-Scanner-Modul schon bei der Installation vorladen -->
         <meta-data android:name="com.google.mlkit.vision.DEPENDENCIES" android:value="barcode_ui" />
 

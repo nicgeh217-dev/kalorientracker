@@ -40,3 +40,32 @@ test('takeWidgetCamera: im Browser und bei Fehlern false', async () => {
   assert.equal(await takeWidgetCamera({ cap: { isNativePlatform: () => false } }), false);
   assert.equal(await takeWidgetCamera({ cap: { isNativePlatform: () => true, nativePromise: async () => { throw new Error('kaputt'); } } }), false);
 });
+
+test('widgetPayload: Tageswerte, Ziele und Körperwerte für die Widgets', async () => {
+  const { widgetPayload } = await import('../src/native-widget.js');
+  const p = widgetPayload({
+    dateKey: '2026-11-24',
+    meals: [{ kcal: 500, protein: 30, carbs: 50, fat: 10 }, { kcal: 612.4, protein: 20.5, carbs: 80, fat: 15 }],
+    settings: { calorieGoal: 2200, proteinGoal: 110 },
+    vitals: [{ dateKey: '2026-11-23', steps: 999 }, { dateKey: '2026-11-24', steps: 5500.4, sleepMin: 372, restingHr: 54.2 }],
+  });
+  assert.equal(p.kcal, 1112); assert.equal(p.goal, 2200); assert.equal(p.protein, 51); assert.equal(p.carbs, 130); assert.equal(p.fat, 25);
+  assert.equal(p.proteinGoal, 110); assert.equal(p.steps, 5500); assert.equal(p.sleepMin, 372); assert.equal(p.restingHr, 54);
+});
+
+test('widgetPayload: ohne Ziel und ohne Körperwerte sind die Felder 0, nie NaN', async () => {
+  const { widgetPayload } = await import('../src/native-widget.js');
+  const p = widgetPayload({ dateKey: 'd', meals: [], settings: {}, vitals: [] });
+  for (const v of Object.values({ ...p, dateKey: 0 })) assert.equal(v, 0);
+});
+
+test('takeWidgetAction: liefert die Aktion genau einmal, im Browser und bei Fehlern null', async () => {
+  const { takeWidgetAction } = await import('../src/native-widget.js');
+  const f = fakeCap({ action: 'barcode' });
+  assert.equal(await takeWidgetAction({ cap: f.cap }), 'barcode');
+  assert.deepEqual(f.calls[0].slice(0, 2), ['KalorienWidget', 'takeAction']);
+  assert.equal(await takeWidgetAction({ cap: fakeCap({ action: '' }).cap }), null);
+  assert.equal(await takeWidgetAction({ cap: fakeCap({ action: 'hacken' }).cap }), null);
+  assert.equal(await takeWidgetAction({ cap: { isNativePlatform: () => false } }), null);
+  assert.equal(await takeWidgetAction({ cap: { isNativePlatform: () => true, nativePromise: async () => { throw new Error('x'); } } }), null);
+});

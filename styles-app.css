@@ -1,0 +1,81 @@
+/* Android-App: ruhigeres Layout nach dem Vorbild von Bevel und Google Health.
+   Liegt nur im Zweig native und überschreibt styles.css. Die PWA bleibt unberührt.
+   Grundsätze: heller grauer Grund, weiße runde Karten mit weichem Schatten, Abschnittstitel außerhalb der Karten,
+   schwarze Pillen-Knöpfe, schwebende Leiste unten. Orange bleibt der Akzent (Ring, Plus). Schrift 11, 12, 14, 16, 20, 30. */
+
+:root {
+  --bg: #f3f4f8; --card: #ffffff; --fill: #eef0f5; --text: #14151a; --muted: #6b6f7b;
+  --line: rgba(20, 21, 26, .07); --track: rgba(20, 21, 26, .08);
+  --shadow: 0 1px 2px rgba(20, 21, 40, .04), 0 8px 24px rgba(20, 21, 40, .06);
+  --radius: 24px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e0e10; --card: #1a1a1e; --fill: #26262b; --text: #f5f5f7; --muted: #9a9aa3;
+    --line: rgba(255, 255, 255, .07); --track: rgba(255, 255, 255, .12);
+    --shadow: none;
+  }
+}
+
+/* ---------- Karten, Titel, Knöpfe ---------- */
+.card { border: 0; border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px; }
+h1 { font-family: var(--font); font-style: normal; text-transform: none; font-size: 30px; font-weight: 700; letter-spacing: -.01em; line-height: 1.15; margin: 0 4px 16px; }
+h2 { font-size: 20px; font-weight: 600; color: var(--text); margin: 28px 4px 12px; }
+.eyebrow { font-size: 14px; font-weight: 400; color: var(--muted); margin: 0 4px 2px; }
+.muted { color: var(--muted); }
+button.primary, .menu-item.primary-item { background: var(--text); color: var(--bg); border-radius: 999px; min-height: 52px; font-weight: 600; }
+.btn, button.plain { border-radius: 999px; min-height: 48px; background: var(--card); box-shadow: var(--shadow); }
+.card .btn, .card button.plain, button.ghost { background: var(--fill); box-shadow: none; }
+button.small { border-radius: 999px; }
+.chipbtn { border-radius: 999px; }
+input, select, textarea { border-radius: 16px; }
+.seg { border-radius: 999px; } .seg button { border-radius: 999px; }
+.note { border-radius: 16px; }
+
+/* ---------- Schwebende Leiste unten: vier Reiter als Pille, daneben der runde Plus-Knopf ---------- */
+#nav { background: none; border: 0; -webkit-backdrop-filter: none; backdrop-filter: none; display: block; padding: 0; pointer-events: none; }
+#nav > * { pointer-events: auto; }
+.navpill {
+  position: fixed; left: 16px; right: 88px; bottom: calc(env(safe-area-inset-bottom) + 12px); height: 64px;
+  display: grid; grid-template-columns: repeat(4, 1fr); align-items: center; gap: 4px; padding: 6px;
+  border-radius: 32px; background: var(--card); box-shadow: 0 6px 24px rgba(20, 21, 40, .14); border: 1px solid var(--line);
+}
+.navpill button[data-view] { min-height: 52px; height: 52px; padding: 0; border-radius: 26px; gap: 2px; font-size: 11px; font-weight: 500; color: var(--muted); background: transparent; }
+.navpill button[data-view].active { background: var(--fill); color: var(--text); }
+.navpill svg { width: 22px; height: 22px; }
+#fab { position: fixed; right: 16px; bottom: calc(env(safe-area-inset-bottom) + 12px); width: 64px; height: 64px; margin: 0; border: 0; border-radius: 50%; background: var(--orange); box-shadow: 0 6px 24px rgba(20, 21, 40, .18); }
+#fab svg { width: 28px; height: 28px; stroke: var(--on-orange); }
+main { padding-bottom: 136px; }
+.toast { bottom: calc(env(safe-area-inset-bottom) + 92px); }
+
+/* ---------- Heute ---------- */
+.dayhead { align-items: flex-start; }
+.iconbtn { flex: none; width: 44px; height: 44px; min-height: 0; padding: 0; border: 0; border-radius: 50%; background: var(--card); box-shadow: var(--shadow); display: grid; place-items: center; color: var(--text); }
+.iconbtn svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+.noticebar { display: flex; align-items: center; gap: 8px; padding: 12px 12px 12px 20px; margin-bottom: 12px; }
+.noticebar .ntext { flex: 1; font-size: 14px; color: var(--muted); }
+.noticebar button { min-height: 36px; padding: 0 16px; }
+.kcalcard { gap: 16px; }
+.kcalcard .hero2 { grid-template-columns: 132px 1fr; gap: 20px; }
+.macros2 { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; width: 100%; margin: 4px 0 0; padding: 0 24px 0 0; border: 0; background: none; text-align: left; color: var(--text); font-weight: 400; box-shadow: none; }
+.m2label { font-size: 12px; color: var(--muted); }
+.m2value { font-size: 14px; font-weight: 600; margin: 2px 0 8px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.m2bar { height: 6px; border-radius: 4px; background: var(--track); overflow: hidden; }
+.m2bar i { display: block; height: 100%; border-radius: 4px; background: var(--nc); }
+.m2chev { position: absolute; right: 0; top: 50%; transform: translateY(-50%); font-size: 24px; color: var(--muted); }
+/* Körper als 2x2-Kacheln */
+.bodytiles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+.bodytile { display: block; width: 100%; margin: 0; padding: 16px; border: 0; border-radius: var(--radius); background: var(--card); box-shadow: var(--shadow); color: var(--text); text-align: left; font-weight: 400; }
+.btop { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); margin-bottom: 12px; }
+.bicon { display: grid; place-items: center; width: 24px; height: 24px; color: var(--accent); }
+.bicon svg { width: 18px; height: 18px; fill: var(--accent); }
+.blabel { flex: 1; min-width: 0; }
+.bchev { font-size: 20px; }
+.bvalue { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.bvalue small { font-size: 12px; font-weight: 400; color: var(--muted); margin-left: 4px; }
+/* Mahlzeiten */
+.slothead { margin: 20px 4px 8px; }
+.slothead h2 { font-size: 16px; font-weight: 600; margin: 0; flex: 1; color: var(--text); }
+.slotadd { background: var(--card); }
+.mrow .mt strong { font-weight: 600; }
+.chips button { border-radius: 999px; }

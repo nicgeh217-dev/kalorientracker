@@ -115,6 +115,23 @@ function heartCard(day, vitals, dateKey, on) {
   });
 }
 
+// Detailfenster für eine Kachel auf Heute: gehört der Wert zu Schlaf, Bewegung oder Herz, mit den Werten der Gruppe zum Umschalten.
+export function openMetricDetail({ metricId, day, vitals, dateKey }) {
+  const group = Object.entries(GROUPS).find(([, ids]) => ids.some((k) => V[k].id === metricId || k === metricId));
+  if (!group) return;
+  const [name, keys] = group;
+  const on = keys.filter((k) => has(V[k].value(day)));
+  const start = on.find((k) => V[k].id === metricId || k === metricId) ?? on[0];
+  const ordered = [start, ...on.filter((k) => k !== start)];
+  const bar = name === 'sleep' ? phaseBar(day) : null;
+  const extra = bar ? el('div', { style: 'margin:0 0 12px' },
+    el('div', { class: 'phasebar', 'aria-hidden': 'true' }, ...bar.map((p) => el('i', { class: `ph-${p.key}`, style: `flex:${p.frac}` }))),
+    el('div', { class: 'phaselegend' }, ...bar.map((p) => el('span', {}, el('i', { class: `ph-${p.key}` }), `${p.label} ${formatSleep(p.min)}`)))) : null;
+  const title = { sleep: 'Schlaf', move: 'Bewegung', heart: 'Herz' }[name];
+  const accent = { sleep: 'var(--c-sleep)', move: 'var(--c-move)', heart: 'var(--c-heart)' }[name];
+  openDetail(title, ordered, vitals, dateKey, accent, extra);
+}
+
 // Rest, der in keine Karte passt, in einer ruhigen Zeile.
 function otherLine(day, on) {
   const items = METRICS.filter((m) => on.includes(m.id) && ['vo2max', 'bodyFat'].includes(m.id)).map((m) => m.text(day)).filter(Boolean);
@@ -128,7 +145,7 @@ export function bodyDash({ day, vitals, enabled, dateKey }) {
 }
 
 // Detail: Kurve der letzten 30 Tage, Chips zum Umschalten, dein üblicher Bereich in Worten.
-function openDetail(title, keys, vitals, dateKey, accent) {
+function openDetail(title, keys, vitals, dateKey, accent, extra = null) {
   let current = keys[0];
   const body = el('div');
   const draw = () => {
@@ -146,6 +163,6 @@ function openDetail(title, keys, vitals, dateKey, accent) {
       range ? el('div', { style: 'margin-top:12px' }, `Dein üblicher Bereich: ${v.show(range.lo)} bis ${v.show(range.hi)} (Mitte ${v.show(range.median)}), aus ${range.n} Tagen.`) : el('div', { class: 'muted', style: 'margin-top:12px' }, 'Dein üblicher Bereich erscheint ab 7 Tagen mit Werten.'));
   };
   draw();
-  openSheet(el('h1', { style: `border-left:4px solid ${accent};padding-left:12px` }, title), body,
+  openSheet(el('h1', { style: `border-left:4px solid ${accent};padding-left:12px` }, title), extra, body,
     el('div', { class: 'actions' }, el('button', { class: 'primary wide', onClick: closeSheet }, 'Schließen')));
 }

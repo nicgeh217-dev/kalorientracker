@@ -1,7 +1,7 @@
 import { registerRenderer, showView, refreshCurrent } from './nav.js';
 import { renderToday } from './views/today.js';
 import { startScan, startScanWithFiles, startScanWithPicker } from './views/scan.js';
-import { pushToWidget, takeWidgetCamera, widgetKcal } from './native-widget.js';
+import { pushToWidget, takeWidgetAction, widgetPayload } from './native-widget.js';
 import { runHealthSync } from './views/health-ui.js';
 import { runUpdateCheck } from './views/update-ui.js';
 import { localDateKey } from './logic.js';
@@ -14,7 +14,8 @@ import { renderWeight } from './views/weight.js';
 import { renderSettings } from './views/settings.js';
 import { renderMore } from './views/more.js';
 import { renderTraining } from './views/training.js';
-import { listQueued, mealsForDate, onMealsChanged } from './db.js';
+import { listQueued, mealsForDate, onMealsChanged, getSettings, listVitals } from './db.js';
+import { openWorkout } from './views/workout.js';
 import { toast, el } from './dom.js';
 import { requestPersistence } from './storage-persist.js';
 import { shouldShowSplash, splashAlreadyShown, runSplash } from './splash.js';
@@ -76,18 +77,27 @@ if ('serviceWorker' in navigator && !isNativeApp) {
 function connectWidget() {
   const sync = async () => {
     const dateKey = localDateKey(new Date());
-    await pushToWidget({ kcal: widgetKcal(await mealsForDate(dateKey)), dateKey });
+    await pushToWidget(widgetPayload({ dateKey, meals: await mealsForDate(dateKey), settings: await getSettings(), vitals: await listVitals() }));
   };
-  const openCamera = async () => { if (await takeWidgetCamera()) startScanWithPicker({ camera: true }); };
+  const openAction = async () => {
+    const action = await takeWidgetAction();
+    if (action === 'camera') startScanWithPicker({ camera: true });
+    else if (action === 'barcode') startScan();
+    else if (action === 'workout') { await showView('training'); openWorkout(); }
+    else if (action === 'weight') {
+      await showView('weight');
+      document.querySelector('#view-weight input[inputmode="decimal"]')?.focus();
+    }
+  };
   onMealsChanged(sync);
-  window.addEventListener('widgetcamera', openCamera);
+  window.addEventListener('widgetaction', openAction);
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) return;
     sync();
-    openCamera();
+    openAction();
   });
   sync();
-  openCamera();
+  openAction();
 }
 
 async function handleLaunch() {

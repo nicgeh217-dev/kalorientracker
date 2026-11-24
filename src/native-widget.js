@@ -23,3 +23,29 @@ export async function takeWidgetCamera({ cap = globalThis.Capacitor } = {}) {
     return false;
   }
 }
+
+// Alles, was die Widgets zeigen, in einem Paket (ganze Zahlen, 0 statt fehlender Werte).
+const whole = (n) => (Number.isFinite(n) ? Math.round(n) : 0);
+export function widgetPayload({ dateKey, meals, settings, vitals }) {
+  const sum = (k) => meals.reduce((s, m) => s + (m[k] ?? 0), 0);
+  const day = vitals.find((v) => v.dateKey === dateKey) ?? {};
+  return {
+    dateKey,
+    kcal: whole(sum('kcal')), goal: whole(settings?.calorieGoal),
+    protein: whole(sum('protein')), carbs: whole(sum('carbs')), fat: whole(sum('fat')),
+    proteinGoal: whole(settings?.proteinGoal),
+    steps: whole(day.steps), sleepMin: whole(day.sleepMin), restingHr: whole(day.restingHr),
+  };
+}
+
+// Aktion, die ein Schnell-Widget angefordert hat (genau einmal), sonst null.
+const ACTIONS = ['camera', 'barcode', 'workout', 'weight'];
+export async function takeWidgetAction({ cap = globalThis.Capacitor } = {}) {
+  if (!isNative(cap)) return null;
+  try {
+    const a = (await cap.nativePromise(PLUGIN, 'takeAction'))?.action;
+    return ACTIONS.includes(a) ? a : null;
+  } catch {
+    return null;
+  }
+}

@@ -6,21 +6,21 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
-// Brücke von der Web-App zum Widget (Gegenstück: src/native-widget.js).
+// Brücke von der Web-App zu den Widgets (Gegenstück: src/native-widget.js).
 @CapacitorPlugin(name = "KalorienWidget")
 public class KalorienWidgetPlugin extends Plugin {
 
     @PluginMethod
     public void update(PluginCall call) {
-        KalorienWidgetProvider.save(getContext(), call.getInt("kcal", 0), call.getString("dateKey", ""));
-        KalorienWidgetProvider.refreshAll(getContext());
+        WidgetData.save(getContext(), call);
+        WidgetData.refreshAll(getContext());
         call.resolve();
     }
 
     @PluginMethod
-    public void takeCameraRequest(PluginCall call) {
+    public void takeAction(PluginCall call) {
         JSObject result = new JSObject();
-        result.put("camera", MainActivity.takeCameraRequest());
+        result.put("action", MainActivity.takeAction());
         call.resolve(result);
     }
 }

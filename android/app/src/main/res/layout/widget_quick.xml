@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@drawable/widget_bg" android:orientation="horizontal" android:padding="10dp">
+    <LinearLayout android:id="@+id/qw_camera" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_marginEnd="8dp" android:background="@drawable/widget_btn" android:contentDescription="Foto" android:gravity="center" android:orientation="vertical">
+        <ImageView android:layout_width="26dp" android:layout_height="26dp" android:contentDescription="@null" android:src="@drawable/ic_w_camera" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="Foto" android:textColor="@color/widget_text" android:textSize="11sp" />
+    </LinearLayout>
+    <LinearLayout android:id="@+id/qw_barcode" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_marginEnd="8dp" android:background="@drawable/widget_btn" android:contentDescription="Scan" android:gravity="center" android:orientation="vertical">
+        <ImageView android:layout_width="26dp" android:layout_height="26dp" android:contentDescription="@null" android:src="@drawable/ic_w_barcode" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="Scan" android:textColor="@color/widget_text" android:textSize="11sp" />
+    </LinearLayout>
+    <LinearLayout android:id="@+id/qw_workout" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_marginEnd="8dp" android:background="@drawable/widget_btn" android:contentDescription="Training" android:gravity="center" android:orientation="vertical">
+        <ImageView android:layout_width="26dp" android:layout_height="26dp" android:contentDescription="@null" android:src="@drawable/ic_w_workout" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="Training" android:textColor="@color/widget_text" android:textSize="11sp" />
+    </LinearLayout>
+    <LinearLayout android:id="@+id/qw_weight" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1"  android:background="@drawable/widget_btn" android:contentDescription="Gewicht" android:gravity="center" android:orientation="vertical">
+        <ImageView android:layout_width="26dp" android:layout_height="26dp" android:contentDescription="@null" android:src="@drawable/ic_w_weight" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="Gewicht" android:textColor="@color/widget_text" android:textSize="11sp" />
+    </LinearLayout>
+</LinearLayout>

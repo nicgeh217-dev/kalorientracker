@@ -73,7 +73,7 @@ export async function renderHistory() {
 }
 
 function dayCard({ day, meals, status, workouts, vitals, enabled }) {
-  const body = bodyLine(vitals, enabled);
+  const body = bodyLine(vitals, enabled, 3);
   const kcal = dayTotals(meals).kcal;
   const toggle = (value, label) => el('button', {
     type: 'button', class: `chipbtn${status === value ? ' on' : ''}`, 'aria-pressed': status === value ? 'true' : 'false',

@@ -5,7 +5,7 @@ import { cpSync, rmSync, mkdirSync, writeFileSync } from 'node:fs';
 
 const OUT = 'www';
 // privacypolicy.html: Datenschutzseite, die Health Connect im Erlaubnis-Dialog anzeigt.
-const ITEMS = ['index.html', 'styles.css', 'manifest.webmanifest', 'src', 'fonts', 'icons', 'privacypolicy.html'];
+const ITEMS = ['index.html', 'styles.css', 'styles-app.css', 'manifest.webmanifest', 'src', 'fonts', 'icons', 'privacypolicy.html'];
 
 rmSync(OUT, { recursive: true, force: true });
 mkdirSync(OUT, { recursive: true });

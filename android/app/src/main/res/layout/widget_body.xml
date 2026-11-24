@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/bw_root" android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="@drawable/widget_bg" android:gravity="center_vertical" android:orientation="horizontal" android:padding="16dp">
+    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Schlaf" android:textColor="@color/widget_muted" android:textSize="12sp" />
+        <TextView android:id="@+id/bw_sleep" android:layout_width="wrap_content" android:layout_height="wrap_content" android:maxLines="1" android:textColor="@color/widget_text" android:textSize="16sp" android:layout_marginTop="4dp" android:textStyle="bold" />
+    </LinearLayout>
+    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Schritte" android:textColor="@color/widget_muted" android:textSize="12sp" />
+        <TextView android:id="@+id/bw_steps" android:layout_width="wrap_content" android:layout_height="wrap_content" android:maxLines="1" android:textColor="@color/widget_text" android:textSize="16sp" android:layout_marginTop="4dp" android:textStyle="bold" />
+    </LinearLayout>
+    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Ruhepuls" android:textColor="@color/widget_muted" android:textSize="12sp" />
+        <TextView android:id="@+id/bw_hr" android:layout_width="wrap_content" android:layout_height="wrap_content" android:maxLines="1" android:textColor="@color/widget_text" android:textSize="16sp" android:layout_marginTop="4dp" android:textStyle="bold" />
+    </LinearLayout>
+</LinearLayout>

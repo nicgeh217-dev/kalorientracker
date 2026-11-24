@@ -26,7 +26,7 @@ import { addDays, pickRecent, rollingAverage, fastLossWarning } from '../overvie
 import {
   mealsForDate, deleteMeal, updateMeal, getSettings, listProducts, replaceAll, listDayStatuses, addMeal, listMeals, getProduct, listQueued, deleteQueued, addQueued, listWeights, saveSettings, listVitals,
 } from '../db.js';
-import { bodyDash } from './body-dash.js';
+import { macroBars, openNutrientSheet, bodyTiles } from './today-blocks.js';
 import { enabledMetrics } from '../health-metrics.js';
 import { showView } from '../nav.js';
 import { viewedDateKey, isViewingToday, setViewedDateKey, dayLabel, longDate, timestampFor } from '../state.js';
@@ -145,14 +145,19 @@ export async function renderToday() {
     }
   }
 
+  const bodyTilesNode = bodyTiles({ day: vitals.find((v) => v.dateKey === dateKey), vitals, enabled: enabledMetrics(settings), dateKey });
+  const bodyBlock = bodyTilesNode ? el('div', {}, el('h2', {}, 'Körper'), bodyTilesNode) : null;
   const goToWeek = (n) => { const next = shiftWeek(dateKey, n); return go(next > todayKey ? todayKey : next); };
   mount(root,
     el('div', { class: 'dayhead' },
-      el('div', {}, el('div', { class: 'eyebrow' }, longDate(dateKey)), el('h1', {}, dayLabel(dateKey)))),
+      el('div', {}, el('div', { class: 'eyebrow' }, longDate(dateKey)), el('h1', {}, dayLabel(dateKey))),
+      el('button', { type: 'button', class: 'iconbtn', 'aria-label': 'Einstellungen', onClick: () => showView('settings') },
+        gearIcon())),
     statusByDay[dateKey] ? el('div', { class: 'daystatus' }, statusByDay[dateKey] === 'sick' ? 'Krank' : 'Ruhetag') : null,
     weekStrip({ selected: dateKey, todayKey, counts: countByDay, statuses: statusByDay, onSelect: go, onShift: goToWeek }),
     isToday && shouldShowWelcome({ products, meals: everyMeal, weights, settings }) ? welcomeCard(settings) : null,
     noticeNode,
+    el('h2', {}, 'Ernährung'),
     el('div', { class: 'card kcalcard' },
       petNode,
       el('div', { class: 'hero2' },
@@ -167,9 +172,10 @@ export async function renderToday() {
                 el('div', {}, el('b', {}, String(t.kcal)), 'gegessen'),
                 el('div', {}, el('b', {}, String(goal)), 'Ziel'))
             : el('div', { class: 'note warn', style: 'margin:0' }, 'Noch kein Ziel. ',
-                el('a', { href: '#', onClick: (e) => { e.preventDefault(); showView('settings'); } }, 'Jetzt festlegen'))))),
-    el('div', { class: 'ntiles' }, ...NUTRIENTS.map((n) => nutrientTile({ nutrient: n, value: nutrientValue(n.id), target: targets?.[n.id] ?? null, from: logged ? (before.nutrients[n.id] ?? 0) : undefined }))),
-    bodyDash({ day: vitals.find((v) => v.dateKey === dateKey), vitals, enabled: enabledMetrics(settings), dateKey }),
+                el('a', { href: '#', onClick: (e) => { e.preventDefault(); showView('settings'); } }, 'Jetzt festlegen')))),
+      macroBars({ nutrientValue, targets, onOpen: () => openNutrientSheet({ nutrientValue, targets }) })),
+    bodyBlock,
+    el('h2', {}, 'Mahlzeiten'),
     queued.length ? el('h2', {}, 'Wartet auf Auswertung') : null,
     ...queued.map(queueCard),
     recent.length ? el('div', { class: 'chips' }, ...recent.map((m) => recentChip(m, dateKey))) : null,
@@ -328,22 +334,24 @@ function welcomeCard(settings) {
       el('button', { class: 'btn', onClick: async () => { await saveSettings({ ...(await getSettings()), welcomeDismissed: true }); renderToday(); } }, 'Neu starten')));
 }
 
+// Zahnrad (Einstellungen). SVG braucht den richtigen Namensraum, sonst bleibt es unsichtbar.
+function gearIcon() {
+  const svg = new DOMParser().parseFromString('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 3v2.2M12 18.8V21M3 12h2.2M18.8 12H21M5.6 5.6l1.6 1.6M16.8 16.8l1.6 1.6M18.4 5.6l-1.6 1.6M7.2 16.8l-1.6 1.6"/></svg>', 'image/svg+xml').documentElement;
+  return document.importNode(svg, true);
+}
+
 function backupCard(r) {
-  const text = r.kind === 'never'
-    ? `Du hast noch keine Sicherung gemacht, deine Daten gibt es seit ${r.days} Tagen nur auf diesem Handy. Eine Sicherung schützt vor Verlust, z. B. bei Handydefekt.`
-    : `Deine letzte Sicherung ist ${r.days} Tage alt, seitdem sind neue Einträge dazugekommen.`;
-  return el('div', { class: 'card suggest' },
-    el('b', {}, 'Daten sichern?'),
-    el('div', { class: 'muted', style: 'margin:4px 0 10px' }, text),
-    el('div', { class: 'actions', style: 'margin:0' },
-      el('button', { class: 'btn', onClick: async () => {
-        await saveSettings({ ...(await getSettings()), backupSnoozedUntil: addDays(localDateKey(new Date()), 3) });
-        renderToday();
-      } }, 'In 3 Tagen'),
-      el('button', { class: 'primary', onClick: async () => {
-        const res = await shareBackup();
-        if (res !== 'cancelled') { toast(res === 'shared' ? 'Sicherung geteilt.' : 'Sicherung heruntergeladen.'); renderToday(); }
-      } }, 'Jetzt sichern')));
+  const text = r.kind === 'never' ? 'Noch keine Sicherung' : `Letzte Sicherung vor ${r.days} Tagen`;
+  return el('div', { class: 'card noticebar' },
+    el('span', { class: 'ntext' }, text),
+    el('button', { class: 'small ghost', onClick: async () => {
+      await saveSettings({ ...(await getSettings()), backupSnoozedUntil: addDays(localDateKey(new Date()), 3) });
+      renderToday();
+    } }, 'Später'),
+    el('button', { class: 'small primary', onClick: async () => {
+      const res = await shareBackup();
+      if (res !== 'cancelled') { toast(res === 'shared' ? 'Sicherung geteilt.' : 'Sicherung heruntergeladen.'); renderToday(); }
+    } }, 'Jetzt sichern'));
 }
 
 // Zeile oben in der Kalorien-Karte: Sprechblase als Text, Serie und Fuchs. Details (Stufen, Rekord, Umbenennen) im Dialog.
