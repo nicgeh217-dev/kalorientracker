@@ -13,6 +13,8 @@ import { minHealthyWeight } from '../calorie.js';
 import { openCalculator } from './calculator.js';
 import { onlineBackupCard } from './online-backup-ui.js';
 import { healthCard } from './health-ui.js';
+import { updateCard } from './update-ui.js';
+import { isNativeApp } from '../native-camera.js';
 
 export async function renderSettings() {
   const root = document.getElementById('view-settings');
@@ -134,7 +136,8 @@ export async function renderSettings() {
         el('button', { class: 'btn', onClick: () => importInput.click() }, 'Sicherung importieren'),
         importInput)),
     onlineBackupCard(s, renderSettings),
-    healthCard(s, renderSettings));
+    healthCard(s, renderSettings),
+    isNativeApp() ? updateCard() : null);
 }
 
 function calcInfo(s) {

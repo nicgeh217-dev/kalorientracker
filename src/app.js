@@ -3,6 +3,7 @@ import { renderToday } from './views/today.js';
 import { startScan, startScanWithFiles, startScanWithPicker } from './views/scan.js';
 import { pushToWidget, takeWidgetCamera, widgetKcal } from './native-widget.js';
 import { runHealthSync } from './views/health-ui.js';
+import { runUpdateCheck } from './views/update-ui.js';
 import { localDateKey } from './logic.js';
 import { parseLaunchAction } from './launch.js';
 import { takeSharedItems } from './share-inbox.js';
@@ -126,7 +127,8 @@ if (isNativeApp) {
   connectWidget();
   // Health Connect: beim Start und bei jeder Rückkehr, höchstens alle 5 Minuten, still im Hintergrund.
   runHealthSync();
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) runHealthSync(); });
+  setTimeout(() => runUpdateCheck(), 6000); // Update-Hinweis, höchstens alle 12 Stunden
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) { runHealthSync(); runUpdateCheck(); } });
 }
 requestPersistence(); // Ergebnis steht in den Einstellungen, Chrome entscheidet selbst
 

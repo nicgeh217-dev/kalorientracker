@@ -8,6 +8,8 @@ on:
 jobs:
   apk:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # für die Veröffentlichung als Release
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -18,8 +20,12 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
+      - name: Tests (ein roter Test stoppt den Bau)
+        run: npm test
       - run: npm ci
       - name: Web-App in den App-Ordner kopieren und mit Capacitor abgleichen
+        env:
+          BUILD_NUMBER: ${{ github.run_number }}
         run: |
           node scripts/build-web.mjs
           npx cap sync android
@@ -45,3 +51,10 @@ jobs:
           name: kalorientracker-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+      - name: Als Release veröffentlichen (für den Update-Hinweis in der App)
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp android/app/build/outputs/apk/debug/app-debug.apk Kalorientracker.apk
+          gh release create "app-${{ github.run_number }}" Kalorientracker.apk --title "Version ${{ github.run_number }}" --notes "$(git log -1 --pretty=%s)" --latest
