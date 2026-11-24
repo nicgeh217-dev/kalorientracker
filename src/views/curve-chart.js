@@ -17,7 +17,8 @@ export function curveChart(points) {
   const vals = points.map((p) => p.value);
   let lo = Math.min(...vals);
   let hi = Math.max(...vals);
-  if (hi === lo) { lo -= 5; hi += 5; }
+  // Gleichbleibende Werte: Rand nach Größe der Zahl (Stunden brauchen weniger als Schritte), nie unter 0.
+  if (hi === lo) { const pad = Math.max(Math.abs(hi) * 0.1, 0.5); lo = Math.max(0, lo - pad); hi += pad; }
   const x = (i) => pad.l + (points.length === 1 ? (W - pad.l - pad.r) / 2 : (i / (points.length - 1)) * (W - pad.l - pad.r));
   const y = (v) => pad.t + (1 - (v - lo) / (hi - lo)) * (H - pad.t - pad.b);
   const svg = sv('svg', { viewBox: `0 0 ${W} ${H}`, class: 'curve', role: 'img', 'aria-label': 'Verlauf der Übung' });

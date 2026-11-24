@@ -467,3 +467,32 @@ input.unsure { background: var(--warn-bg); border-color: var(--orange); }
 .insight { margin-top: 12px; }
 .insight b { display: block; margin-bottom: 2px; }
 .insight-head { margin-top: 16px; font-size: 12px; color: var(--muted); }
+
+/* Karten Schlaf, Bewegung, Herz (nur Android-App): ruhige Flächen, eine Farbe je Bereich als Akzent. Zahlen ohne Wertung. */
+:root { --c-sleep: #7b8cff; --c-move: #3ccf7a; --c-heart: #ff7a8a; }
+.bodydashwrap { display: grid; gap: 12px; margin-bottom: 12px; }
+.bodydash { display: block; width: 100%; margin: 0; text-align: left; color: var(--text); font-weight: 400; }
+.bodydash:active { transform: scale(.99); }
+.bdhead { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+.bddot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+.bdhero { display: flex; align-items: baseline; gap: 8px; margin-bottom: 12px; }
+.bdhero .num { font-size: 40px; font-family: var(--num); font-style: italic; font-weight: 800; letter-spacing: -.01em; }
+.bdunit { font-size: 14px; color: var(--muted); }
+.bdrow { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 14px; color: var(--muted); margin-bottom: 12px; }
+.spark { display: flex; align-items: flex-end; gap: 4px; height: 40px; margin-top: 4px; }
+.spark i { flex: 1; border-radius: 4px; background: var(--track); }
+.spark i.today { background: var(--accent); }
+.rtrack { position: relative; height: 6px; margin: 16px 0 8px; border-radius: 4px; background: var(--track); }
+.rband { position: absolute; top: 0; bottom: 0; border-radius: 4px; background: color-mix(in srgb, var(--text) 22%, transparent); }
+.rdot { position: absolute; top: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; background: var(--accent); border: 2px solid var(--card); }
+.bdrange { font-size: 12px; color: var(--muted); }
+.phasebar { display: flex; gap: 2px; height: 10px; margin-bottom: 8px; border-radius: 4px; overflow: hidden; }
+.phasebar i, .phaselegend i { display: block; }
+.phaselegend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+.phaselegend span { display: inline-flex; align-items: center; gap: 4px; }
+.phaselegend i { width: 8px; height: 8px; border-radius: 50%; }
+.ph-deep { background: #5566e6; } .ph-rem { background: #9aa6ff; } .ph-light { background: #c6ccff; } .ph-awake { background: color-mix(in srgb, var(--text) 30%, transparent); }
+.bdtiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 16px 12px; }
+.bdtile .nval { font-size: 16px; margin: 0; white-space: nowrap; }
+.bdtile .rtrack { margin: 8px 0 0; }
+.bdother { font-size: 12px; color: var(--muted); margin: -4px 4px 0; }
