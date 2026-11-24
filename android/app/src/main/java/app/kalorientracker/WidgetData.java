@@ -15,7 +15,7 @@ import java.util.Locale;
 // Gemeinsame Daten der Widgets. Android kann die App-Datenbank nicht lesen, darum schickt die Web-App die Tageswerte hierher.
 final class WidgetData {
     private static final String PREFS = "kalorien_widget";
-    private static final String[] KEYS = {"kcal", "goal", "protein", "carbs", "fat", "proteinGoal", "steps", "sleepMin", "restingHr"};
+    private static final String[] KEYS = {"kcal", "goal", "protein", "carbs", "fat", "proteinGoal", "carbsGoal", "fatGoal", "steps", "sleepMin", "restingHr"};
 
     private WidgetData() {}
 

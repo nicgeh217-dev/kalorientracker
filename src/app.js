@@ -98,6 +98,7 @@ function connectWidget() {
   });
   sync();
   openAction();
+  return sync;
 }
 
 async function handleLaunch() {
@@ -134,11 +135,11 @@ if (splash) {
 showView('today');
 handleLaunch();
 if (isNativeApp) {
-  connectWidget();
+  const syncWidget = connectWidget();
   // Health Connect: beim Start und bei jeder Rückkehr, höchstens alle 5 Minuten, still im Hintergrund.
-  runHealthSync();
+  Promise.resolve(runHealthSync()).then(syncWidget, () => {});
   setTimeout(() => runUpdateCheck(), 6000); // Update-Hinweis, höchstens alle 12 Stunden
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) { runHealthSync(); runUpdateCheck(); } });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) { Promise.resolve(runHealthSync()).then(syncWidget, () => {}); runUpdateCheck(); } });
 }
 requestPersistence(); // Ergebnis steht in den Einstellungen, Chrome entscheidet selbst
 

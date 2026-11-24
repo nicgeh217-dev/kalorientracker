@@ -25,7 +25,12 @@ export async function takeWidgetCamera({ cap = globalThis.Capacitor } = {}) {
 }
 
 // Alles, was die Widgets zeigen, in einem Paket (ganze Zahlen, 0 statt fehlender Werte).
+import { nutrientTargets } from './nutrients.js';
 const whole = (n) => (Number.isFinite(n) ? Math.round(n) : 0);
+function goals(settings) {
+  const t = nutrientTargets({ kcal: settings?.calorieGoal, proteinGoal: settings?.proteinGoal, overrides: settings?.targets }) ?? {};
+  return { proteinGoal: whole(t.protein), carbsGoal: whole(t.carbs), fatGoal: whole(t.fat) };
+}
 export function widgetPayload({ dateKey, meals, settings, vitals }) {
   const sum = (k) => meals.reduce((s, m) => s + (m[k] ?? 0), 0);
   const day = vitals.find((v) => v.dateKey === dateKey) ?? {};
@@ -33,7 +38,7 @@ export function widgetPayload({ dateKey, meals, settings, vitals }) {
     dateKey,
     kcal: whole(sum('kcal')), goal: whole(settings?.calorieGoal),
     protein: whole(sum('protein')), carbs: whole(sum('carbs')), fat: whole(sum('fat')),
-    proteinGoal: whole(settings?.proteinGoal),
+    ...goals(settings),
     steps: whole(day.steps), sleepMin: whole(day.sleepMin), restingHr: whole(day.restingHr),
   };
 }

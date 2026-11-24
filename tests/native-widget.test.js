@@ -69,3 +69,9 @@ test('takeWidgetAction: liefert die Aktion genau einmal, im Browser und bei Fehl
   assert.equal(await takeWidgetAction({ cap: { isNativePlatform: () => false } }), null);
   assert.equal(await takeWidgetAction({ cap: { isNativePlatform: () => true, nativePromise: async () => { throw new Error('x'); } } }), null);
 });
+
+test('widgetPayload: Ziele kommen aus nutrientTargets, wie in der App', async () => {
+  const { widgetPayload } = await import('../src/native-widget.js');
+  const p = widgetPayload({ dateKey: 'd', meals: [], vitals: [], settings: { calorieGoal: 2000, targets: { fat: 60 } } });
+  assert.equal(p.proteinGoal, 100); assert.equal(p.carbsGoal, 250); assert.equal(p.fatGoal, 60);
+});
