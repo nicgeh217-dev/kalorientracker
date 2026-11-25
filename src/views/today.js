@@ -26,7 +26,7 @@ import { addDays, pickRecent, rollingAverage, fastLossWarning } from '../overvie
 import {
   mealsForDate, deleteMeal, updateMeal, getSettings, listProducts, replaceAll, listDayStatuses, addMeal, listMeals, getProduct, listQueued, deleteQueued, addQueued, listWeights, saveSettings, listVitals,
 } from '../db.js';
-import { macroBars, openNutrientSheet, bodyTiles } from './today-blocks.js';
+import { macroBars, openNutrientSheet, bodyTiles, weekBars } from './today-blocks.js';
 import { enabledMetrics } from '../health-metrics.js';
 import { showView } from '../nav.js';
 import { viewedDateKey, isViewingToday, setViewedDateKey, dayLabel, longDate, timestampFor } from '../state.js';
@@ -175,6 +175,8 @@ export async function renderToday() {
                 el('a', { href: '#', onClick: (e) => { e.preventDefault(); showView('settings'); } }, 'Jetzt festlegen')))),
       macroBars({ nutrientValue, targets, onOpen: () => openNutrientSheet({ nutrientValue, targets }) })),
     bodyBlock,
+    el('h2', {}, 'Woche'),
+    weekBars({ meals: everyMeal, dateKey, onOpen: () => showView('history') }),
     el('h2', {}, 'Mahlzeiten'),
     queued.length ? el('h2', {}, 'Wartet auf Auswertung') : null,
     ...queued.map(queueCard),
@@ -190,8 +192,8 @@ function playLogged({ root, logged, before, over, centerNum, eaten, nutrientValu
   // Wechselt die Einheit (übrig <-> drüber), springt die Zahl direkt, damit nie ein falscher Zwischenwert zur neuen Einheit steht.
   countUp(root.querySelector('.ring .center .num'), centerNum, { from: before.over === over ? before.center : centerNum });
   countUp(root.querySelector('.hs-row b'), eaten, { from: before.eaten });
-  root.querySelectorAll('.ntile .nv').forEach((node, i) => {
-    const id = NUTRIENTS[i].id;
+  root.querySelectorAll('.macro2 .m2n').forEach((node) => {
+    const id = node.closest('.macro2').dataset.id;
     const to = nutrientValue(id);
     if (to == null) return;
     const from = before.nutrients[id] ?? 0;

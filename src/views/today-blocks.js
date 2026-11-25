@@ -3,6 +3,8 @@ import { NUTRIENTS, ringProgress } from '../nutrients.js';
 import { METRICS } from '../health-metrics.js';
 import { nutrientTile } from './nutrient-rings.js';
 import { openMetricDetail } from './body-dash.js';
+import { phaseBar } from '../vitals-view.js';
+import { lastDays, nightSeries } from '../week-kcal.js';
 
 // Bausteine für "Heute" in der Android-App (ruhiges Layout): drei Makro-Balken statt fünf Ringe, Körperwerte als Kacheln.
 
@@ -17,9 +19,9 @@ export function macroBars({ nutrientValue, targets, onOpen }) {
       const value = nutrientValue(id) ?? 0;
       const target = targets?.[id] ?? null;
       const pct = Math.round(Math.min(1, ringProgress(value, target)) * 100);
-      return el('div', { class: 'macro2', style: `--nc:${n.color}` },
+      return el('div', { class: 'macro2', 'data-id': id, style: `--nc:${n.color}` },
         el('div', { class: 'm2label' }, n.short ?? n.label),
-        el('div', { class: 'm2value' }, `${de(value)}${target ? ` / ${de(target)}` : ''} g`),
+        el('div', { class: 'm2value' }, el('span', { class: 'm2n' }, de(value)), `${target ? ` / ${de(target)}` : ''} g`),
         el('div', { class: 'm2bar', 'aria-hidden': 'true' }, el('i', { style: `width:${pct}%` })));
     }),
     el('span', { class: 'm2chev', 'aria-hidden': 'true' }, '›'));
@@ -56,6 +58,32 @@ function icon(id) {
   return svg;
 }
 
+// Schmale Säulen, jede im Verhältnis zur höchsten. Nur Höhe, keine Farbe für gut oder schlecht.
+function miniBars(values, labels = []) {
+  const max = Math.max(...values, 1);
+  return el('div', { class: 'minibars', 'aria-hidden': 'true' }, ...values.map((v, i) =>
+    el('div', { class: 'mb' }, el('i', { class: v > 0 ? 'on' : '', style: `height:${v > 0 ? Math.max(6, Math.round((v / max) * 100)) : 6}%` }), labels[i] ? el('span', {}, labels[i]) : null)));
+}
+
+// Letzte 7 Tage als Säulen mit Durchschnitt. Ein Tipp öffnet den Verlauf.
+export function weekBars({ meals, dateKey, onOpen }) {
+  const days = lastDays(meals, dateKey);
+  const wd = (k) => new Date(`${k}T12:00:00`).toLocaleDateString('de-DE', { weekday: 'short' }).replace('.', '').slice(0, 2);
+  return el('button', { type: 'button', class: 'card weekbars', 'aria-label': 'Verlauf öffnen', onClick: onOpen },
+    el('div', { class: 'wtop' },
+      el('div', {}, el('div', { class: 'bvalue' }, days.avg == null ? '–' : String(days.avg), el('small', {}, 'kcal')), el('div', { class: 'wlabel' }, 'Ø pro Tag mit Einträgen')),
+      el('span', { class: 'bchev', 'aria-hidden': 'true' }, '›')),
+    miniBars(days.map((d) => d.kcal), days.map((d) => wd(d.dateKey))));
+}
+
+// Schlaf-Kachel: Phasenleiste der Nacht und die letzten sieben Nächte.
+function sleepExtra(day, vitals, dateKey) {
+  const phases = phaseBar(day);
+  return el('div', { class: 'sleepextra' },
+    phases ? el('div', { class: 'phasebar', 'aria-hidden': 'true' }, ...phases.map((p) => el('i', { class: `ph-${p.key}`, style: `flex:${p.frac}` }))) : null,
+    miniBars(nightSeries(vitals, dateKey)));
+}
+
 export function bodyTiles({ day, vitals, enabled, dateKey }) {
   if (!day) return null;
   const tiles = TILE_ORDER
@@ -69,5 +97,6 @@ export function bodyTiles({ day, vitals, enabled, dateKey }) {
     onClick: () => openMetricDetail({ metricId: id, day, vitals, dateKey }),
   },
     el('div', { class: 'btop' }, el('span', { class: 'bicon' }, icon(id)), el('span', { class: 'blabel' }, t.label), el('span', { class: 'bchev', 'aria-hidden': 'true' }, '›')),
-    el('div', { class: 'bvalue' }, t.value, t.unit ? el('small', {}, t.unit) : null))));
+    el('div', { class: 'bvalue' }, t.value, t.unit ? el('small', {}, t.unit) : null),
+    id === 'sleep' ? sleepExtra(day, vitals, dateKey) : null)));
 }

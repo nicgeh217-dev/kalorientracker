@@ -92,8 +92,8 @@ function connectWidget() {
   onMealsChanged(sync);
   window.addEventListener('widgetaction', openAction);
   document.addEventListener('visibilitychange', () => {
+    sync(); // auch beim Verlassen der App: das Widget zeigt dann den letzten Stand
     if (document.hidden) return;
-    sync();
     openAction();
   });
   sync();
