@@ -10,6 +10,11 @@
   <title>Kalorientracker</title>
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="styles-app.css"> <!-- nur Android-App: ruhigeres Layout -->
+  <link rel="stylesheet" href="themes.css"> <!-- nur Android-App: Design-Systeme -->
+  <script>
+    // Gewähltes Design vor dem ersten Bild setzen (Quelle bleibt die Einstellung, src/theme.js).
+    try { var t = localStorage.getItem('theme'); if (t && t !== 'klar') document.documentElement.dataset.theme = t; } catch (e) { /* Standard */ }
+  </script>
 </head>
 <body>
   <div id="splash" aria-hidden="true" style="position:fixed;inset:0;z-index:100;background:#0e0e10"></div>

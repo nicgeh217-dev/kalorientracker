@@ -86,6 +86,12 @@ export async function renderWeight() {
   mount(root,
     el('div', { class: 'eyebrow' }, 'Körpergewicht'),
     el('h1', {}, 'Gewicht'),
+    el('div', { class: 'card' },
+      el('div', { class: 'grid2' },
+        el('div', {}, el('label', { style: 'margin-top:0' }, 'Datum'), date),
+        el('div', {}, el('label', { style: 'margin-top:0' }, 'Gewicht (kg)'), kg)),
+      msg,
+      el('div', { class: 'actions' }, el('div', { class: 'wide', style: 'display:grid' }, save))),
     el('div', { class: 'card weight-hero' },
       latest
         ? el('div', { class: 'row' },
@@ -102,12 +108,6 @@ export async function renderWeight() {
       weights.length > 1 ? el('div', { class: 'legend' }, el('span', { style: 'color:#f2711c' }, '● Einzelwerte'), el('span', {}, '- - 7-Tage-Schnitt (glättet Schwankungen)')) : null),
     fastLossCard(fastLossWarning(weights)),
     target != null && latest ? goalCard(weights, latest, target) : null,
-    el('div', { class: 'card' },
-      el('div', { class: 'grid2' },
-        el('div', {}, el('label', { style: 'margin-top:0' }, 'Datum'), date),
-        el('div', {}, el('label', { style: 'margin-top:0' }, 'Gewicht (kg)'), kg)),
-      msg,
-      el('div', { class: 'actions' }, el('div', { class: 'wide', style: 'display:grid' }, save))),
     el('h2', {}, 'Verlauf'),
     ...(weights.length
       ? [el('div', { class: 'card', style: 'padding-top:6px;padding-bottom:6px' },
@@ -129,16 +129,16 @@ function goalCard(weights, latest, target) {
   const text = {
     reached: 'Ziel erreicht. Jetzt Gewicht halten.',
     nodata: 'Für eine Prognose brauche ich mindestens 3 Einträge aus 7 Tagen.',
-    flat: 'Dein Gewicht ist zurzeit stabil. Mit diesem Verlauf erreichst du das Ziel nicht.',
-    wrongway: 'Dein Trend geht gerade vom Ziel weg.',
+    flat: 'Dein Gewicht ist zurzeit stabil.',
+    wrongway: 'Gerade gibt es keine Prognose zum Ziel.',
     far: 'Beim aktuellen Tempo dauert es mehr als 2 Jahre.',
   }[f.status];
   return el('div', { class: 'card' },
     el('div', { class: 'row' },
       el('span', { class: 'muted' }, 'Zielgewicht'),
       el('span', { class: 'num', style: 'font-size:30px' }, de(target), el('small', { style: 'font-family:var(--font);font-style:normal;font-size:13px;color:var(--muted)' }, ' kg'))),
-    el('div', { class: 'muted', style: 'margin-top:6px' }, f.status === 'reached' ? '' : `Noch ${de(left)} kg ${latest.kg > target ? 'abnehmen' : 'zunehmen'}.`),
+    el('div', { class: 'muted', style: 'margin-top:6px' }, f.status === 'reached' ? '' : `${de(left)} kg bis zum Ziel.`),
     f.status === 'ok'
-      ? el('div', { class: 'note warn', style: 'margin-bottom:0' }, `Prognose: etwa am ${fmtDate(f.date)} (${f.perWeek > 0 ? '+' : ''}${de(f.perWeek)} kg pro Woche). Grobe Schätzung aus den letzten 4 Wochen.`)
+      ? el('div', { class: 'muted', style: 'margin-top:6px' }, `Prognose: etwa am ${fmtDate(f.date)} (${f.perWeek > 0 ? '+' : ''}${de(f.perWeek)} kg pro Woche). Grobe Schätzung aus den letzten 4 Wochen.`)
       : el('div', { class: 'muted', style: 'margin-top:6px' }, text));
 }

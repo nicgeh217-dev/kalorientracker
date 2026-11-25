@@ -1,0 +1,58 @@
+/* Design-Systeme der Android-App (src/theme.js). Jedes überschreibt die Grundwerte aus styles.css und styles-app.css.
+   Ohne data-theme gilt "Klar". Die Selektoren html[data-theme] sind stärker als :root, darum gewinnen sie auch
+   gegen die Dunkel-Regeln des Handys. Jedes System legt hell oder dunkel selbst fest (color-scheme). */
+
+/* ---------- Nacht: tiefschwarz wie Google Health, Karten knapp über Schwarz, große Zahlen ---------- */
+html[data-theme="nacht"] {
+  color-scheme: dark;
+  --bg: #000000; --card: #141416; --fill: #222226; --text: #ffffff; --muted: #8d8d96;
+  --line: rgba(255, 255, 255, .08); --track: rgba(255, 255, 255, .12);
+  --shadow: none; --radius: 28px;
+  --orange: #ff7a1a; --orange-2: #ff9a4d; --orange-text: #ff9a4d; --orange-soft: rgba(255, 122, 26, .22); --on-orange: #1b0d02;
+  --warn-bg: #33270a; --warn-text: #ffd479; --bad-bg: #3a1311; --bad-text: #ff9b92;
+  --c-sleep: #8796ff; --c-move: #45d887; --c-heart: #ff7a8a; --ph-deep: #5566e6; --ph-rem: #9aa6ff; --ph-light: #c6ccff;
+}
+html[data-theme="nacht"] h1 { font-size: 34px; }
+html[data-theme="nacht"] .navpill { background: #161618; border-color: rgba(255, 255, 255, .06); box-shadow: none; }
+html[data-theme="nacht"] .bvalue { font-size: 24px; }
+html[data-theme="nacht"] .hero2 .ring .center .num { font-size: 52px; }
+
+/* ---------- Konbini: weiße Flächen auf Hellblau, schwarze Kontur, harter Versatz-Schatten, kräftige Farben ---------- */
+html[data-theme="konbini"] {
+  color-scheme: light;
+  --ink: #111111;
+  --bg: #eaf1ff; --card: #ffffff; --fill: #f1f4fa; --text: #111111; --muted: #4f5566;
+  --line: rgba(17, 17, 17, .14); --track: #e2e7f2;
+  --shadow: 3px 3px 0 var(--ink); --radius: 16px;
+  --orange: #ff6a00; --orange-2: #ff8a33; --orange-text: #c24f00; --orange-soft: #ffe2cc; --on-orange: #111111;
+  --warn-bg: #fff1b8; --warn-text: #5c4300; --bad-bg: #ffd9d4; --bad-text: #a3130a;
+  --c-sleep: #3b4cf0; --c-move: #00a650; --c-heart: #ff2d55; --ph-deep: #2a37c9; --ph-rem: #6070ff; --ph-light: #a9b3ff;
+  --n-protein: #ff2d55; --n-carbs: #ffb000; --n-fat: #1f7bff;
+}
+html[data-theme="konbini"] h1 { font-family: var(--num); font-style: italic; font-weight: 800; font-size: 42px; letter-spacing: 0; line-height: 1; }
+html[data-theme="konbini"] h2 { font-weight: 700; }
+html[data-theme="konbini"] :is(.card, .bodytile, .menu-item, .navpill, .iconbtn, .addtile, .tabs) { border: 2px solid var(--ink); box-shadow: var(--shadow); }
+html[data-theme="konbini"] :is(button.primary, .addtile.main:first-child) { background: var(--orange); color: var(--ink); border: 2px solid var(--ink); box-shadow: var(--shadow); }
+html[data-theme="konbini"] #fab { border: 2px solid var(--ink); box-shadow: var(--shadow); }
+html[data-theme="konbini"] #fab svg { stroke: var(--ink); }
+html[data-theme="konbini"] .btn, html[data-theme="konbini"] button.plain { border: 2px solid var(--ink); box-shadow: none; }
+html[data-theme="konbini"] .navpill button[data-view].active { background: var(--ink); color: #ffffff; }
+html[data-theme="konbini"] .wd.sel { outline: 2px solid var(--ink); }
+html[data-theme="konbini"] .m2bar, html[data-theme="konbini"] .mb i { border: 1.5px solid var(--ink); }
+html[data-theme="konbini"] .weekbars .mb i.on { background: #00a650; }
+html[data-theme="konbini"] #dialog-root .sheet { border-top: 2px solid var(--ink); }
+html[data-theme="konbini"] input, html[data-theme="konbini"] select { border: 2px solid var(--ink); background: #ffffff; }
+
+/* ---------- Wald: dunkles Moosgrün, warme Orange-Akzente, weiche Formen ---------- */
+html[data-theme="wald"] {
+  color-scheme: dark;
+  --bg: #0d1711; --card: #16241b; --fill: #203326; --text: #eaf2e6; --muted: #93a796;
+  --line: rgba(220, 255, 225, .08); --track: rgba(220, 255, 225, .13);
+  --shadow: none; --radius: 26px;
+  --orange: #ff8a3d; --orange-2: #ffa766; --orange-text: #ffab70; --orange-soft: rgba(255, 138, 61, .2); --on-orange: #1d0e03;
+  --warn-bg: #2f2a0c; --warn-text: #f3d77a; --bad-bg: #3a1714; --bad-text: #ffa59b;
+  --c-sleep: #9fb0ff; --c-move: #7ddc9a; --c-heart: #ff8f8f; --ph-deep: #6476e8; --ph-rem: #a3afff; --ph-light: #cfd5ff;
+}
+html[data-theme="wald"] button.primary { background: var(--orange); color: var(--on-orange); }
+html[data-theme="wald"] .navpill { background: #1a2b20; border-color: rgba(220, 255, 225, .06); }
+html[data-theme="wald"] .navpill button[data-view].active { background: var(--fill); color: var(--orange-2); }

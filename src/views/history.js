@@ -22,6 +22,15 @@ const BAR_AREA = 80; // px Höhe für Balken in der Wochenansicht
 let selected = null; // im Verlauf gewählter Tag; null = heute
 let curveExercise = null; // gewählte Übung im Kraft-Diagramm
 let bodyMetric = null; // gewählte Kurve in der Karte "Körper"
+let tab = 'tag'; // gewählter Reiter im Verlauf
+
+const TABS = [['tag', 'Tag'], ['woche', 'Woche'], ['training', 'Training'], ['koerper', 'Körper']];
+function tabBar() {
+  return el('div', { class: 'tabs', role: 'tablist' }, ...TABS.map(([id, label]) => el('button', {
+    type: 'button', role: 'tab', class: id === tab ? 'on' : '', 'aria-selected': id === tab ? 'true' : 'false',
+    onClick: () => { tab = id; renderHistory(); window.scrollTo({ top: 0 }); },
+  }, label)));
+}
 
 // Springt zu einem Tag auf "Heute".
 function openDay(dateKey) {
@@ -56,18 +65,25 @@ export async function renderHistory() {
   const pick = (key) => { selected = key; renderHistory(); };
   const shift = (n) => { const next = shiftWeek(day, n); pick(next > todayKey ? todayKey : next); };
 
+  // Vier Reiter statt einer langen Seite: Tag, Woche, Training, Körper.
+  const content = {
+    tag: () => [
+      weekStrip({ selected: day, todayKey, counts, statuses, onSelect: pick, onShift: shift }),
+      dayCard({ day, meals: dayMeals, status: statuses[day] ?? null, workouts: workouts.filter((w) => w.dateKey === day), vitals: vitals.find((v) => v.dateKey === day), enabled: enabledMetrics(settings) }),
+      reviewCard(weekReview({ dateKey: day, meals: everyMeal, workouts, weights, extraTrainingDays: fitbitTrainingDays(vitals, workouts) }), day, vitals)],
+    woche: () => [
+      el('h2', {}, 'Letzte 7 Tage'),
+      weekCard(days, settings.calorieGoal, day),
+      yearCard({ counts, statuses, todayKey, stk: streak(trackedDays, todayKey, sickDays), total: trackedDays.length })],
+    training: () => progressCards({ workouts, exercises, weights, todayKey }),
+    koerper: () => [
+      bodyChartCard(vitals, todayKey, enabledMetrics(settings)) ?? el('div', { class: 'card muted' }, 'Noch keine Körperwerte. Verbinde Health Connect in den Einstellungen.'),
+      insightsCard(settings, { meals: everyMeal, vitals, workouts, days: dayStatuses, todayKey }, renderHistory)],
+  }[tab]();
   mount(root,
     el('h1', {}, 'Verlauf'),
-    weekStrip({ selected: day, todayKey, counts, statuses, onSelect: pick, onShift: shift }),
-    dayCard({ day, meals: dayMeals, status: statuses[day] ?? null, workouts: workouts.filter((w) => w.dateKey === day), vitals: vitals.find((v) => v.dateKey === day), enabled: enabledMetrics(settings) }),
-    yearCard({ counts, statuses, todayKey, stk: streak(trackedDays, todayKey, sickDays), total: trackedDays.length }),
-    reviewCard(weekReview({ dateKey: day, meals: everyMeal, workouts, weights, extraTrainingDays: fitbitTrainingDays(vitals, workouts) }), day, vitals),
-    el('h2', {}, 'Letzte 7 Tage'),
-    weekCard(days, settings.calorieGoal, day),
-    el('h2', {}, 'Fortschritt'),
-    ...progressCards({ workouts, exercises, weights, todayKey }),
-    bodyChartCard(vitals, todayKey, enabledMetrics(settings)),
-    insightsCard(settings, { meals: everyMeal, vitals, workouts, days: dayStatuses, todayKey }, renderHistory));
+    tabBar(),
+    ...content);
   const heat = root.querySelector('.heat-scroll');
   if (heat) heat.scrollLeft = heat.scrollWidth; // neueste Wochen rechts sichtbar
 }

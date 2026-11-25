@@ -21,6 +21,7 @@ import { requestPersistence } from './storage-persist.js';
 import { shouldShowSplash, splashAlreadyShown, runSplash } from './splash.js';
 import { maybeAutoBackup } from './online-backup.js';
 import { liveDeps } from './views/online-backup-ui.js';
+import { applyTheme } from './theme.js';
 
 registerRenderer('today', renderToday);
 registerRenderer('products', renderProducts);
@@ -131,6 +132,9 @@ if (splash) {
     splash.remove(); // ein Fehler in der Animation darf die App nie verdecken
   }
 }
+
+// Design aus den Einstellungen (index.html hat es aus dem Zwischenspeicher schon vorab gesetzt).
+if (isNativeApp) getSettings().then((s) => applyTheme(s.theme)).catch(() => {});
 
 showView('today');
 handleLaunch();

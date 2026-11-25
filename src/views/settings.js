@@ -15,6 +15,26 @@ import { onlineBackupCard } from './online-backup-ui.js';
 import { healthCard } from './health-ui.js';
 import { updateCard } from './update-ui.js';
 import { isNativeApp } from '../native-camera.js';
+import { THEMES, themeId, applyTheme } from '../theme.js';
+
+// Design-Auswahl: wirkt sofort und wird gleich gespeichert (ohne "Speichern").
+function themePicker(current) {
+  const wrap = el('div', { class: 'themes' });
+  const draw = (sel) => wrap.replaceChildren(...THEMES.map((t) => el('button', {
+    type: 'button', class: `themecard${t.id === sel ? ' on' : ''}`, 'data-id': t.id, 'aria-pressed': t.id === sel ? 'true' : 'false',
+    style: `--t0:${t.swatch[0]};--t1:${t.swatch[1]};--t2:${t.swatch[2]};--t3:${t.swatch[3]}`,
+    onClick: async () => {
+      applyTheme(t.id);
+      draw(t.id);
+      await saveSettings({ ...(await getSettings()), theme: t.id });
+    },
+  },
+    el('div', { class: 'tprev', 'aria-hidden': 'true' }, el('div', { class: 'tcard' }, el('i', { class: 'tring' }),
+      el('div', { style: 'flex:1' }, el('div', { class: 'tline' }), el('div', { class: 'tline s', style: 'margin-top:6px' })))),
+    el('div', { class: 'tbody' }, el('b', {}, t.label), el('span', {}, t.note)))));
+  draw(themeId(current));
+  return wrap;
+}
 
 export async function renderSettings() {
   const root = document.getElementById('view-settings');
@@ -105,6 +125,7 @@ export async function renderSettings() {
   mount(root,
     el('div', { class: 'eyebrow' }, 'Persönlich'),
     el('h1', {}, 'Einstellungen'),
+    isNativeApp() || location.hostname === 'localhost' ? [el('h2', { style: 'margin-top:8px' }, 'Design'), themePicker(s.theme)] : null,
     el('h2', {}, 'Ziele'),
     el('div', { class: 'card' },
       el('label', {}, 'Tägliches Kalorienziel (kcal)'), goal,

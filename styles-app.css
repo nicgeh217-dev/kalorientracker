@@ -102,3 +102,52 @@ details.fold > summary::-webkit-details-marker { display: none; }
 details.fold > summary::after { content: '›'; float: right; font-size: 20px; color: var(--muted); transform: rotate(90deg); }
 details.fold[open] > summary::after { transform: rotate(-90deg); }
 .bodytile { display: flex; flex-direction: column; justify-content: flex-start; align-items: stretch; }
+
+/* ---------- Dialoge als Bottom-Sheet: abgedunkelter Hintergrund, Blatt auf Kartenfarbe, kurze Blätter sitzen unten ---------- */
+#dialog-root .overlay { display: flex; flex-direction: column; padding-top: calc(env(safe-area-inset-top) + 28px); background: rgba(8, 9, 12, .46); }
+#dialog-root .sheet { flex: none; margin-top: auto; min-height: 0; background: var(--card); border-radius: 28px 28px 0 0; padding: 10px 20px calc(env(safe-area-inset-bottom) + 24px); }
+#dialog-root .sheet::before { content: ''; display: block; width: 40px; height: 5px; margin: 0 auto 14px; border-radius: 3px; background: var(--track); }
+#dialog-root .sheet h1 { font-size: 24px; margin-top: 0; }
+#dialog-root .sheet .card { background: var(--fill); box-shadow: none; }
+#dialog-root .sheet .card input, #dialog-root .sheet .card select { background: var(--card); }
+#dialog-root .sheet .btn, #dialog-root .sheet button.plain { background: var(--fill); box-shadow: none; }
+#dialog-root .sheet .seg button.on { background: var(--card); }
+/* Laufende Trainingseinheit bleibt ganzseitig: dort zählt jeder Platz */
+#dialog-root .overlay:has(.resttimer) { padding-top: 0; background: var(--bg); }
+#dialog-root .sheet:has(.resttimer) { min-height: 100%; border-radius: 0; background: var(--bg); padding-top: calc(env(safe-area-inset-top) + 16px); }
+#dialog-root .sheet:has(.resttimer)::before { display: none; }
+#dialog-root .sheet:has(.resttimer) .card { background: var(--card); }
+
+/* ---------- Eintragen: Raster mit Symbolen ---------- */
+.addgrid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+.addtile { grid-column: span 2; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 92px; margin: 0; padding: 12px 6px; border: 0; border-radius: 20px; background: var(--fill); color: var(--text); font-weight: 400; text-align: center; }
+.addtile b { font-size: 13px; font-weight: 600; }
+.aticon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--card); }
+.aticon svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.addtile.main { grid-column: span 3; flex-direction: row; justify-content: flex-start; gap: 12px; min-height: 76px; padding: 14px 16px; text-align: left; flex-wrap: wrap; }
+.addtile.main b { font-size: 15px; }
+.addtile.main .atsub { flex-basis: 100%; margin-top: -8px; padding-left: 52px; font-size: 12px; color: var(--muted); }
+.addtile.main:first-child { background: var(--text); color: var(--bg); }
+.addtile.main:first-child .aticon { background: color-mix(in srgb, var(--bg) 16%, transparent); }
+.addtile.main:first-child .atsub { color: color-mix(in srgb, var(--bg) 70%, transparent); }
+.addtile.full { grid-column: span 6; }
+.addtile.main .atsub { display: block; }
+
+/* ---------- Reiter (Verlauf) ---------- */
+.tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 4px; margin: 0 0 16px; border-radius: 999px; background: var(--card); box-shadow: var(--shadow); }
+.tabs button { min-height: 40px; padding: 0 4px; border: 0; border-radius: 999px; background: transparent; color: var(--muted); font-size: 14px; font-weight: 600; }
+.tabs button.on { background: var(--text); color: var(--bg); }
+
+/* ---------- Design-Auswahl (Einstellungen) ---------- */
+.themes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.themecard { display: block; width: 100%; margin: 0; padding: 0; border: 2px solid transparent; border-radius: 20px; background: var(--card); box-shadow: var(--shadow); color: var(--text); text-align: left; font-weight: 400; overflow: hidden; }
+.themecard.on { border-color: var(--orange); }
+.tprev { position: relative; height: 84px; padding: 12px; background: var(--t0); }
+.tprev .tcard { position: absolute; left: 12px; right: 12px; bottom: 12px; height: 46px; border-radius: 12px; background: var(--t1); display: flex; align-items: center; gap: 8px; padding: 0 10px; }
+.tprev .tring { width: 26px; height: 26px; border-radius: 50%; border: 4px solid var(--t3); border-right-color: color-mix(in srgb, var(--t2) 20%, transparent); flex: none; }
+.tprev .tline { height: 6px; border-radius: 3px; background: var(--t2); opacity: .8; width: 48%; }
+.tprev .tline.s { width: 28%; opacity: .35; }
+.tbody { padding: 10px 12px 12px; }
+.tbody b { display: block; font-size: 15px; }
+.tbody span { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; line-height: 1.3; }
+.themecard[data-id="konbini"] .tcard { border: 2px solid #111; box-shadow: 2px 2px 0 #111; }
