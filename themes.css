@@ -56,3 +56,4 @@ html[data-theme="wald"] {
 html[data-theme="wald"] button.primary { background: var(--orange); color: var(--on-orange); }
 html[data-theme="wald"] .navpill { background: #1a2b20; border-color: rgba(220, 255, 225, .06); }
 html[data-theme="wald"] .navpill button[data-view].active { background: var(--fill); color: var(--orange-2); }
+html[data-theme="konbini"] .sleepextra .mb i { border: 0; }

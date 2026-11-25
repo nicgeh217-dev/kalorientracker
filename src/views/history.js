@@ -148,7 +148,7 @@ function weekCard(days, goal, selectedDay) {
 }
 
 // ---------- Fortschritt ----------
-const de1 = (n) => String(n).replace('.', ',');
+const de1 = (n) => String(Math.round(n * 10) / 10).replace('.', ',');
 const invite = (text) => el('div', { class: 'muted' }, text);
 
 // Wochenrückblick: nur Zahlen, kein Soll und Ist, keine Farbe für gut oder schlecht.
