@@ -14,7 +14,7 @@ function releasePhotos(state) {
   state.photos = [];
 }
 
-const RETRYABLE = new Set(['offline', 'network', 'overloaded']);
+const RETRYABLE = new Set(['offline', 'network', 'overloaded', 'region']);
 
 // Android-App: native Kamera bzw. Galerie. Bei einem Fehler (z. B. Berechtigung verweigert) fällt es auf den normalen Datei-Dialog zurück.
 async function pickNative({ camera }, onFiles) {
@@ -124,7 +124,7 @@ function openScanSheet(state) {
       el('button', { class: 'btn', onClick: () => { releasePhotos(state); closeSheet(); } }, 'Abbrechen'),
       runBtn,
       lookupBtn),
-    lookupBtn ? el('div', { class: 'muted', style: 'margin:0 4px' }, 'Nachschlagen: Für Konbini-Produkte und Restaurantketten, z. B. „Lawson Lachs-Onigiri“ oder „Yoshinoya Gyudon Nami“. Sucht die veröffentlichten Werte.') : null);
+    lookupBtn ? el('div', { class: 'muted', style: 'margin:0 4px' }, 'Nachschlagen: Für Konbini-Produkte und Restaurantketten in Japan, Korea und China, z. B. „Lawson Lachs-Onigiri“ oder „全家 饭团“. Sucht die veröffentlichten Werte.') : null);
   if (state.focusHint) {
     state.focusHint = false;
     hint.focus();

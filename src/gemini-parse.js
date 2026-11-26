@@ -31,6 +31,14 @@ function extractJson(text) {
 
 const responseText = (apiJson) => apiJson?.candidates?.[0]?.content?.parts?.map((p) => p.text ?? '').join('') ?? '';
 
+// Chinesische (und viele europäische) Etiketten nennen die Energie in kJ. Die App rechnet selbst um, statt der KI zu vertrauen.
+// Hat die KI die kJ-Zahl auch als kcal eingetragen, gilt ebenfalls die Umrechnung.
+function energyKcal(kcal, kj) {
+  if (kj == null) return kcal;
+  if (kcal != null && Math.abs(kcal - kj) >= 1) return kcal;
+  return Math.round(kj / 4.184);
+}
+
 export function parseLabelResponse(apiJson) {
   const block = apiJson?.promptFeedback?.blockReason;
   if (block) return { ok: false, error: `Die Anfrage wurde von Gemini blockiert (${block}).` };
@@ -41,7 +49,7 @@ export function parseLabelResponse(apiJson) {
     return { ok: false, error: 'Die Antwort von Gemini konnte nicht gelesen werden.' };
   }
   const estimate = obj.source === 'estimate';
-  const kcal = num(obj.kcal);
+  const kcal = energyKcal(num(obj.kcal), num(obj.kj));
   if (estimate && kcal == null) return { ok: false, error: 'Die Schätzung enthielt keine Kalorien. Bitte erneut versuchen oder manuell eintragen.' };
   let kcalMin = num(obj.kcalMin);
   let kcalMax = num(obj.kcalMax);
@@ -68,7 +76,7 @@ export function parseLabelResponse(apiJson) {
       kcalMin,
       kcalMax,
       // Nur bei Etiketten: unsicher gelesene Felder und das Foto mit der Tabelle (für den Beleg am Produkt)
-      uncertain: estimate ? [] : cleanUncertain(obj.uncertain),
+      uncertain: estimate ? [] : cleanUncertain(Array.isArray(obj.uncertain) ? obj.uncertain.map((f) => (f === 'kj' ? 'kcal' : f)) : obj.uncertain),
       labelPhotoIndex: !estimate && Number.isInteger(obj.labelPhotoIndex) && obj.labelPhotoIndex >= 0 ? obj.labelPhotoIndex : null,
     },
   };

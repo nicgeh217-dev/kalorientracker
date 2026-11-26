@@ -18,11 +18,17 @@ Japanische Etiketten:
 - Fehlt 炭水化物 und stehen nur 糖質 und 食物繊維 da, ist carbs = 糖質 + 食物繊維.
 - 1個当たり, 1包装当たり, 1食当たり, 1本当たり und 1袋当たり bedeuten pro Portion bzw. Packung (basis = "perServing"); 100g当たり bzw. 100ml当たり bedeutet per100g. 内容量 ist der Packungsinhalt.
 - 食塩相当量 (Salz) und ナトリウム (Natrium) werden nicht erfasst.
+Chinesische Etiketten (营养成分表, auf Chinesisch, auch traditionell 營養標示):
+- 能量 bzw. 热量 / 熱量 = Energie, 蛋白质 / 蛋白質 = Protein, 脂肪 = Fett, 碳水化合物 = Kohlenhydrate, 膳食纤维 = Ballaststoffe, 糖 = Zucker (steht keine Zuckerzeile da, ist sugar = null).
+- 反式脂肪, 饱和脂肪, 胆固醇 und 钠 / 鈉 (Natrium) werden nicht erfasst. Die Spalte NRV% bzw. 营养素参考值 ist nur ein Prozentwert, niemals als Menge übernehmen.
+- 每100克 / 每100g und 每100毫升 bedeuten per100g. 每份, 每包装, 每瓶 und 每一份量 bedeuten pro Portion bzw. Packung (perServing). 净含量 ist der Packungsinhalt.
+- 大卡 und 千卡 sind kcal. 千焦 ist kJ.
 - source = "label". Lies die Werte exakt ab, schätze nichts und rechne nichts um.
+- Energie: Steht sie in kJ (kJ oder 千焦), trag diese Zahl in kj ein und rechne sie nicht um, die App rechnet selbst. Steht nur kJ da, ist kcal = null. Steht auch kcal (大卡, 千卡) da, trag beide Zahlen ein. Eine kJ-Zahl gehört nie in kcal.
 - basis = "per100g", wenn die Werte für 100 g bzw. 100 ml gelten, "perServing", wenn sie für eine Portion/Packung gelten, sonst null.
 - servingGrams = Gramm (oder ml) einer Portion bzw. Packung, falls angegeben. Steht keine Portion, aber der Gesamtinhalt der Packung auf dem Etikett (z. B. 총 내용량, Nettofüllmenge), nimm diesen. Sonst null.
 - kcal, protein, carbs, fat, fiber, sugar = Zahlen für diese Bezugsgröße (fiber = Ballaststoffe, sugar = Zucker bzw. davon Zucker). Nicht lesbare oder nicht angegebene Werte = null.
-- name = Produktname von der Verpackung, falls sichtbar, sonst null. Ist der Name nicht deutsch (z. B. Koreanisch/Hangul oder Japanisch), gib ihn als kurze deutsche Übersetzung mit dem Originalnamen in Klammern an, z. B. "Thunfisch-Kimbap (삼각김밥 참치마요)". Höchstens 60 Zeichen.
+- name = Produktname von der Verpackung, falls sichtbar, sonst null. Ist der Name nicht deutsch (z. B. Koreanisch/Hangul, Japanisch oder Chinesisch), gib ihn als kurze deutsche Übersetzung mit dem Originalnamen in Klammern an, z. B. "Thunfisch-Kimbap (삼각김밥 참치마요)". Höchstens 60 Zeichen.
 - uncertain = Liste der Felder, die du NICHT sicher lesen konntest (Feldnamen: basis, servingGrams, kcal, protein, carbs, fat, fiber, sugar), z. B. weil das Foto unscharf, verdeckt, spiegelnd, abgeschnitten oder widersprüchlich ist. Sicher gelesene Werte gehören nicht hinein. Leere Liste, wenn alles klar lesbar ist.
 - labelPhotoIndex = Nummer des Fotos (das erste Foto ist 0), auf dem die Nährwerttabelle am besten lesbar ist.
 - confidence, note, kcalMin, kcalMax = null.
@@ -34,7 +40,8 @@ Fall B – keine lesbare Nährwerttabelle (Restaurantgericht, Bäckerware, Obst,
 - name = kurzer deutscher Name des Gerichts.
 - confidence = "high" nur bei klar erkennbarem, standardisiertem Essen; "medium" bei üblichen Gerichten mit unklarer Portion; "low" bei unscharfem Foto, verdeckten Zutaten, viel Soße oder Öl.
 - note = höchstens zwei kurze deutsche Sätze: was du siehst und welche Annahmen du getroffen hast (Menge, Zutaten, Öl/Soße).
-- In Japan und Korea (Konbini, Imbiss, Restaurant) gelten dort übliche Portionsgrößen, z. B. ein Onigiri etwa 100 bis 120 g, eine Schale Reis etwa 150 g.
+- In Japan, Korea und China (Konbini, Imbiss, Restaurant) gelten dort übliche Portionsgrößen, z. B. ein Onigiri oder 饭团 etwa 100 bis 120 g, eine Schale Reis etwa 150 g, ein gefüllter Dampfbrötchen-包子 etwa 80 bis 100 g, eine chinesische Menü-Box 盒饭 etwa 400 bis 500 g.
+- Bei chinesischen Gerichten an Öl und Soße denken und das in note erwähnen. name bei chinesischen Gerichten oder Produkten: deutsch mit den chinesischen Zeichen in Klammern.
 - Ein Hinweis des Nutzers hat Vorrang vor deiner eigenen Annahme.`;
 
 const NUM = { type: 'NUMBER', nullable: true };
@@ -46,6 +53,7 @@ const SCHEMA = {
     basis: { type: 'STRING', nullable: true, enum: ['per100g', 'perServing'] },
     servingGrams: NUM,
     kcal: NUM,
+    kj: NUM,
     protein: NUM,
     carbs: NUM,
     fat: NUM,
@@ -64,9 +72,10 @@ const SCHEMA = {
 // Nachschlagen im Netz: Gemini sucht mit Google nach den veröffentlichten Nährwerten (Hersteller, Konbini, Restaurantkette).
 // Ohne festes Antwortschema, weil sich das nicht mit der Google-Suche kombinieren lässt. Das JSON steht dann im Text.
 const LOOKUP_PROMPT = `Suche im Internet die Nährwerte für dieses Lebensmittel und gib ausschließlich ein JSON-Objekt zurück, ohne weiteren Text.
-Bevorzuge offizielle Angaben des Herstellers, der Konbini-Kette (z. B. 7-Eleven, Lawson, FamilyMart) oder der Restaurantkette. Erfinde nichts.
-Format: {"found": true, "name": string, "basis": "per100g" oder "perServing", "servingGrams": Zahl oder null, "kcal": Zahl, "protein": Zahl oder null, "carbs": Zahl oder null, "fat": Zahl oder null, "fiber": Zahl oder null, "sugar": Zahl oder null}
+Bevorzuge offizielle Angaben des Herstellers, der Konbini-Kette (z. B. 7-Eleven, Lawson, FamilyMart; in China auch 全家, 罗森, 便利蜂, 美宜佳) oder der Restaurantkette (z. B. 瑞幸, 喜茶, KFC China). Bei chinesischen Produkten auch auf Chinesisch suchen. Erfinde nichts.
+Format: {"found": true, "name": string, "basis": "per100g" oder "perServing", "servingGrams": Zahl oder null, "kcal": Zahl oder null, "kj": Zahl oder null, "protein": Zahl oder null, "carbs": Zahl oder null, "fat": Zahl oder null, "fiber": Zahl oder null, "sugar": Zahl oder null}
 Findest du das konkrete Produkt bzw. Gericht nicht sicher, antworte {"found": false}.
+- Gibt es die Energie nur in kJ, trag sie in kj ein und rechne sie nicht um.
 - Die Werte gelten für die Bezugsgröße in "basis". servingGrams = Gramm einer Portion bzw. Packung, falls bekannt.
 - Japanisch: 糖質 ist nicht Zucker. Zucker ist nur 糖類. Fehlt 炭水化物, ist carbs = 糖質 + 食物繊維.
 - name = kurzer deutscher Name, bei fremdsprachigen Produkten mit dem Originalnamen in Klammern, höchstens 60 Zeichen.`;
@@ -94,13 +103,15 @@ export async function lookupOnline({ barcode = null, query = '' }, apiKey, model
   const started = performance.now();
   const primary = model || DEFAULT_MODEL;
   const body = JSON.stringify(lookupRequestBody({ barcode, query }));
+  let blocked = false;
   try {
     const call = async (m) => {
       const res = await fetch(endpoint(m), { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey }, body });
+      blocked = await isRegionBlock(res);
       return { status: res.status, json: res.ok ? await res.json() : undefined };
     };
     const r = await runWithFallback([primary, fallbackFor(primary)], call);
-    if (!r.ok) return { ok: false, error: lookupError(r.status) };
+    if (!r.ok) return { ok: false, error: blocked ? REGION_ERROR : lookupError(r.status) };
     const parsed = parseLookupResponse(r.json);
     return parsed.ok ? { ...parsed, model: r.model, seconds: (performance.now() - started) / 1000 } : parsed;
   } catch {
@@ -204,6 +215,14 @@ function httpError(status, model) {
   return `Gemini-Fehler (HTTP ${status}).`;
 }
 
+// Gemini antwortet aus manchen Ländern (u. a. Festland-China und Hongkong) mit 400 "User location is not supported".
+const REGION_ERROR = 'Gemini ist in diesem Land bzw. dieser Region nicht verfügbar. Mit einer VPN-Verbindung in ein unterstütztes Land geht es, oder du speicherst den Eintrag für später. Strichcodes und gespeicherte Produkte funktionieren trotzdem.';
+async function isRegionBlock(res) {
+  if (res.status !== 400) return false;
+  const body = await res.json?.().catch(() => null);
+  return /location is not supported/i.test(body?.error?.message ?? '');
+}
+
 // Zweites Modell als Ausweichlösung, falls das gewählte überlastet oder abgeschaltet ist.
 function fallbackFor(model) {
   return MODELS.find((m) => m.id !== model)?.id;
@@ -233,15 +252,18 @@ export async function analyzeFood({ files = [], hint = '' }, apiKey, model = DEF
       contents: [{ parts }],
       generationConfig: { responseMimeType: 'application/json', responseSchema: SCHEMA, temperature: 0 },
     });
+    let blocked = false;
     const call = async (m) => {
       const res = await fetch(endpoint(m), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
         body,
       });
+      blocked = await isRegionBlock(res);
       return { status: res.status, json: res.ok ? await res.json() : undefined };
     };
     const r = await runWithFallback([primary, fallbackFor(primary)], call);
+    if (!r.ok && blocked) return { ok: false, reason: 'region', error: REGION_ERROR };
     if (!r.ok) return { ok: false, reason: r.status >= 500 ? 'overloaded' : 'other', error: httpError(r.status, r.model) };
     const parsed = parseLabelResponse(r.json);
     return parsed.ok ? { ...parsed, model: r.model, seconds: (performance.now() - started) / 1000 } : parsed;

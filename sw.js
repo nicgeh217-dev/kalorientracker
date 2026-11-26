@@ -1,4 +1,4 @@
-const CACHE = 'kalorientracker-v46';
+const CACHE = 'kalorientracker-v47';
 const SHARE_CACHE = 'shared-v1'; // Fotos, die per "Teilen" in die App kamen (werden von der App abgeholt und gelöscht)
 const ASSETS = [
   './', './index.html', './styles.css', './styles-app.css', './themes.css', './manifest.webmanifest',

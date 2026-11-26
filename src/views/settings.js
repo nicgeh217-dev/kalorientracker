@@ -142,7 +142,7 @@ export async function renderSettings() {
       el('label', { style: 'margin-top:0' }, 'Gemini-API-Key (nur auf diesem Handy gespeichert)'),
       el('div', { class: 'row' }, key, toggle),
       el('label', {}, 'Gemini-Modell'), model, custom,
-      el('div', { class: 'muted', style: 'margin:6px 4px 0' }, 'Schnell = kürzere Wartezeit, Genau = liest kleine koreanische Schrift zuverlässiger. Nach jedem Scan siehst du Modell und Dauer.')),
+      el('div', { class: 'muted', style: 'margin:6px 4px 0' }, 'Schnell = kürzere Wartezeit, Genau = liest kleine koreanische, japanische und chinesische Schrift zuverlässiger. Nach jedem Scan siehst du Modell und Dauer.')),
     msg,
     el('div', { class: 'actions' }, el('div', { class: 'wide', style: 'display:grid' }, save)),
     el('h2', {}, 'Fuchs'),
